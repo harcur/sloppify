@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 sloppify contributors
 // SPDX-License-Identifier: MIT
 
-// Site-wide settings. Change repoUrl once the GitHub repo exists.
+// Site-wide settings.
 export const config = {
   name: 'sloppify',
-  repoUrl: 'https://github.com/USERNAME/sloppify', // TODO: replace USERNAME
+  repoUrl: 'https://github.com/harcur/sloppify',
   branch: 'main',
   lang: 'en',
 };

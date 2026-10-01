@@ -54,6 +54,8 @@ jobs:
             --exclude docs --exclude tools/_template --exclude _site \
             --exclude package.json --exclude package-lock.json --exclude playwright.config.js
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

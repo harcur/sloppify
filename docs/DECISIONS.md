@@ -26,7 +26,7 @@ Starter tools: **Sudoku** and **Interest rate calculator**.
 - **Plain HTML/CSS/JS, no build step.** The source in the repo is exactly what runs, so code links show real, readable code. ES modules for sharing code between pages.
 - **Each tool is its own page** in its own folder.
 - **Offline via service worker.** The hub and shared files are cached on first visit; each tool page is cached when first opened. The site is installable (web app manifest).
-- **Hosting: GitHub Pages** at `<username>.github.io/sloppify/` (no custom domain). Code hosted on **GitHub**.
+- **Hosting: GitHub Pages** at `harcur.github.io/sloppify/` (no custom domain). Code hosted on **GitHub**.
 - **Deployment:** GitHub Actions deploys to Pages only after all checks pass.
 - **All internal links and asset paths are relative**, so the site works both at a project subpath (`user.github.io/sloppify/`) and on a custom domain.
 - **Content Security Policy via `<meta>` tag** on every page (`default-src 'self'`), since GitHub Pages can't set custom headers. This makes the browser itself block any external request, enforcing the zero-requests rule.

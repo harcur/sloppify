@@ -1,6 +1,6 @@
 # sloppify — notes for Claude Code
 
-Local-first hub of small tools and games, hosted on GitHub Pages at `<username>.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision.
+Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision.
 
 ## Hard rules
 
@@ -25,7 +25,6 @@ Copy `tools/_template/`, follow its README, add an entry to `tools.json`, add te
 
 ## Open items
 
-- Set `repoUrl` in `shared/config.js` (currently `USERNAME`).
 - Replace the generic source icon in `shared/icons.js` with Octicons `mark-github` (MIT).
 - Add PNG app icons (192, 512, apple-touch-icon).
 - Push to GitHub and enable Pages with source "GitHub Actions".

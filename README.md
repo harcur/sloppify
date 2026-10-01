@@ -45,7 +45,6 @@ Unit tests use Node's built-in test runner. Browser tests use Playwright on mobi
 
 ## Before launch
 
-- Set `repoUrl` in `shared/config.js`.
 - Replace the generic source icon in `shared/icons.js` with GitHub's `mark-github` from Octicons (MIT).
 - Add PNG app icons (192 and 512 px, plus an `apple-touch-icon`) for install on iOS and older Android.
 - In the repo settings, set Pages to deploy from GitHub Actions.
