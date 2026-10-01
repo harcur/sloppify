@@ -25,6 +25,7 @@ export const DEFAULTS = {
   glow: true,
   notify: false,
   vibrate: true,
+  keepAwake: true, // keep the screen on while the timer runs
 };
 
 const clampInt = (v, [lo, hi], fallback) => {
@@ -36,7 +37,7 @@ export function cleanSettings(s) {
   const src = s && typeof s === 'object' ? s : {};
   const out = { ...DEFAULTS };
   for (const k of Object.keys(LIMITS)) out[k] = clampInt(src[k], LIMITS[k], DEFAULTS[k]);
-  for (const k of ['autoStart', 'sound', 'glow', 'notify', 'vibrate']) if (typeof src[k] === 'boolean') out[k] = src[k];
+  for (const k of ['autoStart', 'sound', 'glow', 'notify', 'vibrate', 'keepAwake']) if (typeof src[k] === 'boolean') out[k] = src[k];
   for (const k of ['workSound', 'restSound']) if (SOUNDS.includes(src[k])) out[k] = src[k];
   const vol = Number(src.volume);
   if (Number.isFinite(vol)) out.volume = Math.min(1, Math.max(0, vol));

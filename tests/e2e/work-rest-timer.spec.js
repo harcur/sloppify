@@ -83,9 +83,11 @@ test('every alert can be turned off, and sound choices wait while sound is off',
   await expect(page.getByRole('combobox', { name: 'When work ends' })).toBeEnabled();
 });
 
-test('minimal view hides everything but the glass, time and one button; Escape leaves it', async ({ page }) => {
+test('minimal view hides everything but the glass and one button; Escape leaves it', async ({ page }) => {
   await page.goto('./tools/work-rest-timer/');
   await page.getByRole('button', { name: 'Minimal' }).click();
+  await expect(time(page)).toBeHidden();
+  await expect(page.getByRole('img', { name: /Hourglass, 0 percent of this work passed/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Skip' })).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Intervals' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Leave minimal view' })).toBeVisible();
@@ -110,6 +112,34 @@ test('on phones it fills the screen like an app, with settings in a sheet', asyn
   await expectAccessible(page, 'settings sheet');
   await sheet.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('button', { name: 'Settings' })).toBeFocused();
+});
+
+test('keeps the screen on only while the timer runs, if wanted', async ({ page }) => {
+  // A stand-in for the Screen Wake Lock API that records what's held.
+  await page.addInitScript(() => {
+    window.__locks = 0;
+    Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: {
+      request: async () => {
+        window.__locks++;
+        const lock = new EventTarget();
+        lock.release = async () => { window.__locks--; lock.dispatchEvent(new Event('release')); };
+        return lock;
+      },
+    } });
+  });
+  await page.goto('./tools/work-rest-timer/');
+  const held = () => page.evaluate(() => window.__locks);
+  expect(await held()).toBe(0);
+  await page.getByRole('button', { name: 'Start work' }).click();
+  await expect.poll(held).toBe(1);
+  await page.getByRole('button', { name: 'Pause' }).click();
+  await expect.poll(held).toBe(0);
+  await openSettings(page);
+  await page.getByRole('checkbox', { name: 'Keep the screen on while the timer runs' }).uncheck();
+  await closeSettings(page);
+  await page.getByRole('button', { name: 'Resume' }).click();
+  await page.waitForTimeout(300);
+  expect(await held()).toBe(0);
 });
 
 for (const scheme of ['light', 'dark']) {

@@ -21,7 +21,7 @@ export const strings = {
     'work-rest-timer.skip': 'Skip',
     'work-rest-timer.minimal': 'Minimal',
     'work-rest-timer.options': 'Settings',
-    'work-rest-timer.minimalOn': 'Minimal view. Press Escape to leave.',
+    'work-rest-timer.minimalOn': 'Minimal view, showing only the hourglass. Press Escape to leave.',
     'work-rest-timer.exitMinimal': 'Leave minimal view',
     'work-rest-timer.hourglass': 'Hourglass, {pct} percent of this {phase} passed',
 
@@ -75,6 +75,9 @@ export const strings = {
     'work-rest-timer.notifyUnsupported': 'This browser doesn’t support notifications here.',
     'work-rest-timer.vibrate': 'Vibrate (phones)',
     'work-rest-timer.notifyTitle': '{phase} done',
+    'work-rest-timer.screen': 'Screen',
+    'work-rest-timer.keepAwake': 'Keep the screen on while the timer runs',
+    'work-rest-timer.keepAwakeHint': 'Only while this page is open and in front. Uses more battery.',
     'work-rest-timer.testAlerts': 'Try the alerts',
 
     'work-rest-timer.keys': 'Keys: Space starts or pauses, R resets, S skips, M switches the minimal view.',

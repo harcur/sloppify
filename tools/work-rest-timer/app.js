@@ -173,6 +173,8 @@ const glowCheck = check('glow', T('glow'), h('p', { class: 'wrt-hint' }, T('glow
 const notifyCheck = check('notify', T('notify'), notifyHint);
 const vibrateCheck = check('vibrate', T('vibrate'));
 const canVibrate = typeof navigator.vibrate === 'function';
+const canWake = 'wakeLock' in navigator;
+const awakeCheck = check('keepAwake', T('keepAwake'), h('p', { class: 'wrt-hint' }, T('keepAwakeHint')));
 
 const section = (key, ...children) => {
   const headId = id(key);
@@ -192,6 +194,7 @@ const settingsEl = h('div', { class: 'wrt-settings' },
     canVibrate ? vibrateCheck.el : null,
     h('button', { type: 'button', class: 'btn wrt-try', onclick: () => alertAll('work', true) }, T('testAlerts')),
   ),
+  canWake ? section('screen', awakeCheck.el) : null,
   section('sound',
     soundOffHint,
     workSound.el,
@@ -235,6 +238,7 @@ function syncSettings() {
   glowCheck.input.checked = settings.glow;
   notifyCheck.input.checked = settings.notify;
   vibrateCheck.input.checked = settings.vibrate;
+  awakeCheck.input.checked = settings.keepAwake;
   syncNotifyHint();
 }
 
@@ -423,6 +427,33 @@ function render() {
   resetBtn.disabled = fresh;
   todayEl.textContent = T('today', { n: today.n });
   document.title = fresh ? baseTitle : T('pageTitle', { time: formatTime(left), phase });
+  syncWakeLock();
+}
+
+// Screen ----------------------------------------------------------------
+// Keeps the screen on while the timer runs and the page is visible. The
+// browser drops the lock whenever the page is hidden; it's asked for again
+// when the page comes back.
+
+let wakeLock = null;
+let wakePending = false;
+
+async function syncWakeLock() {
+  const want = canWake && settings.keepAwake && timer.running && document.visibilityState === 'visible';
+  if (want && !wakeLock && !wakePending) {
+    wakePending = true;
+    try {
+      const lock = await navigator.wakeLock.request('screen');
+      lock.addEventListener('release', () => { if (wakeLock === lock) wakeLock = null; });
+      wakeLock = lock;
+    } catch { /* refused, e.g. low battery */ }
+    wakePending = false;
+    syncWakeLock(); // things may have changed while waiting
+  } else if (!want && wakeLock) {
+    const lock = wakeLock;
+    wakeLock = null;
+    lock.release().catch(() => {});
+  }
 }
 
 // Keys --------------------------------------------------------------------

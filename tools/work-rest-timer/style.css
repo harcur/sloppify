@@ -177,10 +177,10 @@
 .wrt-hint[hidden] { display: none; }
 .wrt-try { align-self: start; }
 
-/* Minimal view: only the glass, the time and one button. --------------- */
+/* Minimal view: only the glass and one button. No ticking numbers. --------------- */
 .wrt-minimal .site-header, .wrt-minimal .site-footer, .wrt-minimal .skip,
 .wrt-minimal .tool-title, .wrt-minimal .wrt-settings,
-.wrt-minimal .wrt-round, .wrt-minimal .wrt-today,
+.wrt-minimal .wrt-round, .wrt-minimal .wrt-today, .wrt-minimal .wrt-time,
 .wrt-minimal .wrt-controls .btn:not(.wrt-start) { display: none; }
 .wrt-minimal .tool-main { display: flex; padding: 0; }
 .wrt-minimal .wrt { flex: 1; display: flex; }

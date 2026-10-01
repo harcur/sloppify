@@ -8,4 +8,6 @@ Alternates work and rest intervals: a work session, a short rest, and a long res
 
 Alerts when a phase ends, each one switchable on or off: sound, a soft glow around the screen edges (a 2 s fade, low contrast, never a flash; a still tint with reduced motion), vibration on phones, and a system notification when the page is in the background.
 
+A minimal view shows only the hourglass and one button, with no ticking numbers. While the timer runs, the screen can be kept on with the Screen Wake Lock API (where the browser supports it; the setting is hidden otherwise).
+
 Saves settings, the timer (a running timer carries on after a reload), work sessions done today and the minimal view.
