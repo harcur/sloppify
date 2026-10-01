@@ -216,9 +216,10 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
 - **Typography (system fonts only):** monospace for headings (`ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace`), sans-serif for text (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). Headings will vary slightly by OS; accepted as the cost of zero font downloads.
 - **Color by zone:**
   - Shared chrome (header, data menu, footer): neutral grays only, identical on every page.
-  - Hub: neutral, with one hue per category for wayfinding (tools = blue, games = orange).
+  - Hub: neutral, with one hue per category for wayfinding (tools = blue, games = orange, party = magenta).
   - Tools: monochrome; color only carries meaning (focus, errors, chart series, main result).
   - Games: colourful and good-looking rather than utilitarian, with their own palette, textures and short vector animations (CSS and SVG only) inside the play area; chrome around it stays neutral. Details in `docs/TOOL-GUIDELINES.md` 4.6.
+  - Party (things a group uses together on one screen): the game rules plus very large results, one big main button and reveals of a few seconds that can be skipped. A third category rather than tags or a mix of styles, to keep one category per tool. Tools always stay utilitarian. Details in `docs/TOOL-GUIDELINES.md` 4.7.
 - **Starting palette** (all text ≥ 4.5:1, UI edges ≥ 3:1):
 
   | Token | Light | Dark |
@@ -230,6 +231,7 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
   | Line | `#CFCFCB` | `#343434` |
   | Tools accent | `#2F5D8A` | `#82AEDB` |
   | Games accent | `#B34A24` | `#EE8A62` |
+  | Party accent | `#8E3A9E` | `#DDA2EC` |
 
 - Every page has a designed mobile variant and desktop variant.
 

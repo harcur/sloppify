@@ -10,6 +10,11 @@
       "label": {
         "en": "game"
       }
+    },
+    "party": {
+      "label": {
+        "en": "party"
+      }
     }
   },
   "tools": [
