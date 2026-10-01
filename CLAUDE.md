@@ -1,6 +1,6 @@
 # sloppify — notes for Claude Code
 
-Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision.
+Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision. Read `docs/TOOL-GUIDELINES.md` before proposing or building a tool: what fits the site (self-contained, nothing that goes stale, no trademarks or copies) and the size budgets.
 
 ## Hard rules
 
@@ -9,13 +9,14 @@ Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.gith
 - All paths relative, so the site works under the `/sloppify/` subpath.
 - Storage only through `shared/storage.js` (`openStore`). Keys are `sloppify:<tool-id>:<key>`. Never touch keys without the `sloppify:` prefix.
 - Every visible string goes in a `strings.js` file.
+- Size budgets (`tests/unit/budget.test.js`): 60 KB per tool, 200 KB per tool `data/` folder, 50 KB `shared/`, 20 KB hub, 20 KB per image. Long work goes in a Web Worker.
 - WCAG 2.2 AA, keyboard and screen reader support, designed mobile and desktop layouts.
 - SPDX headers on every file (REUSE).
 - Design: sharp corners, 1px lines, system monospace headings, system sans text, tokens in `shared/base.css`.
 
 ## Adding a tool
 
-Copy `tools/_template/`, follow its README, add an entry to `tools.json`, add tests.
+Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`, follow its README, add an entry to `tools.json`, add tests.
 
 ## Commands
 

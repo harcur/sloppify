@@ -165,6 +165,10 @@ The site itself has no build step and no dependencies. Test tooling is dev-only 
 - **License check:** REUSE lint.
 - Every new tool must come with tests.
 
+## What tools belong
+
+Rules for which tools fit and how heavy they may be are in `docs/TOOL-GUIDELINES.md`: self-contained with nothing that goes stale (no live data such as exchange rates or weather), a common everyday use, low stakes, no trademarks or one-to-one copies of existing games or apps, and per-page size budgets enforced by `tests/unit/budget.test.js`.
+
 ## Contributions
 
 Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
@@ -226,3 +230,4 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
 - PNG app icons for iOS and older Android
 - How contributions fit with the "not hand-coded" disclosure (deferred)
 - Design language for tools and games (after the hub)
+- "Sudoku" is a registered trademark of Nikoli in Japan, though used generically elsewhere. Keep the name or switch to a generic one such as "number place"?
