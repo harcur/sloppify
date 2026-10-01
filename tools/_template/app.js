@@ -12,7 +12,9 @@ extendStrings(strings);
 const TOOL_ID = 'my-tool';
 const name = t(`${TOOL_ID}.name`);
 
-const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: 'tools/my-tool/' });
+// app: true makes the page fill the screen like an app on phones (docs/TOOL-GUIDELINES.md 4.1).
+// Put settings and help in an options sheet there: optionsSheet() from shared/sheet.js.
+const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: 'tools/my-tool/', app: true });
 
 // Saved data for this tool, when it needs some:
 // const store = openStore(TOOL_ID, { version: 1, migrate: (data, from, to) => data });

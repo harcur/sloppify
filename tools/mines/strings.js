@@ -17,7 +17,6 @@ export const strings = {
     'mines.new': 'New game',
     'mines.flagMode': 'Flag mode',
     'mines.options': 'Options',
-    'mines.close': 'Close',
     'mines.board': 'Minefield, {rows} rows by {cols} columns',
 
     'mines.cell.hidden': 'hidden',

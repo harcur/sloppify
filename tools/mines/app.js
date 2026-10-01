@@ -4,10 +4,9 @@
 import { initPage, guardStore } from '../../shared/page.js';
 import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
-import { icon } from '../../shared/icons.js';
-import { sourceUrl } from '../../shared/config.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
+import { optionsSheet } from '../../shared/sheet.js';
 import { strings } from './strings.js';
 import { LEVELS, mineRange, validMines, newGame, reveal, chord, toggleFlag, count, flagsLeft, serialize, deserialize } from './logic.js';
 
@@ -58,7 +57,7 @@ const announcer = h('p', { class: 'sr-only', 'aria-live': 'polite' });
 const scroller = h('div', { class: 'mines-scroll' });
 const levelBtns = Object.keys(LEVELS).map((lv) => h('button', {
   type: 'button', class: 'seg-btn mines-level', 'data-level': lv,
-  onclick: async () => { if (await startNew(lv) && sheet.open) sheet.close(); },
+  onclick: async () => { if (await startNew(lv)) options.close(); },
 }, h('span', {}, t(`mines.level.${lv}`)), h('span', { class: 'mines-level-detail' })));
 const levelDetail = (lv) => t('mines.level.detail', { ...LEVELS[lv], mines: minesFor(lv) });
 
@@ -110,29 +109,18 @@ const layout = h('div', { class: 'mines-layout' },
 
 // On narrow screens the game fills the screen. The side panel, plus the
 // footer's text and source link that the page hides there, move into a sheet.
-const sheetBody = h('div', { class: 'mines-sheet-body' });
-const sheet = h('dialog', { class: 'dialog mines-sheet', 'aria-labelledby': 'mines-sheet-title' },
-  h('div', { class: 'mines-sheet-head' },
-    h('h2', { class: 'dialog-title', id: 'mines-sheet-title' }, t('mines.options')),
-    h('button', { type: 'button', class: 'btn', onclick: () => sheet.close() }, t('mines.close')),
-  ),
-  sheetBody,
-  h('div', { class: 'mines-sheet-foot' },
-    h('p', {}, t('footer.text')),
-    h('p', {}, h('a', { href: sourceUrl(SOURCE_PATH), rel: 'noreferrer' }, icon('source'), t('footer.source'))),
-  ),
-);
-sheet.addEventListener('close', () => { if (moreBtn.isConnected) moreBtn.focus(); });
+const options = optionsSheet({ title: t('mines.options'), sourcePath: SOURCE_PATH, returnFocus: moreBtn });
+const { sheet } = options;
 
 function openSheet() {
   renderStats();
-  sheet.showModal();
+  options.open();
 }
 
 function placeSide() {
-  if (narrow.matches) sheetBody.append(side);
+  if (narrow.matches) options.body.append(side);
   else {
-    if (sheet.open) sheet.close();
+    options.close();
     layout.append(side);
   }
 }

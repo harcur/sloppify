@@ -19,6 +19,10 @@ Tools:
 
 - **interest calculator** (`tools/interest-calculator/`): four situations behind one switch. **Loan** (amount, rate, time in years or months, equal payments or equal principal, optional extra monthly payment): monthly payment, total interest, a table of the payment at the rate ±2 points, and what the extra payment saves. **Savings** (starting amount, monthly deposit, rate, time, interest added daily/monthly/yearly or never for simple interest, optional inflation): end amount, interest earned, value in today's money. **Pay off debt** (balance, rate, monthly payment): time to clear it and the month it's done, a table of larger payments, and a clear message when the payment never covers the interest. **Find the rate** (amount, payment, time, fees at the start and per month): the real yearly cost (effective rate, fees included) and the nominal rate. Sizes are made easy to grasp: a to-scale bar of principal against interest with shares, large amounts also in words ("about 188 thousand"), an "in perspective" list of plain comparisons (pay back 1.75 for every 1, years of payments that go to interest, interest per day, doubling time), and a yearly stacked bar chart (an image with a written summary, plus a year-by-year table). Every situation shows its formula and a not-financial-advice line. Everything runs month by month in `logic.js` (unit tested); payments and deposits fall at the end of each month. Numbers are typed and shown in the browser's locale; the parser accepts `250 000`, `250,000`, `1.234,5`, `4,5`, `250k`. On phones the main result stays pinned under the header while it's scrolled out of view. Saves the chosen situation and what was typed in each, as typed.
 
+Tools:
+
+- **work and rest timer** (`tools/work-rest-timer/`): alternating work and rest intervals under a generic name, since the best-known name for the method is a trademark. Presets 25/5, 50/10, 90/20 or custom lengths, a long rest after a set number of rounds, optional auto-start. An SVG hourglass whose sand drains with the time (levels follow the square root of time left, like a real glass) and turns over when a phase ends; sand colour marks the phase (warm for work, cool for rest), always next to the written phase name. Sounds are generated with the Web Audio API, no audio files: three calm (chime, singing bowl, rising notes) and two harder to miss (beeps, alarm), chosen separately for the end of work and the end of a rest. Every alert can be switched on or off on its own, sound included (the sound choices are kept but greyed out while it's off). Alerts: a soft glow from the screen edges (2.4 s fade, low contrast, never a flash; a still tint under reduced motion), vibration, and a system notification when the page is in the background. On phones it fills the screen like an app: phase and round on top, the glass and time in the middle, Start/Pause full width at the bottom with Reset, Skip, Minimal and Settings under it; the settings live in the options sheet. A minimal view shows only the glass and one button, with no ticking numbers, since a running count can be distracting. The screen stays on while the timer runs (Screen Wake Lock API, switchable, on by default, hidden where unsupported). Saves settings, the timer (a running timer carries on after a reload), work sessions today and the minimal view.
+
 ## Core principles
 
 1. **No data is sent anywhere.** Zero external requests: no CDNs, no remote fonts, no analytics, no telemetry. System fonts and self-hosted assets only.
@@ -26,7 +30,7 @@ Tools:
 3. **Everything can be exported, imported and reset**, across all tools at once.
 4. **Open about AI.** The site states clearly that it was made with AI and that it never shares data.
 5. **Every page links to its source code** on GitHub.
-6. **Mobile and desktop are both first-class.** Every page has a deliberate mobile layout and desktop layout, not just a stacked fallback. Smooth and responsive.
+6. **Mobile and desktop are both first-class.** Every page has a deliberate mobile layout and desktop layout, not just a stacked fallback. On phones every tool and game feels like an app: it fills the screen, with its main actions at the bottom within thumb reach. Smooth and responsive.
 7. **Accessible:** WCAG 2.2 AA, full keyboard and screen reader support.
 
 ## Architecture
@@ -55,6 +59,7 @@ Tools:
 │   ├── storage.js                Namespaced storage, migrations, export/import/reset
 │   ├── backup.js                 Export download
 │   ├── dialog.js                 Accessible modal dialogs
+│   ├── sheet.js                  Options sheet for app pages on phones
 │   ├── toast.js                  Status messages
 │   ├── strings.js, i18n.js       Shared strings and lookup
 │   ├── dom.js, icons.js          DOM helper and inline icons
@@ -146,7 +151,7 @@ Each tool owns its schema version and provides migrations so older backups can b
 
 - A small menu on **every page** containing: back to hub and add/remove favourite (tool pages only), theme toggle (system / light / dark), Export, Import and Reset everything.
 - Implemented once in `shared/page.js` so all pages behave identically.
-- **App pages** (games, `initPage({ app: true })`): on narrow screens the header shrinks to the menu button alone, floating top right, so the game can fill the screen. The footer is hidden there and its text and source link move into the game's own options sheet.
+- **App pages** (every tool and game, `initPage({ app: true })`; only the hub is a plain page): on narrow screens the header shrinks to the menu button alone, floating top right, so the game can fill the screen. The footer is hidden there and its text and source link move into the page's options sheet (`shared/sheet.js`), which also holds the page's settings and help. Layout on phones: state on top, the main thing in the middle, the primary action full width at the bottom with secondary actions under it. Details in `docs/TOOL-GUIDELINES.md` 4.1.
 
 ## AI and privacy disclosure
 
@@ -236,7 +241,7 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
   | Tools accent | `#2F5D8A` | `#82AEDB` |
   | Games accent | `#B34A24` | `#EE8A62` |
 
-- Every page has a designed mobile variant and desktop variant.
+- Every page has a designed mobile variant and desktop variant. On phones, tools and games use the app layout (see Data menu, App pages).
 
 ## Open questions
 
