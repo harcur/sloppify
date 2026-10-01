@@ -19,15 +19,19 @@
         "en": "interest calculator"
       },
       "description": {
-        "en": "Compound and simple interest over time"
+        "en": "Loans, savings, paying off debt and the real rate of an offer"
       },
       "category": "tool",
       "tags": [
         "finance",
         "money",
-        "savings",
         "loan",
-        "compound"
+        "mortgage",
+        "savings",
+        "investment",
+        "debt",
+        "compound",
+        "rate"
       ],
       "license": "MIT",
       "path": "tools/interest-calculator/"
