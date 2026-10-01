@@ -16,7 +16,7 @@ Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.gith
 
 ## Adding a tool
 
-Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`, follow its README, fill in its `tool.json`, run `npm run tools` (regenerates `tools.json`; never edit that by hand), add tests.
+Check the idea against `docs/TOOL-GUIDELINES.md` first. For a game, also use the `game-development` skill (`.claude/skills/game-development/SKILL.md`): patterns, pitfalls and test recipes from mines and sudoku. Copy `tools/_template/`, follow its README, fill in its `tool.json`, run `npm run tools` (regenerates `tools.json`; never edit that by hand), add tests.
 
 ## Commands
 

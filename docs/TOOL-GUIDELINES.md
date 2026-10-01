@@ -184,6 +184,8 @@ Colour by zone:
 
 ### 4.6 Games
 
+How-to notes from the existing games (board accessibility, sizing, the narrow-screen layout, palette checks, animation, saving, tests) are in `.claude/skills/game-development/SKILL.md`.
+
 Games should be fun to look at and satisfying to play. Tools stay calm; games get to show off.
 
 - **Colour:** a bold palette of the game's own, in both light and dark. Not the site's greys, and not a copy of a known product's look (see 1.4).
