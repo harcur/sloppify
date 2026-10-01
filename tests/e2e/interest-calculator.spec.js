@@ -14,7 +14,7 @@ test.afterEach(() => { expect(external, 'requests outside the site').toEqual([])
 
 const headline = (page) => page.locator('.ic-headline-value');
 // The result strip on phones slides in and out; check once it has settled.
-const settle = (page) => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
+const settle = (page) => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {}))));
 const mode = (page, name) => page.getByRole('button', { name, exact: true }).click();
 
 test('a loan shows its monthly payment, total cost and a rate table', async ({ page }) => {
@@ -97,6 +97,23 @@ test('results are announced when a field is changed', async ({ page }) => {
   await page.getByLabel('Interest rate').fill('6');
   await page.getByLabel('Interest rate').press('Tab');
   await expect(page.locator('[aria-live="polite"]')).toHaveText('Monthly payment 1,611. Total interest 233,226.');
+});
+
+test('on phones the pinned result only shows once stuck under the header', async ({ page }) => {
+  test.skip((page.viewportSize()?.width ?? 1000) >= 880, 'narrow screens only');
+  await page.setViewportSize({ width: 390, height: 500 });
+  const strip = page.locator('.ic-peek');
+  const frames = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  // Scrolled a little: the strip's starting place is still below the header, over the form.
+  await page.evaluate(() => scrollTo(0, 60));
+  await frames();
+  await expect(strip).not.toHaveClass(/is-on/);
+  // Its starting place has passed under the header and the result is below the screen.
+  await page.evaluate(() => scrollTo(0, document.querySelector('.ic-peek-mark').getBoundingClientRect().top + scrollY));
+  await expect(strip).toHaveClass(/is-on/);
+  // With the result itself on screen it goes away again.
+  await page.locator('.ic-headline').scrollIntoViewIfNeeded();
+  await expect(strip).not.toHaveClass(/is-on/);
 });
 
 for (const scheme of ['light', 'dark']) {

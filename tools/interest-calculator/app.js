@@ -403,12 +403,15 @@ const announcer = h('p', { class: 'sr-only', 'aria-live': 'polite' });
 const peekLabel = h('span', { class: 'ic-peek-label' });
 const peekValue = h('span', { class: 'ic-peek-value' });
 // On phones the main result stays in view under the header while typing.
+// The marker stays where the strip starts out, to tell when the strip is stuck.
+const peekMark = h('div', { class: 'ic-peek-mark' });
 const peek = h('div', { class: 'ic-peek', 'aria-hidden': 'true' }, h('div', { class: 'ic-peek-inner' }, peekLabel, peekValue));
 
 main.append(
   h('h1', { class: 'tool-title' }, name),
   h('div', { class: 'seg ic-modes', role: 'group', 'aria-label': s('modes') }, modeBtns),
   intro,
+  peekMark,
   peek,
   h('div', { class: 'ic-layout' }, form, results),
   announcer,
@@ -462,7 +465,6 @@ function buildField(f) {
   return h('div', { class: `ic-field${f.wide ? ' ic-wide' : ''}` }, h('label', { class: 'ic-label', for: id }, s(`f.${mode}.${f.key}`)), control, hint, error);
 }
 
-let headlineObserver = null;
 function render(commit = false) {
   const { v, errors } = read(mode);
   for (const [k, { input, error }] of Object.entries(fieldEls)) {
@@ -472,8 +474,7 @@ function render(commit = false) {
   }
   if (Object.keys(errors).length) {
     results.replaceChildren(h('p', { class: 'ic-invalid' }, s('invalid')));
-    peek.classList.remove('is-on');
-    headlineObserver?.disconnect();
+    syncPeek();
     if (commit) announcer.textContent = s('invalid');
     return;
   }
@@ -482,16 +483,23 @@ function render(commit = false) {
   peekLabel.textContent = out.label;
   peekValue.textContent = out.value;
   if (commit) announcer.textContent = out.announce;
-  watchHeadline();
+  syncPeek();
 }
 
-// Shows the peek only while the main result is out of view.
-function watchHeadline() {
-  if (!('IntersectionObserver' in window)) return;
-  headlineObserver?.disconnect();
-  headlineObserver = new IntersectionObserver(([e]) => peek.classList.toggle('is-on', !e.isIntersecting), { rootMargin: '-64px 0px 0px 0px' });
-  headlineObserver.observe(results.firstElementChild);
+// The strip shows only once it is stuck under the header (so it never covers
+// the form in its starting place) and while the main result is out of view.
+const header = document.querySelector('.site-header');
+function syncPeek() {
+  const top = header.getBoundingClientRect().bottom;
+  const stuck = peekMark.getBoundingClientRect().top < top;
+  const shown = results.querySelector('.ic-headline-value')?.getBoundingClientRect();
+  const hidden = shown && (shown.bottom < top + peek.firstElementChild.offsetHeight || shown.top > innerHeight);
+  peek.classList.toggle('is-on', Boolean(stuck && hidden));
 }
+let peekFrame = 0;
+const queuePeek = () => { if (!peekFrame) peekFrame = requestAnimationFrame(() => { peekFrame = 0; syncPeek(); }); };
+addEventListener('scroll', queuePeek, { passive: true });
+addEventListener('resize', queuePeek);
 
 function setMode(m) {
   mode = m;
