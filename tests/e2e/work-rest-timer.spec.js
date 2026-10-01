@@ -106,9 +106,12 @@ test('each sound has its own volume, carried over from the old single one', asyn
 
 test('minimal view hides everything but the glass and one button; Escape leaves it', async ({ page }) => {
   await page.goto('./tools/work-rest-timer/');
+  await page.getByRole('button', { name: 'Start work' }).click();
+  await expect(page.locator('.wrt-stream')).not.toHaveCSS('display', 'none');
   await page.getByRole('button', { name: 'Minimal' }).click();
   await expect(time(page)).toBeHidden();
-  await expect(page.getByRole('img', { name: /Hourglass, 0 percent of this work passed/ })).toBeVisible();
+  await expect(page.locator('.wrt-stream')).toHaveCSS('display', 'none'); // the falling grains
+  await expect(page.getByRole('img', { name: /Hourglass, \d+ percent of this work passed/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Skip' })).toBeHidden();
   await expect(page.getByRole('heading', { name: 'Intervals' })).toBeHidden();
   await expect(page.getByRole('button', { name: 'Leave minimal view' })).toBeVisible();

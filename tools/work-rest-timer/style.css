@@ -178,10 +178,11 @@
 .wrt-hint[hidden] { display: none; }
 .wrt-try { align-self: start; }
 
-/* Minimal view: only the glass and one button. No ticking numbers. --------------- */
+/* Minimal view: only the glass and one button. No ticking numbers and no
+   falling grains: the sand levels alone show the time passing. --------------- */
 .wrt-minimal .site-header, .wrt-minimal .site-footer, .wrt-minimal .skip,
 .wrt-minimal .tool-title, .wrt-minimal .wrt-settings,
-.wrt-minimal .wrt-round, .wrt-minimal .wrt-today, .wrt-minimal .wrt-time,
+.wrt-minimal .wrt-round, .wrt-minimal .wrt-today, .wrt-minimal .wrt-time, .wrt-minimal .wrt-stream,
 .wrt-minimal .wrt-controls .btn:not(.wrt-start) { display: none; }
 .wrt-minimal .tool-main { display: flex; padding: 0; }
 .wrt-minimal .wrt { flex: 1; display: flex; }
