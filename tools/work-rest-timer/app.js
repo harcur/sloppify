@@ -155,7 +155,7 @@ const soundRow = (key, when) => {
   const select = h('select', { id: selectId, class: 'wrt-select' }, SOUNDS.map((s) => h('option', { value: s }, T(`sound.${s}`))));
   select.addEventListener('change', () => { updateSettings({ [key]: select.value }); playSound(select.value, settings.volume); });
   const play = h('button', { type: 'button', class: 'btn', 'aria-label': T('testLabel', { when: T(`when.${when}`) }), onclick: () => playSound(settings[key], settings.volume) }, T('test'));
-  return { select, el: h('div', { class: 'wrt-field wrt-sound-row' }, h('label', { for: selectId }, T(key)), h('span', { class: 'wrt-inline' }, select, play)) };
+  return { select, play, el: h('div', { class: 'wrt-field wrt-sound-row' }, h('label', { for: selectId }, T(key)), h('span', { class: 'wrt-inline' }, select, play)) };
 };
 
 const workSound = soundRow('workSound', 'work');
@@ -165,8 +165,10 @@ const volume = h('input', { id: volumeId, type: 'range', min: 0, max: 100, step:
 volume.addEventListener('change', () => { updateSettings({ volume: volume.value / 100 }); playSound('chime', settings.volume); });
 volume.addEventListener('input', () => volume.setAttribute('aria-valuetext', `${volume.value}%`));
 
+const soundOffHint = h('p', { class: 'wrt-hint' }, T('soundOff'));
 const autoStart = check('autoStart', T('autoStart'));
 const notifyHint = h('p', { class: 'wrt-hint', id: id('notify-hint') });
+const soundCheck = check('sound', T('soundOn'));
 const glowCheck = check('glow', T('glow'), h('p', { class: 'wrt-hint' }, T('glowHint')));
 const notifyCheck = check('notify', T('notify'), notifyHint);
 const vibrateCheck = check('vibrate', T('vibrate'));
@@ -183,16 +185,18 @@ const settingsEl = h('div', { class: 'wrt-settings' },
     h('div', { class: 'wrt-grid' }, numberField('work'), numberField('short'), numberField('long'), numberField('rounds')),
     autoStart.el,
   ),
-  section('sound',
-    workSound.el,
-    restSound.el,
-    h('div', { class: 'wrt-field' }, h('label', { for: volumeId }, T('volume')), volume),
-  ),
   section('alerts',
+    soundCheck.el,
     glowCheck.el,
     notifyCheck.el,
     canVibrate ? vibrateCheck.el : null,
     h('button', { type: 'button', class: 'btn wrt-try', onclick: () => alertAll('work', true) }, T('testAlerts')),
+  ),
+  section('sound',
+    soundOffHint,
+    workSound.el,
+    restSound.el,
+    h('div', { class: 'wrt-field' }, h('label', { for: volumeId }, T('volume')), volume),
   ),
   h('p', { class: 'wrt-hint wrt-keys' }, T('keys')),
 );
@@ -224,6 +228,10 @@ function syncSettings() {
   volume.value = Math.round(settings.volume * 100);
   volume.setAttribute('aria-valuetext', `${volume.value}%`);
   autoStart.input.checked = settings.autoStart;
+  soundCheck.input.checked = settings.sound;
+  // The sound choices stay visible but can't be changed while sound is off.
+  soundOffHint.hidden = settings.sound;
+  for (const el of [workSound.select, workSound.play, restSound.select, restSound.play, volume]) el.disabled = !settings.sound;
   glowCheck.input.checked = settings.glow;
   notifyCheck.input.checked = settings.notify;
   vibrateCheck.input.checked = settings.vibrate;
@@ -341,7 +349,7 @@ function finishPhase() {
 
 function alertAll(ended, test = false, message = T('ended.work', { next: phaseName('short') })) {
   const sound = ended === 'work' ? settings.workSound : settings.restSound;
-  playSound(sound, settings.volume);
+  if (settings.sound) playSound(sound, settings.volume);
   if (settings.glow) pulse(ended === 'work' ? 'rest' : 'work');
   if (settings.vibrate && canVibrate) navigator.vibrate([200, 120, 200]);
   if (settings.notify) notify(T('notifyTitle', { phase: phaseName(ended) }), message, test);

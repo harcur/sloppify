@@ -6,6 +6,6 @@ Alternates work and rest intervals: a work session, a short rest, and a long res
 - `sounds.js`: every sound is generated with the Web Audio API, so no audio files ship. Calm: chime, singing bowl, rising notes. Harder to miss: beeps, alarm.
 - `app.js`: the page. One timeout at a time (each whole second while visible, straight to the end while hidden); the hourglass sand glides between updates with CSS transitions.
 
-Alerts when a phase ends: sound, a soft glow around the screen edges (a 2 s fade, low contrast, never a flash; a still tint with reduced motion), vibration on phones, and a system notification when the page is in the background.
+Alerts when a phase ends, each one switchable on or off: sound, a soft glow around the screen edges (a 2 s fade, low contrast, never a flash; a still tint with reduced motion), vibration on phones, and a system notification when the page is in the background.
 
 Saves settings, the timer (a running timer carries on after a reload), work sessions done today and the minimal view.

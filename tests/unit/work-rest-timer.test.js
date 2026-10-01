@@ -20,6 +20,8 @@ test('settings fall back to defaults and are clamped', () => {
   assert.equal(c.volume, 1);
   assert.equal(c.workSound, DEFAULTS.workSound);
   assert.equal(c.glow, DEFAULTS.glow);
+  assert.equal(cleanSettings({ sound: false }).sound, false);
+  assert.equal(cleanSettings({ sound: 0 }).sound, true);
 });
 
 test('presets are recognised', () => {

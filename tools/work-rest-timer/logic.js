@@ -18,6 +18,7 @@ export const PRESETS = {
 export const DEFAULTS = {
   ...PRESETS.classic,
   autoStart: false,
+  sound: true,
   workSound: 'chime', // played when work ends
   restSound: 'rise',  // played when a rest ends
   volume: 0.6,
@@ -35,7 +36,7 @@ export function cleanSettings(s) {
   const src = s && typeof s === 'object' ? s : {};
   const out = { ...DEFAULTS };
   for (const k of Object.keys(LIMITS)) out[k] = clampInt(src[k], LIMITS[k], DEFAULTS[k]);
-  for (const k of ['autoStart', 'glow', 'notify', 'vibrate']) if (typeof src[k] === 'boolean') out[k] = src[k];
+  for (const k of ['autoStart', 'sound', 'glow', 'notify', 'vibrate']) if (typeof src[k] === 'boolean') out[k] = src[k];
   for (const k of ['workSound', 'restSound']) if (SOUNDS.includes(src[k])) out[k] = src[k];
   const vol = Number(src.volume);
   if (Number.isFinite(vol)) out.volume = Math.min(1, Math.max(0, vol));

@@ -65,6 +65,24 @@ test('settings and a running timer survive a reload', async ({ page }) => {
   await expect(page.getByLabel('Work', { exact: true })).toHaveValue('50');
 });
 
+test('every alert can be turned off, and sound choices wait while sound is off', async ({ page }) => {
+  await page.goto('./tools/work-rest-timer/');
+  await openSettings(page);
+  const sound = page.getByRole('checkbox', { name: 'Sound', exact: true });
+  await expect(sound).toBeChecked();
+  await sound.uncheck();
+  await expect(page.getByRole('combobox', { name: 'When work ends' })).toBeDisabled();
+  await expect(page.getByText('Sound is off.')).toBeVisible();
+  await page.getByRole('checkbox', { name: 'Soft glow on the screen' }).uncheck();
+  await page.reload();
+  await openSettings(page);
+  await expect(sound).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Soft glow on the screen' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: /^Notification/ })).not.toBeChecked();
+  await sound.check();
+  await expect(page.getByRole('combobox', { name: 'When work ends' })).toBeEnabled();
+});
+
 test('minimal view hides everything but the glass, time and one button; Escape leaves it', async ({ page }) => {
   await page.goto('./tools/work-rest-timer/');
   await page.getByRole('button', { name: 'Minimal' }).click();

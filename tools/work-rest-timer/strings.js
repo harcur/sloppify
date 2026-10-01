@@ -50,7 +50,7 @@ export const strings = {
     'work-rest-timer.min': 'min',
     'work-rest-timer.autoStart': 'Start the next phase by itself',
 
-    'work-rest-timer.sound': 'Sound',
+    'work-rest-timer.sound': 'Sounds',
     'work-rest-timer.workSound': 'When work ends',
     'work-rest-timer.restSound': 'When a rest ends',
     'work-rest-timer.sound.chime': 'chime',
@@ -66,6 +66,8 @@ export const strings = {
     'work-rest-timer.when.rest': 'when a rest ends',
 
     'work-rest-timer.alerts': 'Alerts',
+    'work-rest-timer.soundOn': 'Sound',
+    'work-rest-timer.soundOff': 'Sound is off. Turn it on under Alerts to choose sounds.',
     'work-rest-timer.glow': 'Soft glow on the screen',
     'work-rest-timer.glowHint': 'A slow fade of colour, two seconds per pulse. Nothing flashes.',
     'work-rest-timer.notify': 'Notification when the page is in the background',
