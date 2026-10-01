@@ -20,6 +20,7 @@ export const strings = {
     'work-rest-timer.reset': 'Reset',
     'work-rest-timer.skip': 'Skip',
     'work-rest-timer.minimal': 'Minimal',
+    'work-rest-timer.options': 'Settings',
     'work-rest-timer.minimalOn': 'Minimal view. Press Escape to leave.',
     'work-rest-timer.exitMinimal': 'Leave minimal view',
     'work-rest-timer.hourglass': 'Hourglass, {pct} percent of this {phase} passed',

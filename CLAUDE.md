@@ -11,6 +11,7 @@ Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.gith
 - Every visible string goes in a `strings.js` file.
 - Size budgets (`tests/unit/budget.test.js`): 60 KB per tool, 200 KB per tool `data/` folder, 50 KB `shared/`, 20 KB hub, 20 KB per image. Long work goes in a Web Worker.
 - WCAG 2.2 AA, keyboard and screen reader support, designed mobile and desktop layouts.
+- On phones every tool and game feels like an app: `initPage({ app: true })`, fills the screen, state on top, main thing in the middle, actions at the bottom, everything else in the options sheet (`shared/sheet.js`). See `docs/TOOL-GUIDELINES.md` 4.1.
 - SPDX headers on every file (REUSE).
 - Design: sharp corners, 1px lines, system monospace headings, system sans text, tokens in `shared/base.css`.
 
@@ -26,6 +27,8 @@ Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`,
 - Browser + accessibility tests: `npm install && npx playwright install && npm run test:e2e` (passing in Chromium desktop and mobile; Firefox and WebKit not yet run locally, CI runs all five projects)
 
 ## Open items
+
+- `sudoku` and `interest-calculator` are still template placeholders; build them with the app layout on phones.
 
 - Replace the generic source icon in `shared/icons.js` with Octicons `mark-github` (MIT).
 - Add PNG app icons (192, 512, apple-touch-icon).

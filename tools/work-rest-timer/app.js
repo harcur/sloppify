@@ -5,6 +5,7 @@ import { initPage, guardStore } from '../../shared/page.js';
 import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
 import { openStore } from '../../shared/storage.js';
+import { optionsSheet } from '../../shared/sheet.js';
 import { strings } from './strings.js';
 import {
   LIMITS, PRESETS, SOUNDS, cleanSettings, presetOf, newTimer, advance, remainingMs, progress,
@@ -15,12 +16,14 @@ import { playSound, unlockAudio } from './sounds.js';
 extendStrings(strings);
 
 const TOOL_ID = 'work-rest-timer';
+const SOURCE_PATH = 'tools/work-rest-timer/';
 const name = t(`${TOOL_ID}.name`);
 const T = (key, vars) => t(`${TOOL_ID}.${key}`, vars);
 const baseTitle = document.title;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const narrow = matchMedia('(max-width: 719px)');
 
-const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: 'tools/work-rest-timer/' });
+const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: SOURCE_PATH, app: true });
 
 // Saved: settings, the timer (a running one carries on after a reload),
 // work sessions done today, and whether the minimal view is on.
@@ -99,6 +102,7 @@ const startBtn = h('button', { type: 'button', class: 'btn btn-primary wrt-start
 const resetBtn = h('button', { type: 'button', class: 'btn', onclick: () => doReset() }, T('reset'));
 const skipBtn = h('button', { type: 'button', class: 'btn', onclick: () => doSkip() }, T('skip'));
 const minimalBtn = h('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', onclick: () => setMinimal(true) }, T('minimal'));
+const optionsBtn = h('button', { type: 'button', class: 'btn wrt-options', 'aria-haspopup': 'dialog', onclick: () => options.open() }, T('options'));
 const exitBtn = h('button', { type: 'button', class: 'btn wrt-exit', onclick: () => setMinimal(false) }, T('exitMinimal'));
 const todayEl = h('p', { class: 'wrt-today' });
 const glow = h('div', { class: 'wrt-glow', 'aria-hidden': 'true' });
@@ -108,7 +112,7 @@ const stage = h('section', { class: 'wrt-stage', 'aria-label': name },
   h('div', { class: 'wrt-head' }, phaseLabel, h('p', { class: 'wrt-round' }, roundMarks, roundLabel)),
   glass,
   timeEl,
-  h('div', { class: 'wrt-controls' }, startBtn, resetBtn, skipBtn, minimalBtn),
+  h('div', { class: 'wrt-controls' }, startBtn, resetBtn, skipBtn, minimalBtn, optionsBtn),
   status,
   todayEl,
 );
@@ -194,7 +198,21 @@ const settingsEl = h('div', { class: 'wrt-settings' },
 );
 
 const root = h('div', { class: 'wrt' }, stage, settingsEl);
-main.append(h('h1', { class: 'tool-title' }, name), root);
+
+// On narrow screens the timer fills the screen like an app. The settings, plus
+// the footer's text and source link that the page hides there, move into a sheet.
+const options = optionsSheet({ title: T('options'), sourcePath: SOURCE_PATH, returnFocus: optionsBtn });
+function placeSettings() {
+  if (narrow.matches) options.body.append(settingsEl);
+  else {
+    options.close();
+    root.append(settingsEl);
+  }
+}
+narrow.addEventListener('change', placeSettings);
+placeSettings();
+
+main.append(h('h1', { class: 'tool-title' }, name), root, options.sheet);
 document.body.append(glow);
 
 function syncSettings() {

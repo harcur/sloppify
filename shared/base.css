@@ -244,7 +244,7 @@ button { cursor: pointer; }
 .tool-placeholder { margin: 0; max-width: 60ch; color: var(--muted); }
 
 /* App pages ----------------------------------------------------------
-   Games that fill the screen on narrow viewports (initPage({ app: true })).
+   Tools and games that fill the screen on narrow viewports (initPage({ app: true })).
    Only the menu button stays, floating top right; the page shows the
    footer's text and source link itself. */
 @media (max-width: 719px) {
@@ -259,3 +259,23 @@ button { cursor: pointer; }
     overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
   }
 }
+
+/* Options sheet (shared/sheet.js): slides up from the bottom on app pages. */
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.sheet-head .dialog-title { margin: 0; }
+.sheet-foot { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.sheet-foot p { margin: 0 0 8px; }
+.sheet-foot a { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--text); text-underline-offset: 3px; }
+.sheet-foot .icon { width: 16px; height: 16px; }
+@media (max-width: 719px) {
+  .sheet {
+    width: 100%; max-width: none;
+    max-height: 88dvh;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    padding: 16px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 16px);
+    animation: sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+}
+@keyframes sheet-up { from { transform: translateY(40%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }

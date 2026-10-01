@@ -16,7 +16,7 @@ Games:
 
 Tools:
 
-- **work and rest timer** (`tools/work-rest-timer/`): alternating work and rest intervals under a generic name, since the best-known name for the method is a trademark. Presets 25/5, 50/10, 90/20 or custom lengths, a long rest after a set number of rounds, optional auto-start. An SVG hourglass whose sand drains with the time (levels follow the square root of time left, like a real glass) and turns over when a phase ends; sand colour marks the phase (warm for work, cool for rest), always next to the written phase name. Sounds are generated with the Web Audio API, no audio files: three calm (chime, singing bowl, rising notes) and two harder to miss (beeps, alarm), chosen separately for the end of work and the end of a rest. Alerts: a soft glow from the screen edges (2.4 s fade, low contrast, never a flash; a still tint under reduced motion), vibration, and a system notification when the page is in the background. A minimal view shows only the glass, the time and one button. Saves settings, the timer (a running timer carries on after a reload), work sessions today and the minimal view.
+- **work and rest timer** (`tools/work-rest-timer/`): alternating work and rest intervals under a generic name, since the best-known name for the method is a trademark. Presets 25/5, 50/10, 90/20 or custom lengths, a long rest after a set number of rounds, optional auto-start. An SVG hourglass whose sand drains with the time (levels follow the square root of time left, like a real glass) and turns over when a phase ends; sand colour marks the phase (warm for work, cool for rest), always next to the written phase name. Sounds are generated with the Web Audio API, no audio files: three calm (chime, singing bowl, rising notes) and two harder to miss (beeps, alarm), chosen separately for the end of work and the end of a rest. Alerts: a soft glow from the screen edges (2.4 s fade, low contrast, never a flash; a still tint under reduced motion), vibration, and a system notification when the page is in the background. On phones it fills the screen like an app: phase and round on top, the glass and time in the middle, Start/Pause full width at the bottom with Reset, Skip, Minimal and Settings under it; the settings live in the options sheet. A minimal view shows only the glass, the time and one button. Saves settings, the timer (a running timer carries on after a reload), work sessions today and the minimal view.
 
 ## Core principles
 
@@ -25,7 +25,7 @@ Tools:
 3. **Everything can be exported, imported and reset**, across all tools at once.
 4. **Open about AI.** The site states clearly that it was made with AI and that it never shares data.
 5. **Every page links to its source code** on GitHub.
-6. **Mobile and desktop are both first-class.** Every page has a deliberate mobile layout and desktop layout, not just a stacked fallback. Smooth and responsive.
+6. **Mobile and desktop are both first-class.** Every page has a deliberate mobile layout and desktop layout, not just a stacked fallback. On phones every tool and game feels like an app: it fills the screen, with its main actions at the bottom within thumb reach. Smooth and responsive.
 7. **Accessible:** WCAG 2.2 AA, full keyboard and screen reader support.
 
 ## Architecture
@@ -54,6 +54,7 @@ Tools:
 │   ├── storage.js                Namespaced storage, migrations, export/import/reset
 │   ├── backup.js                 Export download
 │   ├── dialog.js                 Accessible modal dialogs
+│   ├── sheet.js                  Options sheet for app pages on phones
 │   ├── toast.js                  Status messages
 │   ├── strings.js, i18n.js       Shared strings and lookup
 │   ├── dom.js, icons.js          DOM helper and inline icons
@@ -145,7 +146,7 @@ Each tool owns its schema version and provides migrations so older backups can b
 
 - A small menu on **every page** containing: back to hub and add/remove favourite (tool pages only), theme toggle (system / light / dark), Export, Import and Reset everything.
 - Implemented once in `shared/page.js` so all pages behave identically.
-- **App pages** (games, `initPage({ app: true })`): on narrow screens the header shrinks to the menu button alone, floating top right, so the game can fill the screen. The footer is hidden there and its text and source link move into the game's own options sheet.
+- **App pages** (every tool and game, `initPage({ app: true })`; only the hub is a plain page): on narrow screens the header shrinks to the menu button alone, floating top right, so the game can fill the screen. The footer is hidden there and its text and source link move into the page's options sheet (`shared/sheet.js`), which also holds the page's settings and help. Layout on phones: state on top, the main thing in the middle, the primary action full width at the bottom with secondary actions under it. Details in `docs/TOOL-GUIDELINES.md` 4.1.
 
 ## AI and privacy disclosure
 
@@ -235,7 +236,7 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
   | Tools accent | `#2F5D8A` | `#82AEDB` |
   | Games accent | `#B34A24` | `#EE8A62` |
 
-- Every page has a designed mobile variant and desktop variant.
+- Every page has a designed mobile variant and desktop variant. On phones, tools and games use the app layout (see Data menu, App pages).
 
 ## Open questions
 
