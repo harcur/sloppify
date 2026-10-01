@@ -1,4 +1,249 @@
 /* SPDX-FileCopyrightText: 2026 sloppify contributors
    SPDX-License-Identifier: MIT */
 
-/* Styles for this tool only. Shared tokens (--bg, --text, --line, ...) come from shared/base.css. */
+/* Play-area palette: deep teal lines over cream and mint boxes, a marigold
+   selection. Checked in both themes: every digit colour ≥ 4.5:1 on every cell
+   background, selection ring and frame ≥ 3:1 against the cells. */
+:root {
+  --s-frame: #135E5B; --s-on-frame: #FFFFFF; --s-ring: #135E5B;
+  --s-cell: #FFFDF6; --s-alt: #E9F3EE; --s-peer: #D4EAE2; --s-same: #FFE29C; --s-sel: #FFCB62;
+  --s-given: #14211F; --s-entry: #1D4AA8; --s-hint: #6F2DA8; --s-note: #3B504E; --s-bad: #A31C24;
+  --s-hatch: rgba(163, 28, 36, 0.13); --s-glow: rgba(255, 193, 77, 0.75);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --s-frame: #4CC2B1; --s-on-frame: #111111; --s-ring: #FFD166;
+    --s-cell: #14201F; --s-alt: #1A2B29; --s-peer: #21403C; --s-same: #4D3B0E; --s-sel: #573A02;
+    --s-given: #F1F5F3; --s-entry: #9CC3FF; --s-hint: #D7B0FF; --s-note: #B4CBC7; --s-bad: #FF9A9A;
+    --s-hatch: rgba(255, 154, 154, 0.12); --s-glow: rgba(255, 209, 102, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  --s-frame: #4CC2B1; --s-on-frame: #111111; --s-ring: #FFD166;
+  --s-cell: #14201F; --s-alt: #1A2B29; --s-peer: #21403C; --s-same: #4D3B0E; --s-sel: #573A02;
+  --s-given: #F1F5F3; --s-entry: #9CC3FF; --s-hint: #D7B0FF; --s-note: #B4CBC7; --s-bad: #FF9A9A;
+  --s-hatch: rgba(255, 154, 154, 0.12); --s-glow: rgba(255, 209, 102, 0.45);
+}
+
+/* Layout -------------------------------------------------------------
+   Wider screens: the board on the left, controls and the side panel on
+   the right. */
+.sdk-layout { display: grid; gap: 24px; }
+.sdk-play { position: relative; min-width: 0; }
+@media (min-width: 720px) {
+  .sdk-layout { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; gap: 32px; }
+}
+.sdk-panel { display: grid; gap: 28px; min-width: 0; }
+
+.sdk-top { display: flex; gap: 24px; margin-bottom: 8px; }
+.sdk-stat { margin: 0; display: flex; flex-direction: column; }
+.sdk-stat-label { font-size: 13px; color: var(--muted); }
+.sdk-stat-value { font-family: var(--mono); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; min-width: 4ch; }
+.sdk-status { margin: 0 0 12px; min-height: 1.5em; font-family: var(--mono); }
+.sdk-boardwrap { overflow: auto; max-width: 100%; padding: 2px; }
+
+/* Board --------------------------------------------------------------
+   The frame colour shows through 1px gaps between cells and 3px gaps
+   between boxes. */
+.sdk-board {
+  --cell: 40px;
+  display: inline-flex; flex-direction: column; gap: 1px;
+  background: var(--s-frame);
+  border: 3px solid var(--s-frame);
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.sdk-row { display: flex; gap: 1px; }
+.sdk-cell {
+  position: relative;
+  width: var(--cell); height: var(--cell);
+  flex: none;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 0;
+  background: var(--s-cell);
+  color: var(--s-entry);
+  font-family: var(--mono);
+  font-size: calc(var(--cell) * 0.56);
+  font-weight: 500;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms;
+}
+.sdk-cell.edge-r { margin-right: 2px; }
+.sdk-cell.edge-b { margin-bottom: 2px; }
+.sdk-cell.alt { background: var(--s-alt); }
+.sdk-cell.is-peer { background: var(--s-peer); }
+.sdk-cell.is-same { background: var(--s-same); }
+.sdk-cell.is-sel { background: var(--s-sel); box-shadow: inset 0 0 0 3px var(--s-ring); z-index: 1; }
+.sdk-cell:focus-visible { outline: 2px solid var(--s-given); outline-offset: -7px; }
+.sdk-board.is-over .sdk-cell { cursor: default; }
+@media (hover: hover) {
+  .sdk-board:not(.is-over) .sdk-cell:not(.is-sel):hover { filter: brightness(0.96) saturate(1.2); }
+}
+
+/* Givens are heavier than your own digits; hinted digits are underlined;
+   repeats get a hatched background, so none of it relies on colour. */
+.sdk-cell.is-given { color: var(--s-given); font-weight: 800; }
+.sdk-cell.is-hint { color: var(--s-hint); font-weight: 800; }
+.sdk-cell.is-hint .sdk-digit { text-decoration: underline 2px; text-underline-offset: 0.12em; }
+.sdk-cell.is-bad {
+  color: var(--s-bad);
+  background-image: repeating-linear-gradient(135deg, var(--s-hatch) 0 4px, transparent 4px 8px);
+}
+
+.sdk-notes {
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  width: 100%; height: 100%; padding: 2px;
+  font-size: calc(var(--cell) * 0.25); font-weight: 600;
+  color: var(--s-note);
+}
+.sdk-notes span { display: grid; place-items: center; }
+
+/* Controls ----------------------------------------------------------- */
+.sdk-controls { display: grid; gap: 12px; }
+.sdk-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sdk-tool { padding: 0 8px; }
+.sdk-notes-btn[aria-pressed="true"] { background: var(--s-frame); border-color: var(--s-frame); color: var(--s-on-frame); }
+.sdk-notes-btn[aria-pressed="true"]:focus-visible { outline-color: var(--text); }
+
+.sdk-pad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sdk-pad-btn {
+  position: relative;
+  min-height: 60px;
+  padding: 0;
+  border: 1px solid var(--s-frame);
+  background: var(--s-cell);
+  color: var(--s-given);
+  font-family: var(--mono);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 100ms, background-color 120ms;
+}
+.sdk-pad-btn:active { transform: scale(0.93); background: var(--s-sel); }
+.sdk-pad-left {
+  position: absolute; top: 4px; right: 6px;
+  font-size: 12px; font-weight: 400; color: var(--s-note);
+}
+.sdk-pad-btn.is-done { background: var(--s-alt); border-style: dashed; }
+.sdk-pad-btn.is-done .sdk-pad-digit { text-decoration: line-through 2px; }
+/* In notes mode the digits shrink into a corner, like the notes they make. */
+.sdk-pad.is-notes .sdk-pad-btn { color: var(--s-note); }
+.sdk-pad.is-notes .sdk-pad-digit { position: absolute; left: 7px; top: 6px; font-size: 17px; font-weight: 600; }
+
+.sdk-actions { display: grid; gap: 8px; }
+.sdk-more { display: none; }
+
+/* Side panel --------------------------------------------------------- */
+.sdk-section + .sdk-section { margin-top: 24px; }
+.sdk-h2 { margin: 0 0 8px; font-family: var(--mono); font-size: 15px; font-weight: 400; color: var(--muted); }
+.sdk-seg.seg { margin: 0; }
+.sdk-level[aria-pressed="true"] { background: var(--s-frame); color: var(--s-on-frame); }
+.sdk-level[aria-pressed="true"]:focus-visible { outline-color: var(--s-on-frame); }
+.sdk-record { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 15px; }
+.sdk-record dt { font-family: var(--mono); }
+.sdk-record dd { margin: 0; color: var(--muted); }
+.sdk-help p { margin: 0 0 8px; max-width: 60ch; font-size: 15px; color: var(--muted); }
+
+/* Animation ----------------------------------------------------------
+   Digits pop in (givens ripple out from the selected cell on a new game),
+   a repeat shakes, a finished row, column or box glows in a wave, and a
+   solved board cheers with confetti. */
+.sdk-digit { display: block; animation: sdk-pop 240ms cubic-bezier(0.2, 0.9, 0.3, 1.4) backwards; }
+.sdk-cell.is-given .sdk-digit { animation-delay: var(--d, 0ms); }
+.sdk-cell.is-shake { animation: sdk-shake 360ms ease-in-out; }
+.sdk-cell.is-locked { animation: sdk-shake 240ms ease-in-out; }
+.sdk-cell.is-done::after, .sdk-cell.is-hinted::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.sdk-cell.is-done::after { background: var(--s-glow); animation: sdk-glow 620ms ease-out var(--u, 0ms) both; }
+.sdk-cell.is-hinted::after { border: 3px solid var(--s-hint); animation: sdk-ring 600ms ease-out forwards; }
+.sdk-board.is-won .sdk-cell { animation: sdk-cheer 520ms ease-in-out var(--w, 0ms); }
+
+@keyframes sdk-pop { from { transform: scale(0.3); opacity: 0; } }
+@keyframes sdk-shake {
+  20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+@keyframes sdk-glow { from { opacity: 0; transform: scale(0.6); } 35% { opacity: 1; transform: scale(1); } to { opacity: 0; } }
+@keyframes sdk-ring { from { transform: scale(0.5); opacity: 1; } to { transform: scale(1.8); opacity: 0; } }
+@keyframes sdk-cheer { 40% { transform: scale(1.12); filter: brightness(1.12) saturate(1.4); } }
+
+.sdk-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.sdk-confetti span {
+  position: absolute; top: -12px;
+  width: 7px; height: 12px;
+  background: var(--c);
+  animation: sdk-fall var(--t) cubic-bezier(0.3, 0.6, 0.5, 1) var(--delay) forwards;
+  opacity: 0;
+}
+@keyframes sdk-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdk-board, .sdk-cell, .sdk-cell *, .sdk-cell::after, .sdk-pad-btn { animation: none !important; transition: none !important; }
+  .sdk-cell.is-done::after, .sdk-cell.is-hinted::after { display: none; }
+  .sdk-confetti { display: none; }
+}
+
+/* Narrow screens: the game fills the screen like an app ----------------
+   Counters on top, the board in the middle, tools, digits and buttons at
+   the bottom within thumb reach. Everything else is in the options sheet. */
+.sdk-sheet-foot { display: none; }
+@media (max-width: 719px) {
+  .sdk-layout { display: block; }
+  .sdk-panel { display: none; }
+  .sdk-play {
+    height: 100vh; height: 100dvh;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 6px)
+      calc(env(safe-area-inset-right, 0px) + 12px)
+      calc(env(safe-area-inset-bottom, 0px) + 12px)
+      calc(env(safe-area-inset-left, 0px) + 12px);
+  }
+  .sdk-top { margin: 0; padding-right: 52px; min-height: 44px; align-items: center; } /* room for the menu button */
+  .sdk-stat { flex-direction: row; align-items: baseline; gap: 8px; }
+  .sdk-stat-value { font-size: 20px; min-width: 0; }
+  .sdk-status { margin: 0; min-height: 0; font-size: 14px; }
+  .sdk-boardwrap { display: flex; }
+  .sdk-board { margin: auto; }
+  .sdk-controls { gap: 8px; }
+  .sdk-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .sdk-tool { font-size: 15px; padding: 0 4px; }
+  .sdk-pad { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
+  .sdk-pad-btn { min-height: 54px; font-size: 24px; }
+  .sdk-pad-left { top: 2px; right: 3px; font-size: 10px; }
+  .sdk-pad.is-notes .sdk-pad-digit { left: 4px; top: 4px; font-size: 15px; }
+  .sdk-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sdk-actions .btn { padding: 0 6px; font-size: 15px; white-space: nowrap; }
+  .sdk-more { display: block; }
+
+  .sdk-sheet {
+    width: 100%; max-width: none;
+    max-height: 88dvh;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    padding: 16px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 16px);
+    animation: sdk-sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .sdk-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sdk-sheet-head .dialog-title { margin: 0; }
+  .sdk-side { display: grid; gap: 24px; }
+  .sdk-section + .sdk-section { margin-top: 0; }
+  .sdk-sheet-foot { display: block; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .sdk-sheet-foot p { margin: 0 0 8px; }
+  .sdk-sheet-foot a { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--text); text-underline-offset: 3px; }
+  .sdk-sheet-foot .icon { width: 16px; height: 16px; }
+}
+@keyframes sdk-sheet-up { from { transform: translateY(40%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sdk-sheet { animation: none; } }

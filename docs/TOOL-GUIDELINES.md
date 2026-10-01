@@ -63,7 +63,7 @@ Sizes are uncompressed bytes on disk. `README.md` and `LICENSE` files don't coun
 
 | What | Budget | Now |
 |---|---|---|
-| A tool's own files (everything in `tools/<id>/` except `data/`) | 60 KB | about 3 KB |
+| A tool's own files (everything in `tools/<id>/` except `data/`) | 60 KB | largest about 47 KB (sudoku) |
 | A tool's `data/` folder (word lists, opening books, etc.) | 200 KB | none yet |
 | Shared files (`shared/`) | 50 KB | about 33 KB |
 | Hub (`index.html`, `hub*.js`, `hub.css`, `tools.json`) | 20 KB | about 11 KB |
