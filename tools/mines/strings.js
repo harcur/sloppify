@@ -9,6 +9,9 @@ export const strings = {
     'mines.level.medium': 'medium',
     'mines.level.large': 'large',
     'mines.level.detail': '{rows} × {cols}, {mines} mines',
+    'mines.density': 'Mine density',
+    'mines.density.value': '{mines} mines, {pct}%',
+    'mines.density.next': 'This game has {mines} mines. The new count starts with the next game.',
     'mines.left': 'mines left',
     'mines.time': 'time',
     'mines.new': 'New game',
@@ -41,6 +44,7 @@ export const strings = {
     'mines.stats': 'your record',
     'mines.stats.best': 'best {time}',
     'mines.stats.none': 'no games yet',
+    'mines.stats.custom': '{level}, {mines} mines',
     'mines.stats.won': '{won} won of {played}',
 
     'mines.help.title': 'how to play',
