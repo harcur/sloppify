@@ -164,8 +164,9 @@
 }
 .wrt-number { width: 5.5em; font-family: var(--mono); }
 .wrt-unit { color: var(--muted); font-size: 13px; }
-.wrt-inline { display: flex; gap: 8px; }
-.wrt-select { flex: 1; min-width: 0; }
+.wrt-volume-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 4px; }
+.wrt-volume-label { font-size: 13px; color: var(--muted); }
+.wrt-select { width: 100%; min-width: 0; }
 .wrt-range { width: 100%; min-height: 32px; accent-color: var(--text); }
 .wrt-check-row {
   display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: start;
@@ -177,10 +178,11 @@
 .wrt-hint[hidden] { display: none; }
 .wrt-try { align-self: start; }
 
-/* Minimal view: only the glass and one button. No ticking numbers. --------------- */
+/* Minimal view: only the glass and one button. No ticking numbers and no
+   falling grains: the sand levels alone show the time passing. --------------- */
 .wrt-minimal .site-header, .wrt-minimal .site-footer, .wrt-minimal .skip,
 .wrt-minimal .tool-title, .wrt-minimal .wrt-settings,
-.wrt-minimal .wrt-round, .wrt-minimal .wrt-today, .wrt-minimal .wrt-time,
+.wrt-minimal .wrt-round, .wrt-minimal .wrt-today, .wrt-minimal .wrt-time, .wrt-minimal .wrt-stream,
 .wrt-minimal .wrt-controls .btn:not(.wrt-start) { display: none; }
 .wrt-minimal .tool-main { display: flex; padding: 0; }
 .wrt-minimal .wrt { flex: 1; display: flex; }
