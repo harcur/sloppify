@@ -200,6 +200,11 @@
 .mines-level[aria-pressed="true"] { background: var(--m-press); color: #FFFFFF; }
 .mines-level[aria-pressed="true"]:focus-visible { outline-color: #FFFFFF; }
 .mines-level-detail { font-size: 12px; }
+.mines-density-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.mines-density-value { font-family: var(--mono); font-size: 15px; }
+.mines-density-input { display: block; width: 100%; min-height: 44px; margin: 0; accent-color: var(--m-press); cursor: pointer; }
+.mines-density-note { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.mines-density-note:empty { display: none; }
 .mines-record { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 15px; }
 .mines-record dt { font-family: var(--mono); }
 .mines-record dd { margin: 0; color: var(--muted); }

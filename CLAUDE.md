@@ -17,7 +17,7 @@ Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.gith
 
 ## Adding a tool
 
-Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`, follow its README, fill in its `tool.json`, run `npm run tools` (regenerates `tools.json`; never edit that by hand), add tests.
+Check the idea against `docs/TOOL-GUIDELINES.md` first. For a game, also use the `game-development` skill (`.claude/skills/game-development/SKILL.md`): patterns, pitfalls and test recipes from mines and sudoku. Copy `tools/_template/`, follow its README, fill in its `tool.json`, run `npm run tools` (regenerates `tools.json`; never edit that by hand), add tests.
 
 ## Commands
 
@@ -28,8 +28,7 @@ Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`,
 
 ## Open items
 
-- `sudoku` and `interest-calculator` are still template placeholders; build them with the app layout on phones.
-
+- `interest-calculator` doesn't use the phone app layout yet (`app: true`, options sheet); `sudoku` has its own copy of the options sheet that should move to `shared/sheet.js`.
 - Replace the generic source icon in `shared/icons.js` with Octicons `mark-github` (MIT).
 - Add PNG app icons (192, 512, apple-touch-icon).
 - Pages: CI publishes after tests pass on `main`, for either Pages source (GitHub Actions, or branch `gh-pages` `/ (root)`). The deploy job logs which source is set.
