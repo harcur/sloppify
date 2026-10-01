@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  DEFAULTS, PRESETS, cleanSettings, presetOf, newTimer, nextPhase, advance, remainingMs, progress,
+  DEFAULTS, PRESETS, migrate, cleanSettings, presetOf, newTimer, nextPhase, advance, remainingMs, progress,
   start, pause, resetPhase, cleanTimer, formatTime, sandLevels, dayKey,
 } from '../../tools/work-rest-timer/logic.js';
 
@@ -12,16 +12,27 @@ const s = cleanSettings({});
 
 test('settings fall back to defaults and are clamped', () => {
   assert.deepEqual(cleanSettings(null), DEFAULTS);
-  const c = cleanSettings({ work: 0, short: 999, long: '12', rounds: 2.6, volume: 3, workSound: 'nope', glow: 'yes' });
+  const c = cleanSettings({ work: 0, short: 999, long: '12', rounds: 2.6, workVolume: 3, restVolume: -1, workSound: 'nope', glow: 'yes' });
   assert.equal(c.work, 1);
   assert.equal(c.short, 60);
   assert.equal(c.long, 12);
   assert.equal(c.rounds, 3);
-  assert.equal(c.volume, 1);
+  assert.equal(c.workVolume, 1);
+  assert.equal(c.restVolume, 0);
   assert.equal(c.workSound, DEFAULTS.workSound);
   assert.equal(c.glow, DEFAULTS.glow);
   assert.equal(cleanSettings({ sound: false }).sound, false);
   assert.equal(cleanSettings({ sound: 0 }).sound, true);
+});
+
+test('saved data from version 1 gets a volume per sound', () => {
+  const data = migrate({ settings: { work: 30, volume: 0.3 }, today: { day: '2026-10-01', n: 2 } }, 1, 2);
+  assert.deepEqual(data.settings, { work: 30, workVolume: 0.3, restVolume: 0.3 });
+  assert.deepEqual(data.today, { day: '2026-10-01', n: 2 });
+  assert.deepEqual(migrate({}, 1, 2), {});
+  const c = cleanSettings(data.settings);
+  assert.equal(c.workVolume, 0.3);
+  assert.equal(c.restVolume, 0.3);
 });
 
 test('presets are recognised', () => {

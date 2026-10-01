@@ -21,7 +21,8 @@ export const DEFAULTS = {
   sound: true,
   workSound: 'chime', // played when work ends
   restSound: 'rise',  // played when a rest ends
-  volume: 0.6,
+  workVolume: 0.6,
+  restVolume: 0.6,
   glow: true,
   notify: false,
   vibrate: true,
@@ -39,8 +40,10 @@ export function cleanSettings(s) {
   for (const k of Object.keys(LIMITS)) out[k] = clampInt(src[k], LIMITS[k], DEFAULTS[k]);
   for (const k of ['autoStart', 'sound', 'glow', 'notify', 'vibrate', 'keepAwake']) if (typeof src[k] === 'boolean') out[k] = src[k];
   for (const k of ['workSound', 'restSound']) if (SOUNDS.includes(src[k])) out[k] = src[k];
-  const vol = Number(src.volume);
-  if (Number.isFinite(vol)) out.volume = Math.min(1, Math.max(0, vol));
+  for (const k of ['workVolume', 'restVolume']) {
+    const vol = Number(src[k]);
+    if (src[k] != null && Number.isFinite(vol)) out[k] = Math.min(1, Math.max(0, vol));
+  }
   return out;
 }
 
@@ -50,6 +53,19 @@ export function presetOf(s) {
     if (Object.keys(p).every((k) => p[k] === s[k])) return id;
   }
   return 'custom';
+}
+
+// Saved data, schema version 2: each sound has its own volume.
+export const STORE_VERSION = 2;
+export function migrate(data, from) {
+  const s = data.settings;
+  // 1 -> 2: one volume for both sounds became one per sound.
+  if (from < 2 && s && typeof s === 'object' && 'volume' in s) {
+    s.workVolume = s.volume;
+    s.restVolume = s.volume;
+    delete s.volume;
+  }
+  return data;
 }
 
 export const phaseMs = (settings, phase) => settings[phase] * 60_000;

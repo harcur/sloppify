@@ -60,8 +60,6 @@ export const strings = {
     'work-rest-timer.sound.alarm': 'alarm (louder)',
     'work-rest-timer.sound.none': 'no sound',
     'work-rest-timer.volume': 'Volume',
-    'work-rest-timer.test': 'Play',
-    'work-rest-timer.testLabel': 'Play the sound for {when}',
     'work-rest-timer.when.work': 'when work ends',
     'work-rest-timer.when.rest': 'when a rest ends',
 

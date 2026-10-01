@@ -72,6 +72,7 @@ test('every alert can be turned off, and sound choices wait while sound is off',
   await expect(sound).toBeChecked();
   await sound.uncheck();
   await expect(page.getByRole('combobox', { name: 'When work ends' })).toBeDisabled();
+  await expect(page.getByRole('slider', { name: 'Volume when a rest ends' })).toBeDisabled();
   await expect(page.getByText('Sound is off.')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Soft glow on the screen' }).uncheck();
   await page.reload();
@@ -81,6 +82,26 @@ test('every alert can be turned off, and sound choices wait while sound is off',
   await expect(page.getByRole('checkbox', { name: /^Notification/ })).not.toBeChecked();
   await sound.check();
   await expect(page.getByRole('combobox', { name: 'When work ends' })).toBeEnabled();
+});
+
+test('each sound has its own volume, carried over from the old single one', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('sloppify:work-rest-timer:__schema')) return;
+    localStorage.setItem('sloppify:work-rest-timer:__schema', '1');
+    localStorage.setItem('sloppify:work-rest-timer:settings', JSON.stringify({ volume: 0.3 }));
+  });
+  await page.goto('./tools/work-rest-timer/');
+  await openSettings(page);
+  const work = page.getByRole('slider', { name: 'Volume when work ends' });
+  const rest = page.getByRole('slider', { name: 'Volume when a rest ends' });
+  await expect(work).toHaveValue('30');
+  await expect(rest).toHaveValue('30');
+  await rest.fill('80');
+  await page.reload();
+  await openSettings(page);
+  await expect(work).toHaveValue('30');
+  await expect(rest).toHaveValue('80');
+  await expect(page.getByRole('button', { name: /^Play/ })).toHaveCount(0);
 });
 
 test('minimal view hides everything but the glass and one button; Escape leaves it', async ({ page }) => {
