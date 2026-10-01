@@ -1,4 +1,259 @@
 /* SPDX-FileCopyrightText: 2026 sloppify contributors
    SPDX-License-Identifier: MIT */
 
-/* Styles for this tool only. Shared tokens (--bg, --text, --line, ...) come from shared/base.css. */
+/* Play-area palette: a garden notebook. Warm paper cells, faint sage boxes,
+   soft sage box lines and buttons, apricot selection with a terracotta ring, ink digits.
+   Checked in both themes: every digit colour >= 4.5:1 on every cell
+   background; box lines and the selection ring >= 3:1 against the cells. */
+:root {
+  --s-cell: #FFFCF5; --s-alt: #F2F4EA; --s-peer: #E8EEDD; --s-same: #FBEBC2; --s-sel: #FFDCC4;
+  --s-line: #E3DFD3; --s-box: #748678; --s-ring: #B95632; --s-press: #4F6455; --s-on-press: #FFFFFF;
+  --s-given: #28332D; --s-entry: #2F52A0; --s-hint: #7E3F9C; --s-note: #5C645E; --s-bad: #A8323A;
+  --s-hatch: rgba(168, 50, 58, 0.09); --s-glow: rgba(255, 214, 150, 0.55); --s-pip: #D8D3C4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --s-cell: #1A1E1C; --s-alt: #1F2520; --s-peer: #252D26; --s-same: #3A3320; --s-sel: #45302A;
+    --s-line: #2B312D; --s-box: #6A7C6F; --s-ring: #EE9C77; --s-press: #8FA494; --s-on-press: #111111;
+    --s-given: #E8ECE5; --s-entry: #A3BDF4; --s-hint: #D4AAEC; --s-note: #A7AFA8; --s-bad: #F39A93;
+    --s-hatch: rgba(243, 154, 147, 0.09); --s-glow: rgba(238, 156, 119, 0.22); --s-pip: #3A423C;
+  }
+}
+:root[data-theme="dark"] {
+  --s-cell: #1A1E1C; --s-alt: #1F2520; --s-peer: #252D26; --s-same: #3A3320; --s-sel: #45302A;
+  --s-line: #2B312D; --s-box: #6A7C6F; --s-ring: #EE9C77; --s-press: #8FA494; --s-on-press: #111111;
+  --s-given: #E8ECE5; --s-entry: #A3BDF4; --s-hint: #D4AAEC; --s-note: #A7AFA8; --s-bad: #F39A93;
+  --s-hatch: rgba(243, 154, 147, 0.09); --s-glow: rgba(238, 156, 119, 0.22); --s-pip: #3A423C;
+}
+
+/* Layout -------------------------------------------------------------
+   Wider screens: the board on the left, controls and the side panel on
+   the right. */
+.sdk-layout { display: grid; gap: 24px; }
+.sdk-play { position: relative; min-width: 0; }
+@media (min-width: 720px) {
+  .sdk-layout { grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); align-items: start; gap: 32px; }
+}
+.sdk-panel { display: grid; gap: 28px; min-width: 0; }
+
+.sdk-top { display: flex; gap: 24px; margin-bottom: 8px; }
+.sdk-stat { margin: 0; display: flex; flex-direction: column; }
+.sdk-stat-label { font-size: 13px; color: var(--muted); }
+.sdk-stat-value { font-family: var(--mono); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; min-width: 4ch; }
+.sdk-status { margin: 0 0 12px; min-height: 1.5em; font-family: var(--mono); }
+.sdk-boardwrap { overflow: auto; max-width: 100%; padding: 2px; }
+
+/* Board --------------------------------------------------------------
+   Hairlines between cells, slightly heavier sage lines between boxes. */
+.sdk-board {
+  --cell: 40px;
+  display: inline-flex; flex-direction: column;
+  background: var(--s-cell);
+  border: 2px solid var(--s-box);
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+}
+.sdk-row { display: flex; }
+.sdk-cell {
+  position: relative;
+  box-sizing: content-box;
+  width: var(--cell); height: var(--cell);
+  flex: none;
+  display: grid; place-items: center;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--s-line);
+  border-bottom: 1px solid var(--s-line);
+  background: var(--s-cell);
+  color: var(--s-entry);
+  font-family: var(--mono);
+  font-size: calc(var(--cell) * 0.54);
+  font-weight: 500;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 220ms ease-out, box-shadow 160ms ease-out;
+}
+.sdk-cell:last-child { border-right: 0; }
+.sdk-row:last-child .sdk-cell { border-bottom: 0; }
+.sdk-cell.edge-r { border-right: 2px solid var(--s-box); }
+.sdk-cell.edge-b { border-bottom: 2px solid var(--s-box); }
+.sdk-cell.alt { background: var(--s-alt); }
+.sdk-cell.is-peer { background: var(--s-peer); }
+.sdk-cell.is-same { background: var(--s-same); }
+.sdk-cell.is-sel { background: var(--s-sel); box-shadow: inset 0 0 0 2px var(--s-ring); z-index: 1; }
+.sdk-cell:focus-visible { outline: 1px dashed var(--s-given); outline-offset: -5px; }
+.sdk-board.is-over .sdk-cell { cursor: default; }
+@media (hover: hover) {
+  .sdk-board:not(.is-over) .sdk-cell:not(.is-sel):hover { box-shadow: inset 0 0 0 1px var(--s-box); }
+}
+
+/* Givens are heavier than your own digits; hinted digits are underlined;
+   repeats get a hatched background, so none of it relies on colour. */
+.sdk-cell.is-given { color: var(--s-given); font-weight: 700; }
+.sdk-cell.is-hint { color: var(--s-hint); font-weight: 700; }
+.sdk-cell.is-hint .sdk-digit { text-decoration: underline 1px dotted; text-underline-offset: 0.14em; }
+.sdk-cell.is-same .sdk-digit { font-weight: 800; }
+.sdk-cell.is-bad {
+  color: var(--s-bad);
+  background-image: repeating-linear-gradient(135deg, var(--s-hatch) 0 3px, transparent 3px 7px);
+}
+
+.sdk-notes {
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  width: 100%; height: 100%; padding: 2px;
+  font-size: calc(var(--cell) * 0.24); font-weight: 500;
+  color: var(--s-note);
+}
+.sdk-notes span { display: grid; place-items: center; }
+
+/* Controls ----------------------------------------------------------- */
+.sdk-controls { display: grid; gap: 12px; }
+.sdk-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sdk-tool { padding: 0 8px; }
+.sdk-notes-btn[aria-pressed="true"] { background: var(--s-press); border-color: var(--s-press); color: var(--s-on-press); }
+.sdk-notes-btn[aria-pressed="true"]:focus-visible { outline-color: var(--text); }
+
+.sdk-pad { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.sdk-pad-btn {
+  position: relative;
+  min-height: 60px;
+  padding: 0 0 8px;
+  border: 1px solid var(--s-line);
+  border-bottom-color: var(--s-box);
+  background: var(--s-cell);
+  color: var(--s-given);
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease-out, background-color 200ms ease-out;
+}
+@media (hover: hover) { .sdk-pad-btn:hover { background: var(--s-alt); } }
+.sdk-pad-btn:active { transform: translateY(1px) scale(0.96); background: var(--s-sel); }
+/* Nine pips under each digit fill as copies are placed. */
+.sdk-pips { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%); display: flex; gap: 2px; }
+.sdk-pips i { width: 4px; height: 4px; background: var(--s-pip); transition: background-color 300ms ease-out; }
+.sdk-pips i.on { background: var(--s-box); }
+.sdk-pad-btn.is-done { background: var(--s-alt); border-style: dashed; }
+.sdk-pad-btn.is-done .sdk-pad-digit { text-decoration: line-through 1px; }
+.sdk-pad-btn.is-done .sdk-pips i { background: var(--s-ring); }
+/* In notes mode the digits shrink into a corner, like the notes they make. */
+.sdk-pad-digit { display: inline-block; transition: transform 160ms ease-out; }
+.sdk-pad.is-notes .sdk-pad-btn { color: var(--s-note); }
+.sdk-pad.is-notes .sdk-pad-digit { transform: translate(-28%, -22%) scale(0.62); }
+
+.sdk-actions { display: grid; gap: 8px; }
+.sdk-more { display: none; }
+
+/* Side panel --------------------------------------------------------- */
+.sdk-section + .sdk-section { margin-top: 24px; }
+.sdk-h2 { margin: 0 0 8px; font-family: var(--mono); font-size: 15px; font-weight: 400; color: var(--muted); }
+.sdk-seg.seg { margin: 0; }
+.sdk-level[aria-pressed="true"] { background: var(--s-press); color: var(--s-on-press); }
+.sdk-level[aria-pressed="true"]:focus-visible { outline-color: var(--s-on-press); }
+.sdk-record { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 15px; }
+.sdk-record dt { font-family: var(--mono); }
+.sdk-record dd { margin: 0; color: var(--muted); }
+.sdk-help p { margin: 0 0 8px; max-width: 60ch; font-size: 15px; color: var(--muted); }
+
+/* Animation ----------------------------------------------------------
+   Quiet and quick, never in the way: digits settle in like ink, givens
+   drift in from the selected cell on a new game, highlights glide, a repeat
+   gives a small shiver, a finished row, column or box catches a soft wash
+   of light, and a solved board ripples once and sends up confetti. */
+.sdk-digit { display: block; animation: sdk-ink 260ms ease-out backwards; }
+.sdk-notes span:not(:empty) { animation: sdk-fade 180ms ease-out backwards; }
+.sdk-cell.is-given .sdk-digit { animation: sdk-fade 420ms ease-out var(--d, 0ms) backwards; }
+.sdk-cell.is-shake .sdk-digit { animation: sdk-shiver 320ms ease-in-out; }
+.sdk-cell.is-locked .sdk-digit { animation: sdk-shiver 220ms ease-in-out; }
+.sdk-cell.is-done::after, .sdk-cell.is-hinted::after {
+  content: '';
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.sdk-cell.is-done::after { background: var(--s-glow); animation: sdk-wash 700ms ease-out var(--u, 0ms) both; }
+.sdk-cell.is-hinted::after { box-shadow: inset 0 0 0 2px var(--s-hint); animation: sdk-fade-out 700ms ease-out forwards; }
+.sdk-board.is-won .sdk-cell { animation: sdk-cheer 600ms ease-in-out var(--w, 0ms); }
+
+@keyframes sdk-ink { from { opacity: 0; transform: scale(0.72); filter: blur(2px); } }
+@keyframes sdk-fade { from { opacity: 0; } }
+@keyframes sdk-fade-out { to { opacity: 0; } }
+@keyframes sdk-shiver { 25% { transform: translateX(-2px); } 50% { transform: translateX(2px); } 75% { transform: translateX(-1px); } }
+@keyframes sdk-wash { from { opacity: 0; } 30% { opacity: 1; } to { opacity: 0; } }
+@keyframes sdk-cheer { 45% { background-color: var(--s-same); } }
+
+.sdk-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.sdk-confetti span {
+  position: absolute; top: -12px;
+  width: 6px; height: 10px;
+  background: var(--c);
+  animation: sdk-fall var(--t) cubic-bezier(0.3, 0.6, 0.5, 1) var(--delay) forwards;
+  opacity: 0;
+}
+@keyframes sdk-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sdk-board, .sdk-cell, .sdk-cell *, .sdk-cell::after, .sdk-pad-btn, .sdk-pad-btn * { animation: none !important; transition: none !important; }
+  .sdk-cell.is-done::after, .sdk-cell.is-hinted::after { display: none; }
+  .sdk-confetti { display: none; }
+}
+
+/* Narrow screens: the game fills the screen like an app ----------------
+   Counters on top, the board in the middle, tools, digits and buttons at
+   the bottom within thumb reach. Everything else is in the options sheet. */
+.sdk-sheet-foot { display: none; }
+@media (max-width: 719px) {
+  .sdk-layout { display: block; }
+  .sdk-panel { display: none; }
+  .sdk-play {
+    height: 100vh; height: 100dvh;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 8px;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 6px)
+      calc(env(safe-area-inset-right, 0px) + 12px)
+      calc(env(safe-area-inset-bottom, 0px) + 12px)
+      calc(env(safe-area-inset-left, 0px) + 12px);
+  }
+  .sdk-top { margin: 0; padding-right: 52px; min-height: 44px; align-items: center; } /* room for the menu button */
+  .sdk-stat { flex-direction: row; align-items: baseline; gap: 8px; }
+  .sdk-stat-value { font-size: 20px; min-width: 0; }
+  .sdk-status { margin: 0; min-height: 0; font-size: 14px; }
+  .sdk-boardwrap { display: flex; }
+  .sdk-board { margin: auto; }
+  .sdk-controls { gap: 8px; }
+  .sdk-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .sdk-tool { font-size: 15px; padding: 0 4px; }
+  .sdk-pad { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 4px; }
+  .sdk-pad-btn { min-height: 56px; font-size: 22px; }
+  .sdk-pips { gap: 1px; bottom: 6px; }
+  .sdk-pips i { width: 3px; height: 3px; }
+  .sdk-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sdk-actions .btn { padding: 0 6px; font-size: 15px; white-space: nowrap; }
+  .sdk-more { display: block; }
+
+  .sdk-sheet {
+    width: 100%; max-width: none;
+    max-height: 88dvh;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    padding: 16px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 16px);
+    animation: sdk-sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .sdk-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sdk-sheet-head .dialog-title { margin: 0; }
+  .sdk-side { display: grid; gap: 24px; }
+  .sdk-section + .sdk-section { margin-top: 0; }
+  .sdk-sheet-foot { display: block; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+  .sdk-sheet-foot p { margin: 0 0 8px; }
+  .sdk-sheet-foot a { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--text); text-underline-offset: 3px; }
+  .sdk-sheet-foot .icon { width: 16px; height: 16px; }
+}
+@keyframes sdk-sheet-up { from { transform: translateY(40%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sdk-sheet { animation: none; } }
