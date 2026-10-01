@@ -1,0 +1,26 @@
+{
+  "categories": {
+    "tool": { "label": { "en": "tool" } },
+    "game": { "label": { "en": "game" } }
+  },
+  "tools": [
+    {
+      "id": "interest-calculator",
+      "name": { "en": "interest calculator" },
+      "description": { "en": "Compound and simple interest over time" },
+      "category": "tool",
+      "tags": ["finance", "money", "savings", "loan", "compound"],
+      "license": "MIT",
+      "path": "tools/interest-calculator/"
+    },
+    {
+      "id": "sudoku",
+      "name": { "en": "sudoku" },
+      "description": { "en": "Classic 9\u00d79 puzzles" },
+      "category": "game",
+      "tags": ["puzzle", "numbers", "logic"],
+      "license": "MIT",
+      "path": "tools/sudoku/"
+    }
+  ]
+}

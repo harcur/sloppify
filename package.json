@@ -1,0 +1,17 @@
+{
+  "name": "sloppify",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only tooling. The site itself has no dependencies and no build step.",
+  "license": "MIT",
+  "scripts": {
+    "serve": "python3 -m http.server 4173",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"tests/unit/*.test.js\"",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@playwright/test": "^1.48.0"
+  }
+}

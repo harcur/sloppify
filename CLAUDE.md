@@ -1,0 +1,31 @@
+# sloppify — notes for Claude Code
+
+Local-first hub of small tools and games, hosted on GitHub Pages at `<username>.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision.
+
+## Hard rules
+
+- No build step and no runtime dependencies. Plain HTML, CSS and ES modules. Dev tooling (tests) lives in `package.json` and is never deployed.
+- Zero external requests. Every page has a CSP meta tag (`default-src 'self'`); never add CDNs, remote fonts, analytics or APIs. No inline scripts or `style` attributes (CSP blocks them).
+- All paths relative, so the site works under the `/sloppify/` subpath.
+- Storage only through `shared/storage.js` (`openStore`). Keys are `sloppify:<tool-id>:<key>`. Never touch keys without the `sloppify:` prefix.
+- Every visible string goes in a `strings.js` file.
+- WCAG 2.2 AA, keyboard and screen reader support, designed mobile and desktop layouts.
+- SPDX headers on every file (REUSE).
+- Design: sharp corners, 1px lines, system monospace headings, system sans text, tokens in `shared/base.css`.
+
+## Adding a tool
+
+Copy `tools/_template/`, follow its README, add an entry to `tools.json`, add tests.
+
+## Commands
+
+- Serve: `python3 -m http.server 4173`
+- Unit tests: `npm run test:unit`
+- Browser + accessibility tests: `npm install && npx playwright install && npm run test:e2e` (passing in Chromium desktop and mobile; Firefox and WebKit not yet run locally, CI runs all five projects)
+
+## Open items
+
+- Set `repoUrl` in `shared/config.js` (currently `USERNAME`).
+- Replace the generic source icon in `shared/icons.js` with Octicons `mark-github` (MIT).
+- Add PNG app icons (192, 512, apple-touch-icon).
+- Push to GitHub and enable Pages with source "GitHub Actions".
