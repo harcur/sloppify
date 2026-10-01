@@ -1,0 +1,20 @@
+{
+  "name": {
+    "en": "random"
+  },
+  "description": {
+    "en": "Spin a wheel, roll dice, pick numbers, draw straws, flip a coin, shuffle or make teams"
+  },
+  "category": "tool",
+  "tags": [
+    "dice",
+    "wheel",
+    "picker",
+    "coin",
+    "number generator",
+    "straws",
+    "shuffle",
+    "teams"
+  ],
+  "license": "MIT"
+}
