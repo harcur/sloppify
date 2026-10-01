@@ -32,6 +32,7 @@ The CSP allows it (`worker-src 'self'`) and the service worker caches it on firs
 - `const store = openStore(id, { version: 1 }); const saving = await guardStore(store, name);` Guard every `store.set` with `saving`; when it's false the game still runs, it just doesn't remember.
 - Keys used by both games: `level`, `game` (in progress), `stats` (per level). Write the game after every move and on `visibilitychange` to hidden and `pagehide`.
 - `serialize` writes plain JSON with cell arrays as digit strings (`'0102…'`). `deserialize` **validates everything** and returns `null` for anything off: lengths, allowed characters, level and state names, cross-field consistency (sudoku checks that the solution really solves the puzzle). A `null` means "start a fresh game", never a crash. Save files come back from imports and old versions.
+- When a new setting splits records (mines' density slider keeps records per size *and* mine count), keep the old key for the default setting so existing records carry over without a migration. A setting that changes the board applies at once before the first move, otherwise from the next game.
 - Read stats through a sanitising helper (`record(level)`) that returns numbers or defaults, never the raw stored object.
 - Ask before throwing away progress (`confirmDialog`), but not when the game is finished or untouched.
 
