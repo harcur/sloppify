@@ -76,6 +76,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 - **No build step and no runtime dependencies.** Plain HTML, CSS and ES modules; the files in the repo are exactly what runs. No frameworks, and libraries only when the tool can't exist without one.
 - **No fonts at all.** System fonts only (see 4.3).
 - **Draw with CSS and inline SVG**, not images. No raster images for UI, no icon fonts. Sounds, if any, are short and optional.
+- **Animate with CSS and SVG.** Keyframes, transitions and small generated effects (such as confetti made of a few dozen elements) cost almost nothing. No video, GIFs, sprite sheets or animation libraries.
 - **Load data only when needed.** Large data lives in `data/` and is fetched from the same origin when the feature that uses it is first opened, not on page load.
 - **Generate instead of ship.** Generate puzzles, boards and random content in code rather than shipping big tables.
 - **Don't grow `shared/` for one tool.** Code moves into `shared/` only when at least two tools use it.
@@ -86,7 +87,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 - Every tap or key press gets visible feedback within 100 ms.
 - Work that can take longer than about 50 ms (solvers, chess search, large text processing) runs in a Web Worker (allowed by the CSP as `worker-src 'self'`) so the page never freezes.
 - No timers or animation loops running while nothing is changing; pause when the tab is hidden.
-- Animations are short, use `transform` and `opacity`, and are turned off under `prefers-reduced-motion`.
+- Animations are short, mostly use `transform`, `opacity` and `filter`, and are turned off under `prefers-reduced-motion`. They play in response to something happening (a move, a win), not on an endless loop.
 
 ---
 
@@ -173,12 +174,22 @@ Colour by zone:
 
 - **Shared chrome** (header, menu, footer): neutral greys only, identical on every page.
 - **Tools:** monochrome. Colour only carries meaning: focus, errors, chart series, the main result.
-- **Games:** free to use their own palette inside the play area; the chrome around it stays neutral.
+- **Games:** colourful and good-looking, not utilitarian. Inside the play area a game has its own palette, textures and character; the chrome around it (header, menu, footer) stays neutral. See 4.6.
 - Colour is never the only signal. Pair it with text, shape or pattern.
 
 ### 4.5 Theme
 
 - Pages follow the system light or dark setting, with a manual override in the menu. Every colour a tool adds needs a light and a dark value, defined the same way `base.css` does (`prefers-color-scheme` plus `[data-theme]`).
+
+### 4.6 Games
+
+Games should be fun to look at and satisfying to play. Tools stay calm; games get to show off.
+
+- **Colour:** a bold palette of the game's own, in both light and dark. Not the site's greys, and not a copy of a known product's look (see 1.4).
+- **Texture and character:** pieces, tiles and boards can use gradients, patterns, highlights and playful vector shapes. The site's sharp corners and 1px lines still apply to the page around the game, and should feel at home inside it too.
+- **Motion that rewards play:** pieces that pop in, ripple outwards, settle or shake; a celebration on a win. Animations follow the action, last well under a second (a win celebration can run a little longer), and never block input.
+- **Vectors only:** CSS and inline SVG, within the size budget (Part 2). No images, video or animation libraries.
+- **Still accessible:** contrast rules apply to the game's own colours too (4.5:1 for text such as numbers, 3:1 between states that need telling apart and for pieces against their background), colour is never the only signal, and everything decorative is hidden from screen readers. Under `prefers-reduced-motion` the game is fully playable with all animation off.
 
 ---
 
@@ -190,7 +201,7 @@ WCAG 2.2 AA on every page, checked automatically and by hand.
 - **Screen readers:** real buttons and inputs, labels on every control, headings in order (one `h1` per page). Changing results and game state are announced through a live region, without flooding it.
 - **Contrast:** text at least 4.5:1, UI edges and focus indicators at least 3:1, in both light and dark.
 - **Targets:** touch targets at least 24×24 CSS pixels, ideally 44×44 on mobile.
-- **Motion:** respect `prefers-reduced-motion`. Nothing flashes.
+- **Motion:** respect `prefers-reduced-motion`: turn animations off, not just shorter. Nothing flashes more than three times a second.
 - **Dialogs:** use the shared dialogs, which move focus in and return it afterwards.
 
 ---

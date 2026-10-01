@@ -1,27 +1,41 @@
 /* SPDX-FileCopyrightText: 2026 sloppify contributors
    SPDX-License-Identifier: MIT */
 
-/* Play-area palette. Hidden cells keep 3:1 against open cells and against the
-   focus outline; numbers keep 4.5:1 on open cells. */
+/* Play-area palette: violet tiles over a warm field. Checked in both themes:
+   hidden vs open ≥ 3:1, flag vs tile ≥ 3:1, numbers vs open ≥ 4.5:1. */
 :root {
-  --m-hidden: #7C8288; --m-hover: #6E747A; --m-flag: #FFE1D2;
-  --m-1: #0E6B6B; --m-2: #2F4FA8; --m-3: #6B3FA0; --m-4: #A1306B;
-  --m-5: #A2461A; --m-6: #6E4A1E; --m-7: var(--text); --m-8: var(--muted);
+  --m-hid-a: #5A4BD1; --m-hid-b: #6355DB;
+  --m-open-a: #FFF9EC; --m-open-b: #F7EFDF;
+  --m-line: rgba(42, 35, 70, 0.16);
+  --m-flag: #FFC23D; --m-flag-dark: #E89A00; --m-pole: #FFFFFF;
+  --m-mine: #2A2346; --m-shine: #FFFFFF; --m-boom: #E5484D;
+  --m-1: #1E63C4; --m-2: #11704D; --m-3: #BF2C24; --m-4: #6A2FB8;
+  --m-5: #B4430A; --m-6: #0B7285; --m-7: #2A2346; --m-8: #6B6680;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --m-hidden: #6A7177; --m-hover: #788086; --m-flag: #FFD9C7;
-    --m-1: #5ED1C9; --m-2: #8FA8F5; --m-3: #C3A0F0; --m-4: #F28CC0; --m-5: #F5A06B; --m-6: #D9B98A;
+    --m-hid-a: #6D60E6; --m-hid-b: #6558DE;
+    --m-open-a: #1C1930; --m-open-b: #221E3A;
+    --m-line: rgba(0, 0, 0, 0.4);
+    --m-flag: #FFD866; --m-flag-dark: #F2B530; --m-pole: #FFFFFF;
+    --m-mine: #EDE9FF; --m-shine: #1C1930; --m-boom: #FF6369;
+    --m-1: #6EB4FF; --m-2: #4FD69C; --m-3: #FF8A80; --m-4: #C9A2FF;
+    --m-5: #FFAA6B; --m-6: #4FD4E8; --m-7: #EDE9FF; --m-8: #A9A3C4;
   }
 }
 :root[data-theme="dark"] {
-  --m-hidden: #6A7177; --m-hover: #788086; --m-flag: #FFD9C7;
-  --m-1: #5ED1C9; --m-2: #8FA8F5; --m-3: #C3A0F0; --m-4: #F28CC0; --m-5: #F5A06B; --m-6: #D9B98A;
+  --m-hid-a: #6D60E6; --m-hid-b: #6558DE;
+  --m-open-a: #1C1930; --m-open-b: #221E3A;
+  --m-line: rgba(0, 0, 0, 0.4);
+  --m-flag: #FFD866; --m-flag-dark: #F2B530; --m-pole: #FFFFFF;
+  --m-mine: #EDE9FF; --m-shine: #1C1930; --m-boom: #FF6369;
+  --m-1: #6EB4FF; --m-2: #4FD69C; --m-3: #FF8A80; --m-4: #C9A2FF;
+  --m-5: #FFAA6B; --m-6: #4FD4E8; --m-7: #EDE9FF; --m-8: #A9A3C4;
 }
 
 /* Layout ------------------------------------------------------------- */
 .mines-layout { display: grid; gap: 24px; }
-.mines-play { min-width: 0; }
+.mines-play { position: relative; min-width: 0; }
 @media (min-width: 960px) {
   .mines-layout { grid-template-columns: minmax(0, 1fr) 260px; align-items: start; gap: 32px; }
 }
@@ -35,49 +49,72 @@
 .mines-stat-value { font-family: var(--mono); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; min-width: 4ch; }
 .mines-actions { display: flex; gap: 8px; margin-left: auto; }
 .mines-flag-btn { display: inline-flex; align-items: center; gap: 8px; }
-.mines-flag-btn .mines-icon { width: 18px; height: 18px; }
-.mines-flag-btn .cloth { fill: currentColor; }
-.mines-flag-btn[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+.mines-flag-btn .mines-icon { width: 20px; height: 20px; }
+.mines-flag-btn .mines-icon .pole { stroke: currentColor; }
+.mines-flag-btn .mines-icon .cloth { fill: var(--m-hid-a); }
+.mines-flag-btn .mines-icon .fold { fill: var(--m-hid-b); }
+.mines-flag-btn[aria-pressed="true"] { background: var(--m-hid-a); border-color: var(--m-hid-a); color: #FFFFFF; }
+.mines-flag-btn[aria-pressed="true"] .mines-icon .cloth { fill: var(--m-flag); }
+.mines-flag-btn[aria-pressed="true"] .mines-icon .fold { fill: var(--m-flag-dark); }
+.mines-flag-btn[aria-pressed="true"]:focus-visible { outline-color: var(--text); outline-offset: 2px; }
 
 .mines-status { margin: 0 0 12px; min-height: 1.5em; font-family: var(--mono); }
 .mines-status[data-state="lost"] { color: var(--danger); }
 
-.mines-scroll { overflow: auto; max-width: 100%; padding: 2px; }
+.mines-scroll { overflow: auto; max-width: 100%; padding: 4px; }
 
 /* Board -------------------------------------------------------------- */
 .mines-board {
   --cell: 32px;
   display: inline-flex; flex-direction: column;
-  border-top: 1px solid var(--line);
-  border-left: 1px solid var(--line);
+  background: var(--m-hid-a);
+  border: 1px solid var(--m-hid-a);
   user-select: none; -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
 }
 .mines-row { display: flex; }
 .mines-cell {
+  position: relative;
   width: var(--cell); height: var(--cell);
   flex: none;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
   border: 0;
-  border-right: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  border-right: 1px solid var(--m-line);
+  border-bottom: 1px solid var(--m-line);
+  outline: 2px solid transparent;
+  background: var(--m-open-a);
   font-family: var(--mono);
-  font-weight: 700;
-  font-size: calc(var(--cell) * 0.55);
+  font-weight: 800;
+  font-size: calc(var(--cell) * 0.58);
   line-height: 1;
   -webkit-tap-highlight-color: transparent;
 }
-.mines-cell:focus-visible { outline: 2px solid var(--text); outline-offset: -2px; position: relative; z-index: 1; }
-.mines-cell[data-s="hidden"], .mines-cell[data-s="flag"] { background: var(--m-hidden); }
+.mines-cell.alt { background: var(--m-open-b); }
+
+/* Hidden tiles: a cut-gem look from two soft diagonal highlights. */
+.mines-cell[data-s="hidden"], .mines-cell[data-s="flag"] {
+  background-color: var(--m-hid-a);
+  background-image:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 48%),
+    linear-gradient(315deg, rgba(20, 10, 60, 0.28), rgba(20, 10, 60, 0) 45%);
+  transition: filter 120ms, transform 120ms;
+}
+.mines-cell.alt[data-s="hidden"], .mines-cell.alt[data-s="flag"] { background-color: var(--m-hid-b); }
 @media (hover: hover) {
   .mines-board:not(.is-over) .mines-cell[data-s="hidden"]:hover,
-  .mines-board:not(.is-over) .mines-cell[data-s="flag"]:hover { background: var(--m-hover); }
+  .mines-board:not(.is-over) .mines-cell[data-s="flag"]:hover { filter: brightness(1.18) saturate(1.1); }
 }
-.mines-board.is-over .mines-cell { cursor: default; }
-.mines-cell[data-s="open"] { cursor: default; }
+.mines-board:not(.is-over) .mines-cell[data-s="hidden"]:active { transform: scale(0.9); }
+.mines-board.is-over .mines-cell, .mines-cell[data-s="open"] { cursor: default; }
+
+/* Focus: a white ring inside a dark one, visible on tiles and on open cells. */
+.mines-cell:focus-visible {
+  z-index: 3;
+  outline-color: transparent;
+  box-shadow: inset 0 0 0 2px #FFFFFF, inset 0 0 0 4px #161616;
+}
 
 .mines-cell[data-n="1"] { color: var(--m-1); }
 .mines-cell[data-n="2"] { color: var(--m-2); }
@@ -88,28 +125,81 @@
 .mines-cell[data-n="7"] { color: var(--m-7); }
 .mines-cell[data-n="8"] { color: var(--m-8); }
 
-.mines-icon { width: 70%; height: 70%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: square; }
-.mines-cell[data-s="flag"] { color: var(--m-flag); }
-.mines-cell[data-s="flag"] .cloth { fill: currentColor; }
-.mines-cell[data-s="mine"] .mines-icon circle,
-.mines-cell[data-s="exploded"] .mines-icon circle { fill: currentColor; }
-.mines-cell[data-s="exploded"] { background: var(--danger); color: var(--surface); }
-.mines-cell[data-s="wrong"] { color: var(--muted); }
-.mines-cell[data-s="wrong"] .x { stroke: var(--danger); }
+/* Icons -------------------------------------------------------------- */
+.mines-icon { width: 78%; height: 78%; overflow: visible; }
+.mines-icon .pole { stroke: var(--m-pole); stroke-width: 2; stroke-linecap: square; fill: none; }
+.mines-icon .cloth { fill: var(--m-flag); }
+.mines-icon .fold { fill: var(--m-flag-dark); }
+.mines-icon .body, .mines-icon .spikes { fill: var(--m-mine); stroke: var(--m-mine); stroke-width: 2.2; stroke-linecap: round; }
+.mines-icon .shine { fill: var(--m-shine); }
+.mines-icon .x { stroke: var(--m-boom); stroke-width: 2.5; stroke-linecap: square; fill: none; }
+
+.mines-cell[data-s="wrong"] .pole { stroke: var(--m-8); }
+.mines-cell[data-s="wrong"] .cloth, .mines-cell[data-s="wrong"] .fold { fill: var(--m-8); }
+.mines-cell[data-s="exploded"] { background: var(--m-boom); z-index: 2; }
+.mines-cell[data-s="exploded"] .body, .mines-cell[data-s="exploded"] .spikes { fill: #2A2346; stroke: #2A2346; }
+.mines-cell[data-s="exploded"] .shine { fill: #FFFFFF; }
+
+/* Animation ----------------------------------------------------------
+   Each starts when a cell changes state. --d is a delay set from the
+   distance to the cell that was played, so openings ripple outwards. */
+.mines-cell[data-s="open"] { animation: mines-open 220ms cubic-bezier(0.2, 0.9, 0.3, 1.3) var(--d, 0ms) backwards; }
+.mines-cell[data-s="mine"] { animation: mines-open 260ms ease-out var(--d, 0ms) backwards; }
+.mines-cell[data-s="flag"] .mines-icon { animation: mines-plant 320ms cubic-bezier(0.2, 0.9, 0.3, 1.4) var(--d, 0ms) backwards; transform-origin: 30% 90%; }
+.mines-cell[data-s="flag"] .cloth, .mines-cell[data-s="flag"] .fold { animation: mines-wave 700ms ease-in-out 2; transform-origin: 8px 8px; transform-box: view-box; }
+.mines-cell[data-s="exploded"]::after {
+  content: '';
+  position: absolute; inset: 0;
+  border: 3px solid var(--m-boom);
+  animation: mines-ring 650ms ease-out forwards;
+  pointer-events: none;
+}
+.mines-board.is-lost { animation: mines-shake 380ms ease-in-out; }
+.mines-board.is-won .mines-cell { animation: mines-cheer 520ms ease-in-out var(--w, 0ms); }
+
+@keyframes mines-open { from { transform: scale(0.35); opacity: 0; } }
+@keyframes mines-plant { from { transform: translateY(-40%) scale(0.4); opacity: 0; } }
+@keyframes mines-wave { 50% { transform: skewY(-8deg) scaleX(0.88); } }
+@keyframes mines-ring { from { transform: scale(0.6); opacity: 1; } to { transform: scale(2.6); opacity: 0; } }
+@keyframes mines-shake {
+  20% { transform: translateX(-5px); } 40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(2px); }
+}
+@keyframes mines-cheer { 40% { transform: scale(1.14); filter: brightness(1.15) saturate(1.3); } }
+
+/* Confetti on a win, made by app.js. */
+.mines-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.mines-confetti span {
+  position: absolute; top: -12px;
+  width: 7px; height: 12px;
+  background: var(--c);
+  animation: mines-fall var(--t) cubic-bezier(0.3, 0.6, 0.5, 1) var(--delay) forwards;
+  opacity: 0;
+}
+@keyframes mines-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mines-board, .mines-cell, .mines-cell *, .mines-cell::after { animation: none !important; transition: none !important; }
+  .mines-confetti { display: none; }
+}
 
 /* Side panel --------------------------------------------------------- */
 .mines-section + .mines-section { margin-top: 24px; }
 .mines-h2 { margin: 0 0 8px; font-family: var(--mono); font-size: 15px; font-weight: 400; color: var(--muted); }
 .mines-seg.seg { margin: 0; }
 .mines-level { display: flex; flex-direction: column; justify-content: center; padding: 6px 4px; line-height: 1.3; }
-.mines-level-detail { font-size: 12px; opacity: 0.85; }
+.mines-level[aria-pressed="true"] { background: var(--m-hid-a); color: #FFFFFF; }
+.mines-level[aria-pressed="true"]:focus-visible { outline-color: #FFFFFF; }
+.mines-level-detail { font-size: 12px; }
 .mines-record { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 15px; }
 .mines-record dt { font-family: var(--mono); }
 .mines-record dd { margin: 0; color: var(--muted); }
 .mines-help p { margin: 0 0 8px; max-width: 60ch; font-size: 15px; color: var(--muted); }
 
-/* On desktop the size picker sits beside the board; on mobile it sits below
-   the board, with the help text last. */
 @media (max-width: 959px) {
   .mines-side { display: grid; gap: 24px; }
   .mines-section + .mines-section { margin-top: 0; }

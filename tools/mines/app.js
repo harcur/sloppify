@@ -26,10 +26,11 @@ let flagMode = false;
 
 // Elements -----------------------------------------------------------
 
+const FLAG = '<path class="pole" d="M8 3.5v17M4.5 20.5h8"/><path class="cloth" d="M9 3.5l11 4.5-11 4.5z"/><path class="fold" d="M9 8l11 0-11 4.5z"/>';
 const ICONS = {
-  flag: '<path class="pole" d="M8 4v16M5 20h8"/><path class="cloth" d="M8 4l10 4-10 4z"/>',
-  mine: '<circle cx="12" cy="12" r="5"/><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/>',
-  wrong: '<path class="pole" d="M8 4v16M5 20h8"/><path class="cloth" d="M8 4l10 4-10 4z"/><path class="x" d="M4 4l16 16M20 4L4 20"/>',
+  flag: FLAG,
+  mine: '<path class="spikes" d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.3 5.3l2.6 2.6M16.1 16.1l2.6 2.6M5.3 18.7l2.6-2.6M16.1 7.9l2.6-2.6"/><circle class="body" cx="12" cy="12" r="5.5"/><circle class="shine" cx="10" cy="10" r="1.6"/>',
+  wrong: `${FLAG}<path class="x" d="M4 4l16 16M20 4L4 20"/>`,
 };
 const svg = (kind) => {
   const tpl = document.createElement('template');
@@ -108,7 +109,8 @@ function buildBoard() {
     const row = h('div', { class: 'mines-row', role: 'row' });
     for (let dc = 0; dc < cols; dc++) {
       const i = toIndex(dr, dc);
-      cells[i] = h('button', { type: 'button', class: 'mines-cell', role: 'gridcell', tabindex: '-1', 'data-i': i });
+      const alt = (Math.floor(i / g.cols) + (i % g.cols)) % 2 === 1;
+      cells[i] = h('button', { type: 'button', class: alt ? 'mines-cell alt' : 'mines-cell', role: 'gridcell', tabindex: '-1', 'data-i': i });
       row.append(cells[i]);
     }
     board.append(row);
@@ -148,6 +150,7 @@ function cellState(i) {
 function renderCell(i) {
   const b = cells[i];
   const s = cellState(i);
+  if (b.dataset.s === s) return; // unchanged, so its animation doesn't replay
   const n = s === 'open' ? count(g, i) : 0;
   b.dataset.s = s;
   b.dataset.n = n;
@@ -208,7 +211,8 @@ function act(i, mode) {
   if (mode === 'flag' || flagMode) return flag(i);
   const changed = g.open[i] ? chord(g, i) : reveal(g, i);
   if (!changed.length) return;
-  if (g.state === 'won' || g.state === 'lost') return finish();
+  ripple(changed, i, '--d', 22, 18);
+  if (g.state === 'won' || g.state === 'lost') return finish(i);
   for (const j of changed) renderCell(j);
   say(changed.length === 1 ? describe('open', count(g, changed[0])) : t('mines.say.opened', { n: changed.length }));
   syncTimer();
@@ -224,7 +228,7 @@ function flag(i) {
   save();
 }
 
-function finish() {
+function finish(from) {
   syncTimer();
   const rec = record(g.level);
   rec.played += 1;
@@ -242,9 +246,53 @@ function finish() {
   if (saving) store.set('stats', stats);
   status.textContent = message;
   status.dataset.state = g.state;
+  const all = cells.map((_, j) => j);
+  if (g.state === 'lost') {
+    ripple(all.filter((j) => g.mine[j] && j !== g.exploded), g.exploded, '--d', 40, 14);
+    board.classList.add('is-lost');
+  } else {
+    ripple(all.filter((j) => g.mine[j]), from, '--d', 30, 14);
+    ripple(all, from, '--w', 35, 30);
+    board.classList.add('is-won');
+    confetti();
+  }
   renderAll();
   renderStats();
   save();
+}
+
+// Sets a delay on each cell from its distance to the cell played, so
+// changes spread outwards from it.
+function ripple(list, from, prop, step, maxSteps) {
+  const fr = Math.floor(from / g.cols);
+  const fc = from % g.cols;
+  for (const j of list) {
+    const d = Math.max(Math.abs(Math.floor(j / g.cols) - fr), Math.abs((j % g.cols) - fc));
+    cells[j].style.setProperty(prop, `${Math.min(d, maxSteps) * step}ms`);
+  }
+}
+
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const CONFETTI = ['--m-flag', '--m-hid-a', '--m-1', '--m-2', '--m-3', '--m-4', '--m-6'];
+
+function confetti() {
+  if (reducedMotion.matches) return;
+  const box = h('div', { class: 'mines-confetti', 'aria-hidden': 'true' });
+  const height = scroller.offsetTop + scroller.offsetHeight;
+  for (let k = 0; k < 60; k++) {
+    const p = h('span');
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    p.style.left = `${rnd(0, 100)}%`;
+    p.style.setProperty('--c', `var(${CONFETTI[k % CONFETTI.length]})`);
+    p.style.setProperty('--dx', `${rnd(-80, 80)}px`);
+    p.style.setProperty('--dy', `${rnd(0.6, 1) * height}px`);
+    p.style.setProperty('--rot', `${rnd(-720, 720)}deg`);
+    p.style.setProperty('--t', `${rnd(1200, 2000)}ms`);
+    p.style.setProperty('--delay', `${rnd(0, 400)}ms`);
+    box.append(p);
+  }
+  scroller.parentElement.append(box);
+  setTimeout(() => box.remove(), 2600);
 }
 
 function setFlagMode(on) {

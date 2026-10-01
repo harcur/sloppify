@@ -12,7 +12,7 @@ Starter tools: **Sudoku** and **Interest rate calculator**.
 
 Games:
 
-- **mines** (`tools/mines/`): the classic hidden-mines grid game under a generic name, since the familiar name is a trademark. Three board sizes (9×9/10, 16×16/40, 16×30/99), first move always opens an area, flags by right-click, long-press, flag mode or the F key, opening a number with all its flags placed opens its neighbours. Own palette and icons. On narrow screens a wide board is shown turned on its side. Saves the game in progress, plus wins and best time per size.
+- **mines** (`tools/mines/`): the classic hidden-mines grid game under a generic name, since the familiar name is a trademark. Three board sizes (9×9/10, 16×16/40, 16×30/99), first move always opens an area, flags by right-click, long-press, flag mode or the F key, opening a number with all its flags placed opens its neighbours. Violet gem-like tiles over a warm cream field (deep plum in dark mode), gold flags, its own mine icon. Openings ripple outwards from the cell played, flags drop in and wave, a loss shakes the board and rings the mine that went off, a win sends a wave across the board plus confetti; all CSS and SVG, all off under reduced motion. On narrow screens a wide board is shown turned on its side. Saves the game in progress, plus wins and best time per size.
 
 ## Core principles
 
@@ -213,7 +213,7 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
   - Shared chrome (header, data menu, footer): neutral grays only, identical on every page.
   - Hub: neutral, with one hue per category for wayfinding (tools = blue, games = orange).
   - Tools: monochrome; color only carries meaning (focus, errors, chart series, main result).
-  - Games: free to use their own palette inside the play area; chrome around it stays neutral.
+  - Games: colourful and good-looking rather than utilitarian, with their own palette, textures and short vector animations (CSS and SVG only) inside the play area; chrome around it stays neutral. Details in `docs/TOOL-GUIDELINES.md` 4.6.
 - **Starting palette** (all text ≥ 4.5:1, UI edges ≥ 3:1):
 
   | Token | Light | Dark |
