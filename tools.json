@@ -54,6 +54,25 @@
       "path": "tools/mines/"
     },
     {
+      "id": "random-numbers",
+      "name": {
+        "en": "random numbers"
+      },
+      "description": {
+        "en": "Pick random whole numbers in a range, with or without repeats"
+      },
+      "category": "tool",
+      "tags": [
+        "random",
+        "number generator",
+        "rng",
+        "lottery",
+        "raffle"
+      ],
+      "license": "MIT",
+      "path": "tools/random-numbers/"
+    },
+    {
       "id": "sudoku",
       "name": {
         "en": "sudoku"
