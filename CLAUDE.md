@@ -24,6 +24,7 @@ Check the idea against `docs/TOOL-GUIDELINES.md` first. For a game, also use the
 - Serve: `python3 -m http.server 4173`
 - Regenerate the hub's tool list: `npm run tools` (`--check` to verify)
 - Unit tests: `npm run test:unit`
+- Browser tests for what you changed (vs `origin/main`): `npm run test:changed` (add `-- --project=desktop-chromium` to narrow). CI does the same on pull requests and runs everything on `main`.
 - Browser + accessibility tests: `npm install && npx playwright install && npm run test:e2e` (passing in Chromium desktop and mobile; Firefox and WebKit not yet run locally, CI runs all five projects)
 
 ## Open items

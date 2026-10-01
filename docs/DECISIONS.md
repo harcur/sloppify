@@ -178,8 +178,9 @@ Tone: personal, plain and honest, in the developer's own voice. No marketing phr
 The site itself has no build step and no dependencies. Test tooling is dev-only and runs in CI; none of it is deployed.
 
 - **Unit tests** for shared code (storage, export/import/reset, migrations, i18n) with Node's built-in test runner (`node:test`), no extra dependencies.
-- **Browser tests** with Playwright on mobile and desktop viewports, in Chromium, Firefox and WebKit.
-- **Accessibility checks** with axe-core on every page, in light and dark mode. Any WCAG AA violation fails the build.
+- **Browser tests** with Playwright on mobile and desktop viewports, in Chromium, Firefox and WebKit. In CI each of the five browser setups is its own job, running in parallel and installing only its own browser.
+- **Only what a change touches, on pull requests.** `scripts/affected-tests.mjs` maps changed files to specs: a tool's folder to `tests/e2e/<id>.spec.js`, hub files to the hub spec, docs to nothing, and anything shared or unknown to everything. Pushes to `main` always run everything, since they deploy. A single `test` check sums up the unit tests and all browser jobs, so the check name stays stable.
+- **Accessibility checks** with axe-core on every page, in light and dark mode, in Chromium (desktop and mobile) only: axe checks what the page says, not how an engine draws it, and it's the slowest step. Any WCAG AA violation fails the build.
 - **No-external-requests check:** browser tests fail if any page makes a request outside the site's origin.
 - **License check:** REUSE lint.
 - Every new tool must come with tests.
