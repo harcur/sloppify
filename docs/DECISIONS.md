@@ -14,6 +14,10 @@ Games:
 
 - **mines** (`tools/mines/`): the classic hidden-mines grid game under a generic name, since the familiar name is a trademark. Three board sizes (9×9/10, 16×16/40, 16×30/99), first move always opens an area, flags by right-click, long-press, flag mode or the F key, opening a number with all its flags placed opens its neighbours. Violet gem-like tiles over a warm cream field (deep plum in dark mode), gold flags, its own mine icon. Openings ripple outwards from the cell played, flags drop in and wave, a loss shakes the board and rings the mine that went off, a win sends a wave across the board plus confetti; all CSS and SVG, all off under reduced motion. On narrow screens it fills the screen like an app (`initPage({ app: true })`): counters on top, the board in the middle, Flag mode / New game / Options at the bottom, and an options sheet with board size, record, help and the footer's text and source link; the site menu stays as a floating button. A wide board is shown turned on its side. Saves the game in progress, plus wins and best time per size.
 
+Tools:
+
+- **random numbers** (`tools/random-numbers/`): whole numbers in a range (From/To, typed; a backwards range is swapped), how many (1 to 100, stepper or typed), no repeats, sort. Up to four numbers show as large tiles in the tool colour, more as a numbered list that scrolls inside the result area, with their sum. A new pick flickers in grey for about half a second, then the numbers pop in and the result frame flashes, so a fresh pick is visible even when the number is the same; off under reduced motion. Copy puts the numbers on the clipboard. On phones Pick and Copy are pinned to the bottom of the screen. Uses `crypto.getRandomValues`. Saves the settings and the last 20 picks. No preset ranges (dropped after the mockup). Picking people or items from a list, dice, a wheel and similar will be separate tools rather than modes of this one.
+
 ## Core principles
 
 1. **No data is sent anywhere.** Zero external requests: no CDNs, no remote fonts, no analytics, no telemetry. System fonts and self-hosted assets only.

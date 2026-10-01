@@ -50,26 +50,23 @@
       "path": "tools/mines/"
     },
     {
-      "id": "random",
+      "id": "random-numbers",
       "name": {
-        "en": "random"
+        "en": "random numbers"
       },
       "description": {
-        "en": "Spin a wheel, roll dice, pick numbers, draw straws, flip a coin, shuffle or make teams"
+        "en": "Pick random whole numbers in a range, with or without repeats"
       },
       "category": "tool",
       "tags": [
-        "dice",
-        "wheel",
-        "picker",
-        "coin",
+        "random",
         "number generator",
-        "straws",
-        "shuffle",
-        "teams"
+        "rng",
+        "lottery",
+        "raffle"
       ],
       "license": "MIT",
-      "path": "tools/random/"
+      "path": "tools/random-numbers/"
     },
     {
       "id": "sudoku",
