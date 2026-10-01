@@ -84,7 +84,7 @@ const moreBtn = button('sdk-more', t('sudoku.options'), () => openSheet(), { 'ar
 
 const padBtns = Array.from({ length: 9 }, (_, k) => h('button', {
   type: 'button', class: 'sdk-pad-btn', 'data-d': k + 1, onclick: () => input(k + 1),
-}, h('span', { class: 'sdk-pad-digit', 'aria-hidden': 'true' }, String(k + 1)), h('span', { class: 'sdk-pad-left', 'aria-hidden': 'true' })));
+}, h('span', { class: 'sdk-pad-digit', 'aria-hidden': 'true' }, String(k + 1)), h('span', { class: 'sdk-pips', 'aria-hidden': 'true' }, Array.from({ length: 9 }, () => h('i')))));
 const pad = h('div', { class: 'sdk-pad', role: 'group', 'aria-label': t('sudoku.digits') }, padBtns);
 
 const controls = h('div', { class: 'sdk-controls' },
@@ -184,7 +184,7 @@ boardWrap.append(board);
 // Cells grow to fit the space: the column's width on wider screens, the
 // width and height left between the counters and the controls on narrow ones.
 function sizeBoard() {
-  const lines = 2 * 3 + 2 * 2 + 8 + 4; // frame, box lines, cell lines, padding
+  const lines = 2 * 2 + 2 * 2 + 6 + 4; // frame, box lines, cell lines, padding
   const fitW = boardWrap.clientWidth - lines;
   const fitH = narrow.matches ? boardWrap.clientHeight - lines : innerHeight - 220;
   const min = coarse.matches ? 32 : 28;
@@ -240,7 +240,8 @@ function renderBar() {
   for (const b of padBtns) {
     const d = +b.dataset.d;
     const left = Math.max(0, 9 - counts[d]);
-    b.lastChild.textContent = left ? String(left) : '';
+    // One pip per digit placed, so the pad shows progress at a glance.
+    b.lastChild.childNodes.forEach((pip, k) => pip.classList.toggle('on', k < counts[d]));
     b.classList.toggle('is-done', !left);
     b.setAttribute('aria-label', t(left ? 'sudoku.digit.left' : 'sudoku.digit.done', { d, left }));
   }
@@ -462,7 +463,7 @@ function celebrate(unit, from) {
   for (const j of unit) bump(cells[j], 'is-done', 1000);
 }
 
-const CONFETTI = ['--s-frame', '--s-sel', '--s-entry', '--s-bad', '--s-same', '--s-hint'];
+const CONFETTI = ['--s-ring', '--s-sel', '--s-entry', '--s-box', '--s-same', '--s-hint'];
 
 function confetti() {
   if (reducedMotion.matches) return;

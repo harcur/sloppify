@@ -69,6 +69,8 @@ Below 720 px the header shrinks to a floating menu button and the footer is hidd
 - Prefix game tokens (`--m-*`, `--s-*`) and define them three times: `:root`, `@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { … } }`, and `:root[data-theme="dark"]`. Forgetting the third breaks the manual dark toggle.
 - Check every text colour against **every** background it can sit on (cell, alternate cell, highlighted, selected, error), ≥ 4.5:1, and state differences ≥ 3:1. Do it with a script before writing CSS; a short WCAG luminance function in Python or Node takes a minute. Write the result in a comment above the palette.
 - Colour is never the only signal: givens bold vs entries regular, hint underlined, conflicts hatched (`repeating-linear-gradient`), selection gets an inset ring as well as a fill, completed pad digits struck through and dashed.
+- Keep the board calm and let the pieces carry the colour. Sudoku's first pass (dark frame colour showing through 1px and 3px gaps, saturated fills) read as harsh. What worked: hairline cell lines in a soft tint, slightly heavier (2px) lines only for grouping, pale backgrounds for highlights, and a thin ring for selection. Showing the board background through gaps gives every line the same colour; for two line colours use cell borders with `box-sizing: content-box` and drop them on the last column and row.
+- A fill that carries text (pressed buttons) needs its own darker token; a line colour that passes 3:1 usually fails 4.5:1 under white text.
 - Chrome around the board (buttons, segmented control, sheet) uses the site's classes (`btn`, `btn-primary`, `seg`, `seg-btn`, `dialog`) and tokens; only pressed/active states take a game colour.
 
 ## Animation
@@ -76,6 +78,7 @@ Below 720 px the header shrinks to a floating menu button and the footer is hidd
 - Render guard: store a key of what a cell shows (`b.dataset.key = \`${value}.${notes}\``) and only rebuild its children when the key changes. New child elements play their CSS entry animation; unchanged cells don't replay theirs on every re-render.
 - Ripple: set a per-cell delay custom property from the distance to the cell played (`--d`, `--w`, `--u`), and use it as `animation-delay`. Use separate properties per effect so they don't leak into each other.
 - To replay a one-shot effect on an element that may already have the class: remove it, read `el.offsetWidth`, add it, and remove it with `setTimeout` after the longest delay plus duration.
+- Prefer quiet, short motion that never blocks input: fade and slight scale or blur for new pieces, a 2px shiver for errors, a background wash for rewards, `transition` on highlight colours so moving the selection glides. Big scale bounces get tiring on a game played for minutes.
 - Confetti: ~60 absolutely positioned `<span>`s with random `--dx --dy --rot --t --delay` in an `aria-hidden` box over the play area, removed after ~2.6 s, skipped entirely under reduced motion.
 - `@media (prefers-reduced-motion: reduce)` sets `animation: none !important; transition: none !important` on the board, its cells, their children and pseudo-elements, hides overlay effects, and turns off the sheet's slide-in.
 
