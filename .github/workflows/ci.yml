@@ -36,15 +36,13 @@ jobs:
       - uses: fsfe/reuse-action@v5
 
   deploy:
+    # Publishes only the site files to the gh-pages branch.
+    # Pages settings: Deploy from a branch, gh-pages, / (root).
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, licenses]
     runs-on: ubuntu-latest
     permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Collect site files (dev tooling is never deployed)
@@ -53,11 +51,12 @@ jobs:
             --exclude .git --exclude .github --exclude node_modules --exclude tests \
             --exclude docs --exclude tools/_template --exclude _site \
             --exclude package.json --exclude package-lock.json --exclude playwright.config.js
-      - uses: actions/configure-pages@v5
-        with:
-          enablement: true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Push to gh-pages
+        working-directory: _site
+        run: |
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Deploy ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

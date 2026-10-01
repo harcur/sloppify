@@ -27,4 +27,4 @@ Copy `tools/_template/`, follow its README, add an entry to `tools.json`, add te
 
 - Replace the generic source icon in `shared/icons.js` with Octicons `mark-github` (MIT).
 - Add PNG app icons (192, 512, apple-touch-icon).
-- Push to GitHub and enable Pages with source "GitHub Actions".
+- Pages: deploy from branch `gh-pages`, `/ (root)`. CI rebuilds it from `main` after tests pass.
