@@ -13,6 +13,8 @@ export const strings = {
     'mines.time': 'time',
     'mines.new': 'New game',
     'mines.flagMode': 'Flag mode',
+    'mines.options': 'Options',
+    'mines.close': 'Close',
     'mines.board': 'Minefield, {rows} rows by {cols} columns',
 
     'mines.cell.hidden': 'hidden',

@@ -59,10 +59,14 @@ function showFlash() {
  * Call once per page.
  *   hub:  initPage({ sourcePath: '' })
  *   tool: initPage({ toolId: 'sudoku', toolName: 'sudoku', license: 'MIT', sourcePath: 'tools/sudoku/' })
+ *   app:  true for games that fill the screen on narrow viewports. The header
+ *         shrinks to a floating menu button and the footer is hidden, so the
+ *         page must show the footer's text and source link itself there.
  * Returns { main, slot }: slot is an empty area in the header (the hub puts search there).
  */
-export function initPage({ toolId = null, toolName = '', license = 'MIT', sourcePath = '' } = {}) {
+export function initPage({ toolId = null, toolName = '', license = 'MIT', sourcePath = '', app = false } = {}) {
   document.documentElement.lang = lang;
+  document.documentElement.classList.toggle('app-page', app);
   applyTheme(getTheme());
 
   const main = document.getElementById('main');

@@ -32,6 +32,14 @@ async function loadKnownBoard(page, mines = CORNER) {
   await page.goto('./tools/mines/');
 }
 
+// On narrow screens the board sizes live in the options sheet.
+async function chooseLevel(page, level) {
+  const more = page.getByRole('button', { name: 'Options' });
+  if (await more.isVisible()) await more.click();
+  await page.getByRole('button', { name: new RegExp(`^${level}`) }).click();
+}
+const isNarrow = (page) => (page.viewportSize()?.width ?? 1000) < 720;
+
 const cell = (page, row, col, state = 'hidden') => page.getByRole('gridcell', { name: `row ${row}, column ${col}: ${state}` });
 const minesLeft = (page) => page.locator('.mines-stat').filter({ hasText: 'mines left' }).locator('.mines-stat-value');
 
@@ -109,11 +117,37 @@ test('a game in progress is kept on reload, and a new game asks first', async ({
 
 test('the large board turns on its side on narrow screens', async ({ page }) => {
   await page.goto('./tools/mines/');
-  await page.getByRole('button', { name: /^large/ }).click();
-  const narrow = (page.viewportSize()?.width ?? 1000) < 720;
-  const name = narrow ? 'Minefield, 30 rows by 16 columns' : 'Minefield, 16 rows by 30 columns';
+  await chooseLevel(page, 'large');
+  const name = isNarrow(page) ? 'Minefield, 30 rows by 16 columns' : 'Minefield, 16 rows by 30 columns';
   await expect(page.getByRole('grid', { name })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^large/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.mines-level[data-level="large"]')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('on narrow screens the game fills the screen like an app', async ({ page }) => {
+  test.skip(!isNarrow(page), 'narrow screens only');
+  await page.goto('./tools/mines/');
+  const view = page.viewportSize();
+  await expect(page.getByRole('link', { name: 'sloppify' })).toBeHidden();
+  await expect(page.locator('.site-footer')).toBeHidden();
+  const box = await page.getByRole('grid').boundingBox();
+  expect(box.width).toBeGreaterThan(view.width * 0.85);
+  expect(await page.evaluate(() => document.scrollingElement.scrollHeight)).toBeLessThanOrEqual(view.height);
+  for (const name of ['Flag mode', 'New game', 'Options']) {
+    const b = await page.getByRole('button', { name, exact: true }).boundingBox();
+    expect(b.y + b.height).toBeGreaterThan(view.height - 80);
+  }
+  // The site menu is still one tap away.
+  await page.getByRole('button', { name: 'Menu' }).click();
+  await expect(page.getByRole('button', { name: 'Export' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  // Options holds the side panel and the footer's source link.
+  await page.getByRole('button', { name: 'Options' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Options' });
+  await expect(sheet.getByRole('heading', { name: 'how to play' })).toBeVisible();
+  await expect(sheet.getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute('href', /tools\/mines\/$/);
+  await sheet.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('button', { name: 'Options' })).toBeFocused();
 });
 
 for (const scheme of ['light', 'dark']) {
@@ -128,5 +162,11 @@ for (const scheme of ['light', 'dark']) {
     await page.getByRole('button', { name: 'Cancel' }).click();
     await cell(page, 3, 5).click();
     await expectAccessible(page, 'lost');
+    if (isNarrow(page)) {
+      await page.getByRole('button', { name: 'Options' }).click();
+      const sheet = page.getByRole('dialog', { name: 'Options' });
+      await sheet.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+      await expectAccessible(page, 'options sheet');
+    }
   });
 }

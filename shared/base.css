@@ -242,3 +242,20 @@ button { cursor: pointer; }
 .tool-main { padding-top: 24px; padding-bottom: 16px; }
 .tool-title { margin: 0 0 12px; font-family: var(--mono); font-size: 24px; font-weight: 400; }
 .tool-placeholder { margin: 0; max-width: 60ch; color: var(--muted); }
+
+/* App pages ----------------------------------------------------------
+   Games that fill the screen on narrow viewports (initPage({ app: true })).
+   Only the menu button stays, floating top right; the page shows the
+   footer's text and source link itself. */
+@media (max-width: 719px) {
+  .app-page, .app-page body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .app-page .site-header { position: fixed; top: 0; right: 0; left: auto; border: 0; background: transparent; }
+  .app-page .header-inner { display: block; min-height: 0; padding: 0 env(safe-area-inset-right, 0px) 0 0; }
+  .app-page .logo, .app-page .header-slot, .app-page .site-footer { display: none; }
+  .app-page .menu { margin: 0; }
+  .app-page .tool-main { padding: 0; }
+  .app-page .tool-title {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+}

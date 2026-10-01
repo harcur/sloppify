@@ -4,6 +4,8 @@
 import { initPage, guardStore } from '../../shared/page.js';
 import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
+import { icon } from '../../shared/icons.js';
+import { sourceUrl } from '../../shared/config.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
 import { strings } from './strings.js';
@@ -13,7 +15,9 @@ extendStrings(strings);
 
 const TOOL_ID = 'mines';
 const name = t(`${TOOL_ID}.name`);
-const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: 'tools/mines/' });
+const SOURCE_PATH = 'tools/mines/';
+const narrow = matchMedia('(max-width: 719px)');
+const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: SOURCE_PATH, app: true });
 
 // Saved: level, game in progress, and wins/best times per level.
 const store = openStore(TOOL_ID, { version: 1 });
@@ -43,27 +47,17 @@ const timeValue = h('span', { class: 'mines-stat-value' });
 const flagBtn = h('button', { type: 'button', class: 'btn mines-flag-btn', 'aria-pressed': 'false', onclick: () => setFlagMode(!flagMode) },
   svg('flag'), t('mines.flagMode'));
 const newBtn = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => startNew(g.level) }, t('mines.new'));
+const moreBtn = h('button', { type: 'button', class: 'btn mines-more', 'aria-haspopup': 'dialog', onclick: () => openSheet() }, t('mines.options'));
 const status = h('p', { class: 'mines-status', role: 'status' });
 const announcer = h('p', { class: 'sr-only', 'aria-live': 'polite' });
 const scroller = h('div', { class: 'mines-scroll' });
 const levelBtns = Object.keys(LEVELS).map((lv) => h('button', {
-  type: 'button', class: 'seg-btn mines-level', 'data-level': lv, onclick: () => startNew(lv),
+  type: 'button', class: 'seg-btn mines-level', 'data-level': lv,
+  onclick: async () => { if (await startNew(lv) && sheet.open) sheet.close(); },
 }, h('span', {}, t(`mines.level.${lv}`)), h('span', { class: 'mines-level-detail' }, t('mines.level.detail', LEVELS[lv]))));
 const statsList = h('dl', { class: 'mines-record' });
 
-main.append(
-  h('h1', { class: 'tool-title' }, name),
-  h('div', { class: 'mines-layout' },
-    h('div', { class: 'mines-play' },
-      h('div', { class: 'mines-bar' },
-        h('p', { class: 'mines-stat' }, h('span', { class: 'mines-stat-label' }, t('mines.left')), leftValue),
-        h('p', { class: 'mines-stat' }, h('span', { class: 'mines-stat-label' }, t('mines.time')), timeValue),
-        h('div', { class: 'mines-actions' }, flagBtn, newBtn),
-      ),
-      status,
-      scroller,
-    ),
-    h('div', { class: 'mines-side' },
+const side = h('div', { class: 'mines-side' },
       h('div', { class: 'mines-section', role: 'group', 'aria-labelledby': 'mines-level-label' },
         h('h2', { class: 'mines-h2', id: 'mines-level-label' }, t('mines.level')),
         h('div', { class: 'seg mines-seg' }, levelBtns),
@@ -76,16 +70,55 @@ main.append(
         h('h2', { class: 'mines-h2', id: 'mines-help-label' }, t('mines.help.title')),
         ['goal', 'touch', 'mouse', 'keys', 'chord'].map((k) => h('p', {}, t(`mines.help.${k}`))),
       ),
-    ),
-  ),
-  announcer,
 );
+const layout = h('div', { class: 'mines-layout' },
+  h('div', { class: 'mines-play' },
+    h('div', { class: 'mines-top' },
+      h('p', { class: 'mines-stat' }, h('span', { class: 'mines-stat-label' }, t('mines.left')), leftValue),
+      h('p', { class: 'mines-stat' }, h('span', { class: 'mines-stat-label' }, t('mines.time')), timeValue),
+    ),
+    status,
+    scroller,
+    h('div', { class: 'mines-actions' }, flagBtn, newBtn, moreBtn),
+  ),
+  side,
+);
+
+// On narrow screens the game fills the screen. The side panel, plus the
+// footer's text and source link that the page hides there, move into a sheet.
+const sheetBody = h('div', { class: 'mines-sheet-body' });
+const sheet = h('dialog', { class: 'dialog mines-sheet', 'aria-labelledby': 'mines-sheet-title' },
+  h('div', { class: 'mines-sheet-head' },
+    h('h2', { class: 'dialog-title', id: 'mines-sheet-title' }, t('mines.options')),
+    h('button', { type: 'button', class: 'btn', onclick: () => sheet.close() }, t('mines.close')),
+  ),
+  sheetBody,
+  h('div', { class: 'mines-sheet-foot' },
+    h('p', {}, t('footer.text')),
+    h('p', {}, h('a', { href: sourceUrl(SOURCE_PATH), rel: 'noreferrer' }, icon('source'), t('footer.source'))),
+  ),
+);
+sheet.addEventListener('close', () => { if (moreBtn.isConnected) moreBtn.focus(); });
+
+function openSheet() {
+  renderStats();
+  sheet.showModal();
+}
+
+function placeSide() {
+  if (narrow.matches) sheetBody.append(side);
+  else {
+    if (sheet.open) sheet.close();
+    layout.append(side);
+  }
+}
+
+main.append(h('h1', { class: 'tool-title' }, name), layout, sheet, announcer);
 
 // Board --------------------------------------------------------------
 // On narrow screens a wide board is shown turned on its side, so it scrolls
 // down instead of sideways. The game itself doesn't change.
 
-const narrow = matchMedia('(max-width: 719px)');
 const coarse = matchMedia('(pointer: coarse)');
 let board = null;
 let cells = [];
@@ -130,11 +163,16 @@ function buildBoard() {
   sizeCells();
 }
 
+// Cells grow to fit the space: the width on desktop, the width and height
+// on narrow screens where the board fills the screen. Below the minimum
+// size the board scrolls instead.
 function sizeCells() {
-  const [, cols] = dims();
+  const [rows, cols] = dims();
   const min = coarse.matches ? 32 : 24;
-  const fit = Math.floor((scroller.clientWidth - 2) / cols);
-  board.style.setProperty('--cell', `${Math.max(min, Math.min(40, fit))}px`);
+  const fitW = Math.floor((scroller.clientWidth - 10) / cols);
+  const fitH = narrow.matches ? Math.floor((scroller.clientHeight - 10) / rows) : Infinity;
+  const max = narrow.matches ? 64 : 40;
+  board.style.setProperty('--cell', `${Math.max(min, Math.min(max, fitW, fitH))}px`);
 }
 
 function cellState(i) {
@@ -301,10 +339,11 @@ function setFlagMode(on) {
   board.classList.toggle('is-flagging', on);
 }
 
+// Returns true when a new game started.
 async function startNew(level) {
   if (g.state === 'playing') {
     const ok = await confirmDialog({ title: t('mines.confirm.title'), body: t('mines.confirm.body'), confirmLabel: t('mines.confirm.ok') });
-    if (!ok) return;
+    if (!ok) return false;
   }
   clearInterval(tick);
   runStart = 0;
@@ -316,6 +355,7 @@ async function startNew(level) {
   setFlagMode(flagMode);
   renderBar();
   save();
+  return true;
 }
 
 function save() {
@@ -430,11 +470,16 @@ function onKey(e) {
 // Start --------------------------------------------------------------
 
 new ResizeObserver(() => sizeCells()).observe(scroller);
-narrow.addEventListener('change', () => { if ((narrow.matches && g.cols > g.rows) !== transposed) buildBoard(); });
+narrow.addEventListener('change', () => {
+  placeSide();
+  if ((narrow.matches && g.cols > g.rows) !== transposed) buildBoard();
+  else sizeCells();
+});
 coarse.addEventListener('change', sizeCells);
 document.addEventListener('visibilitychange', () => { syncTimer(); if (document.visibilityState === 'hidden') save(); });
 addEventListener('pagehide', save);
 
+placeSide();
 buildBoard();
 if (g.state === 'won' || g.state === 'lost') {
   status.textContent = g.state === 'won' ? t('mines.status.won', { time: formatTime(g.elapsed) }) : t('mines.status.lost');

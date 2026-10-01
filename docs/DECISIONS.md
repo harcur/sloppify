@@ -12,7 +12,7 @@ Starter tools: **Sudoku** and **Interest rate calculator**.
 
 Games:
 
-- **mines** (`tools/mines/`): the classic hidden-mines grid game under a generic name, since the familiar name is a trademark. Three board sizes (9×9/10, 16×16/40, 16×30/99), first move always opens an area, flags by right-click, long-press, flag mode or the F key, opening a number with all its flags placed opens its neighbours. Violet gem-like tiles over a warm cream field (deep plum in dark mode), gold flags, its own mine icon. Openings ripple outwards from the cell played, flags drop in and wave, a loss shakes the board and rings the mine that went off, a win sends a wave across the board plus confetti; all CSS and SVG, all off under reduced motion. On narrow screens a wide board is shown turned on its side. Saves the game in progress, plus wins and best time per size.
+- **mines** (`tools/mines/`): the classic hidden-mines grid game under a generic name, since the familiar name is a trademark. Three board sizes (9×9/10, 16×16/40, 16×30/99), first move always opens an area, flags by right-click, long-press, flag mode or the F key, opening a number with all its flags placed opens its neighbours. Violet gem-like tiles over a warm cream field (deep plum in dark mode), gold flags, its own mine icon. Openings ripple outwards from the cell played, flags drop in and wave, a loss shakes the board and rings the mine that went off, a win sends a wave across the board plus confetti; all CSS and SVG, all off under reduced motion. On narrow screens it fills the screen like an app (`initPage({ app: true })`): counters on top, the board in the middle, Flag mode / New game / Options at the bottom, and an options sheet with board size, record, help and the footer's text and source link; the site menu stays as a floating button. A wide board is shown turned on its side. Saves the game in progress, plus wins and best time per size.
 
 ## Core principles
 
@@ -137,6 +137,7 @@ Each tool owns its schema version and provides migrations so older backups can b
 
 - A small menu on **every page** containing: back to hub and add/remove favourite (tool pages only), theme toggle (system / light / dark), Export, Import and Reset everything.
 - Implemented once in `shared/page.js` so all pages behave identically.
+- **App pages** (games, `initPage({ app: true })`): on narrow screens the header shrinks to the menu button alone, floating top right, so the game can fill the screen. The footer is hidden there and its text and source link move into the game's own options sheet.
 
 ## AI and privacy disclosure
 

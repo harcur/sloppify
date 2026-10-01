@@ -156,6 +156,7 @@ test('every page in tools.json loads with its own source link', async ({ page, r
   for (const tool of manifest.tools) {
     await page.goto(`./${tool.path}`);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Source on GitHub' })).toHaveAttribute('href', new RegExp(`${tool.path}$`));
+    // Games that fill a narrow screen keep this link in their own options instead.
+    await expect(page.locator('a', { hasText: 'Source on GitHub' }).first()).toHaveAttribute('href', new RegExp(`${tool.path}$`));
   }
 });
