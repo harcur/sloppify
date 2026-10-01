@@ -101,6 +101,7 @@ test('results are announced when a field is changed', async ({ page }) => {
 
 for (const scheme of ['light', 'dark']) {
   test(`accessibility (${scheme})`, async ({ page }) => {
+    test.setTimeout(60_000); // five axe runs, one per situation plus invalid input
     await page.emulateMedia({ colorScheme: scheme });
     for (const name of ['Loan', 'Savings', 'Pay off debt', 'Find the rate']) {
       await mode(page, name);
