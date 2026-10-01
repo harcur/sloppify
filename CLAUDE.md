@@ -1,6 +1,6 @@
 # sloppify — notes for Claude Code
 
-Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision. Read `docs/TOOL-GUIDELINES.md` before proposing or building a tool: what fits the site (self-contained, nothing that goes stale, no trademarks or copies) and the size budgets.
+Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.github.io/sloppify/`. Read `docs/DECISIONS.md` before changing anything: it records every design and architecture decision. Read `docs/TOOL-GUIDELINES.md` before proposing or building a tool: it collects every rule a tool follows (what fits the site, size budgets, structure, storage, design, accessibility, tests) with a checklist.
 
 ## Hard rules
 

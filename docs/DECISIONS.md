@@ -106,7 +106,7 @@ One JSON file for the whole site:
 
 ```json
 {
-  "format": "local-tools-backup",
+  "format": "sloppify-backup",
   "formatVersion": 1,
   "exportedAt": "2026-10-01T12:00:00Z",
   "tools": {
@@ -132,7 +132,7 @@ Each tool owns its schema version and provides migrations so older backups can b
 ## Data menu
 
 - A small menu on **every page** containing: back to hub and add/remove favourite (tool pages only), theme toggle (system / light / dark), Export, Import and Reset everything.
-- Implemented once in `shared/menu.js` so all pages behave identically.
+- Implemented once in `shared/page.js` so all pages behave identically.
 
 ## AI and privacy disclosure
 
@@ -167,7 +167,7 @@ The site itself has no build step and no dependencies. Test tooling is dev-only 
 
 ## What tools belong
 
-Rules for which tools fit and how heavy they may be are in `docs/TOOL-GUIDELINES.md`: self-contained with nothing that goes stale (no live data such as exchange rates or weather), a common everyday use, low stakes, no trademarks or one-to-one copies of existing games or apps, and per-page size budgets enforced by `tests/unit/budget.test.js`.
+`docs/TOOL-GUIDELINES.md` collects every rule a tool follows, from this file and elsewhere, into one guide with a checklist. Decisions it adds: self-contained with nothing that goes stale (no live data such as exchange rates or weather), a common everyday use, low stakes, no trademarks or one-to-one copies of existing games or apps, and per-page size budgets enforced by `tests/unit/budget.test.js`.
 
 ## Contributions
 

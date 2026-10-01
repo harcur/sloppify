@@ -2,7 +2,7 @@
 
 Starting point for a new tool. This folder isn't listed in `tools.json` and isn't deployed.
 
-0. Check the idea against `docs/TOOL-GUIDELINES.md`: self-contained, no trademarks, within the size budget.
+0. Read `docs/TOOL-GUIDELINES.md` and check the idea against Part 1. Its checklist at the end covers everything below.
 1. Copy this folder to `tools/<your-id>/`. The id is lowercase letters, digits and dashes.
 2. Replace `my-tool` with your id in `app.js` and `strings.js`, and set the name and title.
 3. Add an entry to `tools.json` with id, name, description, category, tags, license and path.

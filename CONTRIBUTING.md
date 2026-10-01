@@ -1,19 +1,19 @@
 # Contributing
 
-Contributions are welcome. Start with [docs/TOOL-GUIDELINES.md](docs/TOOL-GUIDELINES.md): it says what kind of tool fits the site and how heavy it may be. A new tool must:
+Contributions are welcome. Everything a new tool or game has to follow is in [docs/TOOL-GUIDELINES.md](docs/TOOL-GUIDELINES.md): what fits the site, size budgets, how a tool is built, design, accessibility and tests. It ends with a checklist to go through before opening a pull request.
 
-- live in its own folder under `tools/`, started from `tools/_template/`, and be added to `tools.json`
+In short, a new tool must:
+
+- be self-contained, with nothing that goes stale, a common everyday use and low stakes
+- use no trademarks and not copy a specific existing game or app
+- stay within its size budget
+- live in its own folder under `tools/`, started from `tools/_template/`, and be listed in `tools.json`
 - use the shared code in `shared/` for the page shell, storage, dialogs, theme and strings
 - keep every visible string in its `strings.js`
-- save data only through `openStore` in `shared/storage.js`, with a `migrate` function whenever the data's shape changes
-- fit the guidelines: self-contained, nothing that goes stale, no trademarks or one-to-one copies of existing games or apps
-- stay within the size budgets
-- make no requests outside the site (no CDNs, remote fonts, analytics or APIs)
-- have a designed layout for both mobile and desktop
-- meet WCAG 2.2 AA: keyboard access, screen reader labels, contrast
+- save data only through `openStore`, with a `migrate` function whenever the data's shape changes
+- make no requests outside the site
+- have designed mobile and desktop layouts and meet WCAG 2.2 AA
 - carry SPDX license headers on every file
 - include tests, and pass CI
-
-Tools that depend on a library under another license (for example GPL) vendor that library inside the tool's folder and include its `LICENSE` there.
 
 How contributions fit with the site's "not hand-coded" notice is still being decided.
