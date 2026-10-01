@@ -10,6 +10,10 @@ A collection of web pages with utilities, games and similar tools people commonl
 
 Starter tools: **Sudoku** and **Interest rate calculator**.
 
+Games:
+
+- **mines** (`tools/mines/`): the classic hidden-mines grid game under a generic name, since the familiar name is a trademark. Three board sizes (9×9/10, 16×16/40, 16×30/99), first move always opens an area, flags by right-click, long-press, flag mode or the F key, opening a number with all its flags placed opens its neighbours. Own palette and icons. On narrow screens a wide board is shown turned on its side. Saves the game in progress, plus wins and best time per size.
+
 ## Core principles
 
 1. **No data is sent anywhere.** Zero external requests: no CDNs, no remote fonts, no analytics, no telemetry. System fonts and self-hosted assets only.

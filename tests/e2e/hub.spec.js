@@ -25,6 +25,7 @@ test('Escape dismisses the notice too', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0); // saved when the dialog's close event fires
   await page.reload();
   await expect(page.getByRole('heading', { level: 3, name: 'sudoku' })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);

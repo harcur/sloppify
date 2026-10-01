@@ -14,6 +14,15 @@
       "path": "tools/interest-calculator/"
     },
     {
+      "id": "mines",
+      "name": { "en": "mines" },
+      "description": { "en": "Clear a grid without opening a mine" },
+      "category": "game",
+      "tags": ["puzzle", "logic", "grid"],
+      "license": "MIT",
+      "path": "tools/mines/"
+    },
+    {
       "id": "sudoku",
       "name": { "en": "sudoku" },
       "description": { "en": "Classic 9\u00d79 puzzles" },

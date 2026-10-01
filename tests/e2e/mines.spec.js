@@ -1,0 +1,132 @@
+// SPDX-FileCopyrightText: 2026 sloppify contributors
+// SPDX-License-Identifier: MIT
+
+import { test, expect } from '@playwright/test';
+import { trackExternalRequests, markNoticeSeen, expectAccessible } from './helpers.js';
+import { newGame, serialize } from '../../tools/mines/logic.js';
+
+let external;
+test.beforeEach(async ({ page, baseURL }) => {
+  external = trackExternalRequests(page, baseURL);
+  await markNoticeSeen(page);
+});
+test.afterEach(() => { expect(external, 'requests outside the site').toEqual([]); });
+
+// Known small boards, saved before the page loads.
+// CORNER: the whole first row plus the first cell of the second. Opening any
+// cell away from them floods the board and wins.
+// WALL: the whole third row plus the first cell of the fourth. Opening below
+// the wall leaves the two rows above it unopened.
+const CORNER = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+const WALL = [18, 19, 20, 21, 22, 23, 24, 25, 26, 27];
+async function loadKnownBoard(page, mines = CORNER) {
+  const g = newGame('small');
+  for (const i of mines) g.mine[i] = 1;
+  g.state = 'playing';
+  const saved = JSON.stringify(serialize(g));
+  await page.addInitScript((game) => {
+    if (localStorage.getItem('sloppify:mines:game')) return;
+    localStorage.setItem('sloppify:mines:__schema', '1');
+    localStorage.setItem('sloppify:mines:game', game);
+  }, saved);
+  await page.goto('./tools/mines/');
+}
+
+const cell = (page, row, col, state = 'hidden') => page.getByRole('gridcell', { name: `row ${row}, column ${col}: ${state}` });
+const minesLeft = (page) => page.locator('.mines-stat').filter({ hasText: 'mines left' }).locator('.mines-stat-value');
+
+test('the first cell opened is safe and opens an area', async ({ page }) => {
+  await page.goto('./tools/mines/');
+  await expect(page.getByRole('grid', { name: 'Minefield, 9 rows by 9 columns' })).toBeVisible();
+  await cell(page, 5, 5).click();
+  await expect(cell(page, 5, 5, 'empty')).toBeVisible();
+  await expect(page.getByRole('status').filter({ hasText: 'opened a mine' })).toHaveCount(0);
+});
+
+test('keyboard: arrows move, F flags, Enter opens', async ({ page }) => {
+  await page.goto('./tools/mines/');
+  await cell(page, 1, 1).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(cell(page, 1, 2)).toBeFocused();
+  await page.keyboard.press('f');
+  await expect(cell(page, 1, 2, 'flagged')).toBeFocused();
+  await expect(minesLeft(page)).toHaveText('9');
+  await page.keyboard.press('f');
+  await expect(minesLeft(page)).toHaveText('10');
+  await page.keyboard.press('End');
+  await expect(cell(page, 1, 9)).toBeFocused();
+  for (let i = 0; i < 4; i++) await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await expect(cell(page, 5, 9)).toHaveCount(0);
+});
+
+test('right-click and flag mode both place flags', async ({ page }) => {
+  await page.goto('./tools/mines/');
+  await cell(page, 2, 2).click({ button: 'right' });
+  await expect(cell(page, 2, 2, 'flagged')).toBeVisible();
+  const toggle = page.getByRole('button', { name: 'Flag mode' });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await cell(page, 3, 3).click();
+  await expect(cell(page, 3, 3, 'flagged')).toBeVisible();
+  await expect(minesLeft(page)).toHaveText('8');
+});
+
+test('clearing the board wins, records the time, and survives a reload', async ({ page }) => {
+  await loadKnownBoard(page);
+  await cell(page, 9, 9).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Cleared in' })).toContainText('New best');
+  await expect(cell(page, 1, 1, 'flagged')).toBeVisible();
+  await expect(page.locator('.mines-record')).toContainText('1 won of 1');
+  await page.reload();
+  await expect(page.getByRole('status').filter({ hasText: 'Cleared in' })).toBeVisible();
+  await expect(page.locator('.mines-record')).toContainText('best');
+});
+
+test('opening a mine ends the game and shows every mine', async ({ page }) => {
+  await loadKnownBoard(page);
+  await cell(page, 3, 3).click({ button: 'right' }); // a wrong flag
+  await cell(page, 1, 1).click();
+  await expect(page.getByRole('status').filter({ hasText: 'opened a mine' })).toBeVisible();
+  await expect(cell(page, 1, 1, 'mine, exploded')).toBeVisible();
+  await expect(cell(page, 1, 5, 'mine')).toBeVisible();
+  await expect(cell(page, 3, 3, 'flagged, no mine')).toBeVisible();
+});
+
+test('a game in progress is kept on reload, and a new game asks first', async ({ page }) => {
+  await loadKnownBoard(page, WALL);
+  await cell(page, 5, 5).click();
+  await page.reload();
+  await expect(cell(page, 5, 5, 'empty')).toBeVisible();
+  await page.getByRole('button', { name: 'New game' }).click();
+  const dialog = page.getByRole('dialog', { name: 'start a new game?' });
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(cell(page, 5, 5, 'empty')).toBeVisible();
+  await page.getByRole('button', { name: 'New game' }).click();
+  await dialog.getByRole('button', { name: 'New game' }).click();
+  await expect(cell(page, 5, 5)).toBeVisible();
+});
+
+test('the large board turns on its side on narrow screens', async ({ page }) => {
+  await page.goto('./tools/mines/');
+  await page.getByRole('button', { name: /^large/ }).click();
+  const narrow = (page.viewportSize()?.width ?? 1000) < 720;
+  const name = narrow ? 'Minefield, 30 rows by 16 columns' : 'Minefield, 16 rows by 30 columns';
+  await expect(page.getByRole('grid', { name })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^large/ })).toHaveAttribute('aria-pressed', 'true');
+});
+
+for (const scheme of ['light', 'dark']) {
+  test(`accessibility (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme });
+    await loadKnownBoard(page, WALL);
+    await cell(page, 1, 1).click({ button: 'right' });
+    await cell(page, 7, 5).click();
+    await expectAccessible(page, 'in progress');
+    await page.getByRole('button', { name: 'New game' }).click();
+    await expectAccessible(page, 'confirm dialog');
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await cell(page, 3, 5).click();
+    await expectAccessible(page, 'lost');
+  });
+}
