@@ -151,10 +151,11 @@
     display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
     padding: 8px 12px;
     background: var(--surface); border: 1px solid var(--line); border-top: 0;
-    visibility: hidden; opacity: 0; transform: translateY(-6px);
-    transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+    /* Slides rather than fades, so its text never drops below full contrast. */
+    visibility: hidden; transform: translateY(-6px);
+    transition: transform 0.15s, visibility 0.15s;
   }
-  .ic-peek.is-on .ic-peek-inner { visibility: visible; opacity: 1; transform: none; }
+  .ic-peek.is-on .ic-peek-inner { visibility: visible; transform: none; }
   .ic-peek-label { font-size: 13px; color: var(--muted); }
   .ic-peek-value { font-family: var(--mono); font-size: 18px; color: var(--tool); font-variant-numeric: tabular-nums; text-align: right; }
 }

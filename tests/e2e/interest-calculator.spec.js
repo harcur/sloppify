@@ -13,6 +13,8 @@ test.beforeEach(async ({ page, baseURL }) => {
 test.afterEach(() => { expect(external, 'requests outside the site').toEqual([]); });
 
 const headline = (page) => page.locator('.ic-headline-value');
+// The result strip on phones slides in and out; check once it has settled.
+const settle = (page) => page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
 const mode = (page, name) => page.getByRole('button', { name, exact: true }).click();
 
 test('a loan shows its monthly payment, total cost and a rate table', async ({ page }) => {
@@ -103,9 +105,11 @@ for (const scheme of ['light', 'dark']) {
     for (const name of ['Loan', 'Savings', 'Pay off debt', 'Find the rate']) {
       await mode(page, name);
       for (const d of await page.locator('details').all()) await d.locator('summary').click();
+      await settle(page);
       await expectAccessible(page, name);
     }
     await page.getByLabel('Amount borrowed').fill('x');
+    await settle(page);
     await expectAccessible(page, 'invalid');
   });
 }
