@@ -31,7 +31,7 @@ Games:
 - **Each tool is its own page** in its own folder.
 - **Offline via service worker.** The hub and shared files are cached on first visit; each tool page is cached when first opened. The site is installable (web app manifest).
 - **Hosting: GitHub Pages** at `harcur.github.io/sloppify/` (no custom domain). Code hosted on **GitHub**.
-- **Deployment:** after all checks pass on `main`, GitHub Actions pushes only the site files to the `gh-pages` branch, which Pages serves from `/ (root)`. Dev tooling, tests and docs never reach that branch.
+- **Deployment:** after all checks pass on `main`, GitHub Actions collects only the site files (dev tooling, tests and docs never ship) and publishes them both ways, so either Pages setting works: it pushes them to the `gh-pages` branch and asks GitHub to build it (for "Deploy from a branch", `gh-pages`, `/ (root)`), and it deploys them directly (for "GitHub Actions"). Pushes made by the workflow's own token don't start a branch build by themselves, hence the explicit build request.
 - **All internal links and asset paths are relative**, so the site works both at a project subpath (`user.github.io/sloppify/`) and on a custom domain.
 - **Content Security Policy via `<meta>` tag** on every page (`default-src 'self'`), since GitHub Pages can't set custom headers. This makes the browser itself block any external request, enforcing the zero-requests rule.
 

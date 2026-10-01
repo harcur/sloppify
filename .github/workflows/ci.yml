@@ -36,14 +36,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: fsfe/reuse-action@v5
 
-  deploy:
-    # Publishes only the site files to the gh-pages branch.
-    # Pages settings: Deploy from a branch, gh-pages, / (root).
+  # Publishing works with either Pages setting (Settings -> Pages -> Source):
+  #   "Deploy from a branch" (gh-pages, / root): the publish job pushes the
+  #     site files to gh-pages, then asks GitHub to build that branch.
+  #   "GitHub Actions": the pages job deploys the same files directly.
+  # Whichever doesn't match the setting does nothing useful but doesn't fail.
+  publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [test, licenses]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
     steps:
       - uses: actions/checkout@v4
       - name: Generate the hub's tool list from each tool's tool.json
@@ -52,8 +56,11 @@ jobs:
         run: |
           rsync -a ./ _site/ \
             --exclude .git --exclude .github --exclude node_modules --exclude tests \
-            --exclude docs --exclude tools/_template --exclude _site \
-            --exclude package.json --exclude package-lock.json --exclude playwright.config.js --exclude scripts
+            --exclude docs --exclude tools/_template --exclude _site --exclude scripts \
+            --exclude package.json --exclude package-lock.json --exclude playwright.config.js
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
       - name: Push to gh-pages
         working-directory: _site
         run: |
@@ -63,3 +70,23 @@ jobs:
           git add -A
           git commit -qm "Deploy ${GITHUB_SHA}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages
+      - name: Ask GitHub to build gh-pages (pushes by this token don't start a build on their own)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/pages" --jq '"Pages source: \(.build_type) \(.source.branch // "") \(.source.path // "")"' || echo "Pages is not enabled for this repository yet."
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/pages/builds" --jq '"Build requested: \(.status)"' || echo "No branch build requested (Pages probably deploys from GitHub Actions instead)."
+
+  pages:
+    needs: publish
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

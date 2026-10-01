@@ -29,4 +29,4 @@ Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`,
 
 - Replace the generic source icon in `shared/icons.js` with Octicons `mark-github` (MIT).
 - Add PNG app icons (192, 512, apple-touch-icon).
-- Pages: deploy from branch `gh-pages`, `/ (root)`. CI rebuilds it from `main` after tests pass.
+- Pages: CI publishes after tests pass on `main`, for either Pages source (GitHub Actions, or branch `gh-pages` `/ (root)`). The deploy job logs which source is set.
