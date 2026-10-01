@@ -63,7 +63,7 @@ Sizes are uncompressed bytes on disk. `README.md` and `LICENSE` files don't coun
 
 | What | Budget | Now |
 |---|---|---|
-| A tool's own files (everything in `tools/<id>/` except `data/`) | 60 KB | about 3 KB |
+| A tool's own files (everything in `tools/<id>/` except `data/`) | 60 KB | largest about 47 KB (sudoku) |
 | A tool's `data/` folder (word lists, opening books, etc.) | 200 KB | none yet |
 | Shared files (`shared/`) | 50 KB | about 33 KB |
 | Hub (`index.html`, `hub*.js`, `hub.css`, `tools.json`) | 20 KB | about 11 KB |
@@ -183,6 +183,8 @@ Colour by zone:
 - Pages follow the system light or dark setting, with a manual override in the menu. Every colour a tool adds needs a light and a dark value, defined the same way `base.css` does (`prefers-color-scheme` plus `[data-theme]`).
 
 ### 4.6 Games
+
+How-to notes from the existing games (board accessibility, sizing, the narrow-screen layout, palette checks, animation, saving, tests) are in `.claude/skills/game-development/SKILL.md`.
 
 Games should be fun to look at and satisfying to play. Tools stay calm; games get to show off.
 

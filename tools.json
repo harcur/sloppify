@@ -59,7 +59,7 @@
         "en": "sudoku"
       },
       "description": {
-        "en": "Classic 9×9 puzzles"
+        "en": "Fill a 9 × 9 grid with the digits 1 to 9"
       },
       "category": "game",
       "tags": [

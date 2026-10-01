@@ -55,7 +55,7 @@ jobs:
       - name: Collect site files (dev tooling is never deployed)
         run: |
           rsync -a ./ _site/ \
-            --exclude .git --exclude .github --exclude node_modules --exclude tests \
+            --exclude .git --exclude .github --exclude .claude --exclude node_modules --exclude tests \
             --exclude docs --exclude tools/_template --exclude _site --exclude scripts \
             --exclude package.json --exclude package-lock.json --exclude playwright.config.js
       - uses: actions/upload-pages-artifact@v3
