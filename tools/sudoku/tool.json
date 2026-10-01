@@ -1,0 +1,15 @@
+{
+  "name": {
+    "en": "sudoku"
+  },
+  "description": {
+    "en": "Classic 9×9 puzzles"
+  },
+  "category": "game",
+  "tags": [
+    "puzzle",
+    "numbers",
+    "logic"
+  ],
+  "license": "MIT"
+}

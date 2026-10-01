@@ -1,0 +1,15 @@
+{
+  "name": {
+    "en": "mines"
+  },
+  "description": {
+    "en": "Clear a grid without opening a mine"
+  },
+  "category": "game",
+  "tags": [
+    "puzzle",
+    "logic",
+    "grid"
+  ],
+  "license": "MIT"
+}

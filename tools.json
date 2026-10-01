@@ -1,33 +1,68 @@
 {
+  "note": "Generated from tools/*/tool.json by scripts/tools-index.mjs. Do not edit by hand.",
   "categories": {
-    "tool": { "label": { "en": "tool" } },
-    "game": { "label": { "en": "game" } }
+    "tool": {
+      "label": {
+        "en": "tool"
+      }
+    },
+    "game": {
+      "label": {
+        "en": "game"
+      }
+    }
   },
   "tools": [
     {
       "id": "interest-calculator",
-      "name": { "en": "interest calculator" },
-      "description": { "en": "Compound and simple interest over time" },
+      "name": {
+        "en": "interest calculator"
+      },
+      "description": {
+        "en": "Compound and simple interest over time"
+      },
       "category": "tool",
-      "tags": ["finance", "money", "savings", "loan", "compound"],
+      "tags": [
+        "finance",
+        "money",
+        "savings",
+        "loan",
+        "compound"
+      ],
       "license": "MIT",
       "path": "tools/interest-calculator/"
     },
     {
       "id": "mines",
-      "name": { "en": "mines" },
-      "description": { "en": "Clear a grid without opening a mine" },
+      "name": {
+        "en": "mines"
+      },
+      "description": {
+        "en": "Clear a grid without opening a mine"
+      },
       "category": "game",
-      "tags": ["puzzle", "logic", "grid"],
+      "tags": [
+        "puzzle",
+        "logic",
+        "grid"
+      ],
       "license": "MIT",
       "path": "tools/mines/"
     },
     {
       "id": "sudoku",
-      "name": { "en": "sudoku" },
-      "description": { "en": "Classic 9\u00d79 puzzles" },
+      "name": {
+        "en": "sudoku"
+      },
+      "description": {
+        "en": "Classic 9×9 puzzles"
+      },
       "category": "game",
-      "tags": ["puzzle", "numbers", "logic"],
+      "tags": [
+        "puzzle",
+        "numbers",
+        "logic"
+      ],
       "license": "MIT",
       "path": "tools/sudoku/"
     }

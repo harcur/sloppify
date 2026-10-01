@@ -1,0 +1,17 @@
+{
+  "name": {
+    "en": "interest calculator"
+  },
+  "description": {
+    "en": "Compound and simple interest over time"
+  },
+  "category": "tool",
+  "tags": [
+    "finance",
+    "money",
+    "savings",
+    "loan",
+    "compound"
+  ],
+  "license": "MIT"
+}

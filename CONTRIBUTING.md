@@ -7,7 +7,7 @@ In short, a new tool must:
 - be self-contained, with nothing that goes stale, a common everyday use and low stakes
 - use no trademarks and not copy a specific existing game or app
 - stay within its size budget
-- live in its own folder under `tools/`, started from `tools/_template/`, and be listed in `tools.json`
+- live in its own folder under `tools/`, started from `tools/_template/`, describe itself in its `tool.json`, and have `tools.json` regenerated with `npm run tools`
 - use the shared code in `shared/` for the page shell, storage, dialogs, theme and strings
 - keep every visible string in its `strings.js`
 - save data only through `openStore`, with a `migrate` function whenever the data's shape changes

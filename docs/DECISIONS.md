@@ -41,7 +41,7 @@ Games:
 /
 ├── index.html, hub.js, hub.css   Hub page
 ├── hub-order.js                  Hub ordering logic (pure, unit tested)
-├── tools.json                    Tool manifest
+├── tools.json                    Tool list for the hub, generated
 ├── sw.js                         Service worker
 ├── manifest.webmanifest, icon.svg
 ├── shared/
@@ -55,7 +55,9 @@ Games:
 │   ├── dom.js, icons.js          DOM helper and inline icons
 │   ├── theme-boot.js             Applies the saved theme before first paint
 │   └── base.css                  Tokens and shared components
-├── tools/<id>/                   One folder per tool: index.html, app.js, strings.js, style.css, README.md
+├── tools/<id>/                   One folder per tool: tool.json, index.html, app.js, strings.js, style.css, README.md
+├── tools/categories.json         Hub categories
+├── scripts/tools-index.mjs       Generates tools.json from every tool.json (dev only)
 ├── tools/_template/              Starting point for new tools (not deployed)
 ├── tests/unit/, tests/e2e/       Dev only, never deployed
 ├── .github/workflows/ci.yml      Tests, license check, deploy
@@ -75,6 +77,8 @@ Games:
 - If migration fails, or the data is from a newer version, the tool's data is left untouched and the page offers to export it and reset that tool. This is the only case where users see an update notice.
 
 ## Tool manifest
+
+Each tool describes itself in `tools/<id>/tool.json` (name, description, category, tags, license); the folder name is its id and path. Categories live in `tools/categories.json`. GitHub Pages can't list folders, so the hub can't discover tools at runtime: `scripts/tools-index.mjs` (`npm run tools`) generates `tools.json` from the per-tool files. CI fails if the committed file is out of date or a config is invalid, and the deploy regenerates it before publishing. Folders starting with `_` are skipped.
 
 `tools.json` lists every tool with: id, name, description, tags, category, license, path. It is used by:
 
@@ -178,7 +182,7 @@ The site itself has no build step and no dependencies. Test tooling is dev-only 
 
 Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
 
-- live in its own folder and be added to `tools.json`
+- live in its own folder with a `tool.json` describing it (the hub list is generated from it)
 - use the shared storage, menu, notice, theme and i18n code
 - keep all visible text in its strings file
 - make no external requests

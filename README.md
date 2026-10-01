@@ -8,7 +8,7 @@ Not hand-coded at all, just generated with AI by a dev with no greed behind it. 
 
 - Plain HTML, CSS and JavaScript. No build step and no runtime dependencies: the files in this repo are exactly what runs.
 - Every page sets a Content Security Policy that blocks requests to anything outside the site.
-- Each tool is its own page in `tools/<id>/` and loads on its own. The hub only reads `tools.json`.
+- Each tool is its own page in `tools/<id>/` and loads on its own, with a `tool.json` describing it. The hub only reads `tools.json`, which `npm run tools` generates from those files.
 - A service worker caches the hub on first visit and each tool the first time you open it, so pages you've used work offline.
 - All data lives in `localStorage` under keys starting with `sloppify:`, through `shared/storage.js`.
 
@@ -16,7 +16,8 @@ Not hand-coded at all, just generated with AI by a dev with no greed behind it. 
 
 ```
 index.html, hub.js, hub.css, hub-order.js   The hub
-tools.json                                   The list of tools
+tools.json                                   The hub's tool list, generated from tools/*/tool.json
+scripts/                                     Generates tools.json (dev only, not deployed)
 sw.js                                        Offline caching
 shared/                                      Header, menu, footer, notice, storage, theme, strings
 tools/<id>/                                  One folder per tool

@@ -4,9 +4,11 @@
 // Offline support. The hub and shared files are cached on install. Each tool
 // page is cached the first time it's opened, so nothing is loaded up front.
 // Network first, so updates apply silently; the cache is used when offline
-// or when the network takes longer than 3 seconds.
+// or when the network takes longer than 3 seconds. Requests revalidate with
+// the server instead of using the browser's HTTP cache, because GitHub Pages
+// lets browsers keep files for 10 minutes, which would hide a fresh deploy.
 
-const VERSION = 1; // bump when SHELL changes
+const VERSION = 2; // bump when SHELL changes
 const CACHE = `sloppify-v${VERSION}`;
 const SHELL = [
   './', 'index.html', 'hub.js', 'hub.css', 'hub-order.js', 'tools.json', 'manifest.webmanifest', 'icon.svg',
@@ -39,7 +41,8 @@ self.addEventListener('fetch', (event) => {
 
 async function networkFirst(req) {
   const cache = await caches.open(CACHE);
-  const network = fetch(req).then((res) => {
+  // A navigation request can't be copied with new options, so fetch its URL.
+  const network = fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }).then((res) => {
     if (res.ok && res.type === 'basic') cache.put(req, res.clone());
     return res;
   });

@@ -97,7 +97,8 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 
 - One folder per tool: `tools/<id>/` with `index.html`, `app.js`, `strings.js`, `style.css` and `README.md`. Start by copying `tools/_template/` and following its README.
 - The id is lowercase letters, digits and dashes. It's used for the folder, the storage namespace, string keys and `tools.json`.
-- Add an entry to `tools.json` with `id`, `name` and `description` (both keyed by language), `category` (`tool` or `game`), `tags`, `license` and `path`. The hub uses it for cards and search, the service worker for caching, and the footer for the source link.
+- Every tool describes itself in its own `tool.json`: `name` and `description` (both keyed by language), `category` (one of those in `tools/categories.json`), `tags` and `license`. The folder name is the id and the path.
+- The hub's list, `tools.json`, is generated from those files by `npm run tools` (`scripts/tools-index.mjs`); never edit it by hand. A static site can't list its own folders, so the list is built ahead of time: the tests fail if it's out of date or a config is invalid, and the deploy regenerates it before publishing. Folders starting with `_` are skipped.
 - Names are lowercase and plain ("interest calculator", "sudoku"). Descriptions are one short factual line.
 
 ### 3.2 The page shell
@@ -132,7 +133,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 
 ### 3.6 Licensing
 
-- The project is MIT. A tool may use another licence (for example GPL) only when it depends on a copyleft library; it then vendors that library inside its own folder with its own `LICENSE`, and sets `license` in `tools.json` and in `initPage`. Shared code is MIT, so it's usable from copyleft tools.
+- The project is MIT. A tool may use another licence (for example GPL) only when it depends on a copyleft library; it then vendors that library inside its own folder with its own `LICENSE`, and sets `license` in `tool.json` and in `initPage`. Shared code is MIT, so it's usable from copyleft tools.
 - Every file carries SPDX headers (`SPDX-FileCopyrightText` and `SPDX-License-Identifier`), following REUSE. Files that can't hold a comment are covered in `REUSE.toml`. CI runs REUSE lint.
 - Each page's footer shows its licence and links to its folder on GitHub; `initPage` does this from `license` and `sourcePath`.
 
@@ -234,7 +235,7 @@ Answer these in the pull request or issue before building:
 
 - [ ] Fits Part 1: self-contained, a common use, low stakes, no trademarks or copies
 - [ ] Within its size budget; heavy work in a Worker
-- [ ] Started from the template, listed in `tools.json`, uses `initPage` and the shared helpers
+- [ ] Started from the template, `tool.json` filled in, `npm run tools` run, uses `initPage` and the shared helpers
 - [ ] No external requests; CSP untouched; no inline scripts or styles; all paths relative
 - [ ] Every visible string in `strings.js`
 - [ ] Storage only through `openStore`, with `migrate` and `guardStore`

@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "serve": "python3 -m http.server 4173",
+    "tools": "node scripts/tools-index.mjs",
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "node --test \"tests/unit/*.test.js\"",
     "test:e2e": "playwright test"

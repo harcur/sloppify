@@ -1,0 +1,13 @@
+{
+  "name": {
+    "en": "my tool"
+  },
+  "description": {
+    "en": "One short factual line about what it does"
+  },
+  "category": "tool",
+  "tags": [
+    "tag"
+  ],
+  "license": "MIT"
+}

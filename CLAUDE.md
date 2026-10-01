@@ -16,11 +16,12 @@ Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.gith
 
 ## Adding a tool
 
-Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`, follow its README, add an entry to `tools.json`, add tests.
+Check the idea against `docs/TOOL-GUIDELINES.md` first. Copy `tools/_template/`, follow its README, fill in its `tool.json`, run `npm run tools` (regenerates `tools.json`; never edit that by hand), add tests.
 
 ## Commands
 
 - Serve: `python3 -m http.server 4173`
+- Regenerate the hub's tool list: `npm run tools` (`--check` to verify)
 - Unit tests: `npm run test:unit`
 - Browser + accessibility tests: `npm install && npx playwright install && npm run test:e2e` (passing in Chromium desktop and mobile; Firefox and WebKit not yet run locally, CI runs all five projects)
 

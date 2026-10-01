@@ -150,6 +150,15 @@ for (const scheme of ['light', 'dark']) {
   });
 }
 
+test('the hub shows a card for every tool in tools.json', async ({ page, request }) => {
+  await markNoticeSeen(page);
+  const manifest = await (await request.get('./tools.json')).json();
+  await page.goto('./');
+  for (const tool of manifest.tools) {
+    await expect(page.getByRole('link', { name: tool.name.en, exact: true })).toHaveAttribute('href', new RegExp(`${tool.path}$`));
+  }
+});
+
 test('every page in tools.json loads with its own source link', async ({ page, request }) => {
   await markNoticeSeen(page);
   const manifest = await (await request.get('./tools.json')).json();

@@ -35,7 +35,8 @@ load();
 
 async function load() {
   try {
-    const res = await fetch(new URL('tools.json', root));
+    // Check with the server every time (a 304 when unchanged), so new tools show up right after a deploy.
+    const res = await fetch(new URL('tools.json', root), { cache: 'no-cache' });
     if (!res.ok) throw new Error(String(res.status));
     manifest = await res.json();
   } catch {

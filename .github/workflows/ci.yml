@@ -21,6 +21,7 @@ jobs:
           node-version: 22
       - run: npm install
       - run: npx playwright install --with-deps
+      - run: node scripts/tools-index.mjs --check
       - run: npm run test:unit
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
@@ -45,12 +46,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Generate the hub's tool list from each tool's tool.json
+        run: node scripts/tools-index.mjs
       - name: Collect site files (dev tooling is never deployed)
         run: |
           rsync -a ./ _site/ \
             --exclude .git --exclude .github --exclude node_modules --exclude tests \
             --exclude docs --exclude tools/_template --exclude _site \
-            --exclude package.json --exclude package-lock.json --exclude playwright.config.js
+            --exclude package.json --exclude package-lock.json --exclude playwright.config.js --exclude scripts
       - name: Push to gh-pages
         working-directory: _site
         run: |
