@@ -19,10 +19,10 @@ export function createWheel(ctx) {
   let spin = null;
 
   const svg = s('svg', { viewBox: '-100 -100 200 200', class: 'pp-wheel-svg', 'aria-hidden': 'true', focusable: 'false' });
-  const turner = h('div', { class: 'pp-wheel-turn' }, svg);
+  // The centre piece sits on the turning part, so it turns with the wheel.
+  const turner = h('div', { class: 'pp-wheel-turn' }, svg, h('div', { class: 'pp-wheel-hub', 'aria-hidden': 'true' }));
   const pointer = h('div', { class: 'pp-wheel-pointer', 'aria-hidden': 'true' });
-  const hub = h('div', { class: 'pp-wheel-hub', 'aria-hidden': 'true' });
-  const wheel = h('div', { class: 'pp-wheel', onclick: () => go() }, turner, pointer, hub);
+  const wheel = h('div', { class: 'pp-wheel', onclick: () => go() }, turner, pointer);
   const info = h('p', { class: 'pp-stage-note' });
   const stage = h('div', { class: 'pp-wheel-stage' }, wheel, info);
 
