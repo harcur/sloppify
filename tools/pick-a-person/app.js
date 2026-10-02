@@ -4,8 +4,7 @@
 import { initPage, guardStore } from '../../shared/page.js';
 import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
-import { icon } from '../../shared/icons.js';
-import { sourceUrl } from '../../shared/config.js';
+import { optionsSheet } from '../../shared/sheet.js';
 import { openStore } from '../../shared/storage.js';
 import { strings } from './strings.js';
 import { cleanNames, clampInt, MIN_PLAYERS, MAX_PLAYERS } from './pick.js';
@@ -63,7 +62,7 @@ const resultSub = h('span', { class: 'pp-result-sub' });
 const result = h('p', { class: 'pp-result' }, resultMain, resultSub);
 const stage = h('div', { class: 'pp-stage' });
 const actions = h('div', { class: 'pp-actions' });
-const moreBtn = h('button', { type: 'button', class: 'btn pp-more', 'aria-haspopup': 'dialog', onclick: () => sheet.showModal() }, t('pick-a-person.options'));
+const moreBtn = h('button', { type: 'button', class: 'btn pp-more', 'aria-haspopup': 'dialog', onclick: () => options.open() }, t('pick-a-person.options'));
 
 const ctx = {
   players,
@@ -152,29 +151,17 @@ const layout = h('div', { class: 'pp-layout' }, play, side);
 
 // On narrow screens the page fills the screen; the side panel and the
 // footer's text and source link move into a sheet.
-const sheetBody = h('div', { class: 'pp-sheet-body' });
-const sheet = h('dialog', { class: 'dialog pp-sheet', 'aria-labelledby': 'pp-sheet-title' },
-  h('div', { class: 'pp-sheet-head' },
-    h('h2', { class: 'dialog-title', id: 'pp-sheet-title' }, t('pick-a-person.options')),
-    h('button', { type: 'button', class: 'btn', onclick: () => sheet.close() }, t('pick-a-person.close')),
-  ),
-  sheetBody,
-  h('div', { class: 'pp-sheet-foot' },
-    h('p', {}, t('footer.text')),
-    h('p', {}, h('a', { href: sourceUrl(SOURCE_PATH), rel: 'noreferrer' }, icon('source'), t('footer.source'))),
-  ),
-);
-sheet.addEventListener('close', () => { if (moreBtn.isConnected) moreBtn.focus(); });
+const options = optionsSheet({ title: t('pick-a-person.options'), sourcePath: SOURCE_PATH, returnFocus: moreBtn });
 
 function placeSide() {
-  if (narrow.matches) sheetBody.append(side);
+  if (narrow.matches) options.body.append(side);
   else {
-    if (sheet.open) sheet.close();
+    options.close();
     layout.append(side);
   }
 }
 
-main.append(h('h1', { class: 'tool-title' }, name), layout, sheet, announcer);
+main.append(h('h1', { class: 'tool-title' }, name), layout, options.sheet, announcer);
 
 // Modes -----------------------------------------------------------------
 

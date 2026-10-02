@@ -13,7 +13,6 @@ export const strings = {
     'mode.straws': 'straws',
     'mode.teams': 'teams',
     options: 'Options',
-    close: 'Close',
     skip: 'Show result',
     player: 'player {n}',
 

@@ -24,15 +24,19 @@
         "en": "interest calculator"
       },
       "description": {
-        "en": "Compound and simple interest over time"
+        "en": "Loans, savings, paying off debt and the real rate of an offer"
       },
       "category": "tool",
       "tags": [
         "finance",
         "money",
-        "savings",
         "loan",
-        "compound"
+        "mortgage",
+        "savings",
+        "investment",
+        "debt",
+        "compound",
+        "rate"
       ],
       "license": "MIT",
       "path": "tools/interest-calculator/"
@@ -77,12 +81,31 @@
       "path": "tools/pick-a-person/"
     },
     {
+      "id": "random-numbers",
+      "name": {
+        "en": "random numbers"
+      },
+      "description": {
+        "en": "Pick random whole numbers in a range, with or without repeats"
+      },
+      "category": "tool",
+      "tags": [
+        "random",
+        "number generator",
+        "rng",
+        "lottery",
+        "raffle"
+      ],
+      "license": "MIT",
+      "path": "tools/random-numbers/"
+    },
+    {
       "id": "sudoku",
       "name": {
         "en": "sudoku"
       },
       "description": {
-        "en": "Classic 9×9 puzzles"
+        "en": "Fill a 9 × 9 grid with the digits 1 to 9"
       },
       "category": "game",
       "tags": [
@@ -92,6 +115,25 @@
       ],
       "license": "MIT",
       "path": "tools/sudoku/"
+    },
+    {
+      "id": "work-rest-timer",
+      "name": {
+        "en": "work and rest timer"
+      },
+      "description": {
+        "en": "Alternate work and rest intervals with an hourglass, sounds and alerts"
+      },
+      "category": "tool",
+      "tags": [
+        "timer",
+        "focus",
+        "break",
+        "interval",
+        "hourglass"
+      ],
+      "license": "MIT",
+      "path": "tools/work-rest-timer/"
     }
   ]
 }

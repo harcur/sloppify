@@ -12,23 +12,88 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
-      - run: npx playwright install --with-deps
       - run: node scripts/tools-index.mjs --check
       - run: npm run test:unit
-      - run: npm run test:e2e
+
+  # Which browser tests to run: on pull requests only those for the folders
+  # the change touches (scripts/affected-tests.mjs); on main, everything,
+  # since it gates the deploy.
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      specs: ${{ steps.pick.outputs.specs }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            specs=$(node scripts/affected-tests.mjs "origin/$BASE")
+          else
+            specs=all
+          fi
+          echo "Browser tests: $specs"
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
+
+  # One job per browser setup, in parallel, each installing only its engine.
+  e2e:
+    needs: select
+    if: needs.select.outputs.specs != 'none'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: desktop-chromium, browser: chromium }
+          - { project: mobile-chromium, browser: chromium }
+          - { project: desktop-firefox, browser: firefox }
+          - { project: desktop-webkit, browser: webkit }
+          - { project: mobile-webkit, browser: webkit }
+    name: e2e (${{ matrix.project }})
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - env:
+          SPECS: ${{ needs.select.outputs.specs }}
+        run: |
+          if [ "$SPECS" = all ]; then SPECS=; fi
+          npx playwright test --project=${{ matrix.project }} $SPECS
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.project }}
           path: test-results/
+
+  # One stable check for branch protection and the deploy: passes when the
+  # unit tests pass and every browser job passed or wasn't needed.
+  test:
+    needs: [unit, select, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ needs.unit.result }} ${{ needs.select.result }} ${{ needs.e2e.result }}
+        run: |
+          echo "unit, select, e2e: $RESULTS"
+          for r in $RESULTS; do
+            case "$r" in success|skipped) ;; *) exit 1 ;; esac
+          done
+          [ "${{ needs.unit.result }}" = success ] && [ "${{ needs.select.result }}" = success ]
 
   licenses:
     runs-on: ubuntu-latest
@@ -55,7 +120,7 @@ jobs:
       - name: Collect site files (dev tooling is never deployed)
         run: |
           rsync -a ./ _site/ \
-            --exclude .git --exclude .github --exclude node_modules --exclude tests \
+            --exclude .git --exclude .github --exclude .claude --exclude node_modules --exclude tests \
             --exclude docs --exclude tools/_template --exclude _site --exclude scripts \
             --exclude package.json --exclude package-lock.json --exclude playwright.config.js
       - uses: actions/upload-pages-artifact@v3
