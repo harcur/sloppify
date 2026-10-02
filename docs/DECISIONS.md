@@ -27,6 +27,10 @@ Tools:
 
 - **random numbers** (`tools/random-numbers/`): whole numbers in a range (From/To, typed; a backwards range is swapped), how many (1 to 100, stepper or typed), no repeats, sort. Up to four numbers show as large tiles in the tool colour, more as a numbered list that scrolls inside the result area, with their sum. A new pick flickers in grey for about half a second, then the numbers pop in and the result frame flashes, so a fresh pick is visible even when the number is the same; off under reduced motion. Copy puts the numbers on the clipboard. On phones Pick and Copy are pinned to the bottom of the screen. Uses `crypto.getRandomValues`. Saves the settings and the last 20 picks. No preset ranges (dropped after the mockup). Picking people or items from a list, dice, a wheel and similar will be separate tools rather than modes of this one.
 
+Party:
+
+- **pick a person** (`tools/pick-a-person/`, category `party`): five ways to pick from a group around one screen. **Bottle**: the phone lies in the middle of the group; tap, press Spin or flick the bottle, and it stops pointing at someone (with names, they sit around the edge in list order). **Fingers**: everyone holds a finger on the screen; once they hold still a two-second countdown runs and the result shows under the fingers (one person, teams with a letter each, or an order); a lifted or added finger restarts it, and without a touch screen the players stand in a circle instead. **Wheel**: one segment per player, optionally taking each winner off for the next spin. **Straws**: one straw per player in a paper cup, players draw in list order until someone pulls out the short one, or the rest draw at once. **Teams**: by number of teams or players per team, sizes differ by at most one, copyable. Players are a number (2–30) or a saved list of names; modes that need names fall back to numbers. Every result is picked with `crypto.getRandomValues` (rejection sampling, Fisher–Yates) before its animation starts, and every reveal can be skipped. Each mode has its own deep stage colour; players share ten bright colours with dark text, and teams also get a letter. Optional vibration, no sound. The finger mode is a well-known party mechanic with many independent apps; we don't use any app's name or copy its look (we use square gems and dashed rings on a striped stage, not glowing circles on black).
+
 ## Core principles
 
 1. **No data is sent anywhere.** Zero external requests: no CDNs, no remote fonts, no analytics, no telemetry. System fonts and self-hosted assets only.
@@ -191,7 +195,7 @@ The site itself has no build step and no dependencies. Test tooling is dev-only 
 
 ## What tools belong
 
-`docs/TOOL-GUIDELINES.md` collects every rule a tool follows, from this file and elsewhere, into one guide with a checklist. Decisions it adds: self-contained with nothing that goes stale (no live data such as exchange rates or weather), a common everyday use, low stakes, no trademarks or one-to-one copies of existing games or apps, and per-page size budgets enforced by `tests/unit/budget.test.js`.
+`docs/TOOL-GUIDELINES.md` collects every rule a tool follows, from this file and elsewhere, into one guide with a checklist. Decisions it adds: self-contained with nothing that goes stale (no live data such as exchange rates or weather), a common everyday use, low stakes, no trademarks or one-to-one copies of existing games or apps, and per-page size budgets enforced by `tests/unit/budget.test.js`. The per-tool budget started at 60 KB and was raised to 100 KB once tools grew richer (pick a person, a party tool with five modes, is about 75 KB): games and party tools carry their own art and animation, and 100 KB is still small for a page that loads once and is then cached.
 
 ## Contributions
 
@@ -231,9 +235,10 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
 - **Typography (system fonts only):** monospace for headings (`ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace`), sans-serif for text (`system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`). Headings will vary slightly by OS; accepted as the cost of zero font downloads.
 - **Color by zone:**
   - Shared chrome (header, data menu, footer): neutral grays only, identical on every page.
-  - Hub: neutral, with one hue per category for wayfinding (tools = blue, games = orange).
+  - Hub: neutral, with one hue per category for wayfinding (tools = blue, games = orange, party = magenta).
   - Tools: monochrome; color only carries meaning (focus, errors, chart series, main result).
   - Games: colourful and good-looking rather than utilitarian, with their own palette, textures and short vector animations (CSS and SVG only) inside the play area; chrome around it stays neutral. Details in `docs/TOOL-GUIDELINES.md` 4.6.
+  - Party (things a group uses together on one screen): the game rules plus very large results, one big main button and reveals of a few seconds that can be skipped. A third category rather than tags or a mix of styles, to keep one category per tool. Tools always stay utilitarian. Details in `docs/TOOL-GUIDELINES.md` 4.7.
 - **Starting palette** (all text ≥ 4.5:1, UI edges ≥ 3:1):
 
   | Token | Light | Dark |
@@ -245,6 +250,7 @@ Open to contributions, with guidelines in `CONTRIBUTING.md`. A new tool must:
   | Line | `#CFCFCB` | `#343434` |
   | Tools accent | `#2F5D8A` | `#82AEDB` |
   | Games accent | `#B34A24` | `#EE8A62` |
+  | Party accent | `#8E3A9E` | `#DDA2EC` |
 
 - Every page has a designed mobile variant and desktop variant. On phones, tools and games use the app layout (see Data menu, App pages).
 

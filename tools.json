@@ -10,6 +10,11 @@
       "label": {
         "en": "game"
       }
+    },
+    "party": {
+      "label": {
+        "en": "party"
+      }
     }
   },
   "tools": [
@@ -52,6 +57,28 @@
       ],
       "license": "MIT",
       "path": "tools/mines/"
+    },
+    {
+      "id": "pick-a-person",
+      "name": {
+        "en": "pick a person"
+      },
+      "description": {
+        "en": "Spin a bottle or wheel, touch the screen, draw straws or split teams"
+      },
+      "category": "party",
+      "tags": [
+        "random",
+        "picker",
+        "spin the bottle",
+        "wheel",
+        "straws",
+        "teams",
+        "who goes first",
+        "group"
+      ],
+      "license": "MIT",
+      "path": "tools/pick-a-person/"
     },
     {
       "id": "random-numbers",

@@ -8,10 +8,10 @@ import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 
 const KB = 1024;
-const BUDGET = { tool: 60 * KB, data: 200 * KB, shared: 50 * KB, hub: 20 * KB, image: 20 * KB };
+const BUDGET = { tool: 100 * KB, data: 200 * KB, shared: 50 * KB, hub: 20 * KB, image: 20 * KB };
 
 // Tools allowed over budget. Each needs a reason here and an entry in docs/DECISIONS.md.
-// Example: 'chess': { tool: 180 * KB, reason: 'vendored engine' },
+// Example: 'chess': { tool: 200 * KB, reason: 'vendored engine' },
 const EXCEPTIONS = {};
 
 const root = new URL('../../', import.meta.url).pathname;

@@ -63,7 +63,7 @@ Sizes are uncompressed bytes on disk. `README.md` and `LICENSE` files don't coun
 
 | What | Budget | Now |
 |---|---|---|
-| A tool's own files (everything in `tools/<id>/` except `data/`) | 60 KB | largest about 47 KB (sudoku) |
+| A tool's own files (everything in `tools/<id>/` except `data/`) | 100 KB | largest about 75 KB (pick a person) |
 | A tool's `data/` folder (word lists, opening books, etc.) | 200 KB | none yet |
 | Shared files (`shared/`) | 50 KB | about 33 KB |
 | Hub (`index.html`, `hub*.js`, `hub.css`, `tools.json`) | 20 KB | about 11 KB |
@@ -164,7 +164,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 
 ### 4.4 Colour
 
-Use the tokens from `shared/base.css`, never raw colours for chrome or text: `--bg`, `--surface`, `--text`, `--muted`, `--line`, `--tool`, `--game`, `--danger`. They switch automatically between light and dark.
+Use the tokens from `shared/base.css`, never raw colours for chrome or text: `--bg`, `--surface`, `--text`, `--muted`, `--line`, `--tool`, `--game`, `--party`, `--danger`. They switch automatically between light and dark.
 
 | Token | Light | Dark |
 |---|---|---|
@@ -175,6 +175,7 @@ Use the tokens from `shared/base.css`, never raw colours for chrome or text: `--
 | `--line` | `#CFCFCB` | `#343434` |
 | `--tool` | `#2F5D8A` | `#82AEDB` |
 | `--game` | `#B34A24` | `#EE8A62` |
+| `--party` | `#8E3A9E` | `#DDA2EC` |
 | `--danger` | `#A32D2D` | `#F09595` |
 
 Colour by zone:
@@ -182,6 +183,7 @@ Colour by zone:
 - **Shared chrome** (header, menu, footer): neutral greys only, identical on every page.
 - **Tools:** monochrome. Colour only carries meaning: focus, errors, chart series, the main result.
 - **Games:** colourful and good-looking, not utilitarian. Inside the play area a game has its own palette, textures and character; the chrome around it (header, menu, footer) stays neutral. See 4.6.
+- **Party:** made for a group around one screen. Everything games may do, turned up a little for people watching from across a table. See 4.7.
 - Colour is never the only signal. Pair it with text, shape or pattern.
 
 ### 4.5 Theme
@@ -200,6 +202,16 @@ Games should be fun to look at and satisfying to play. Tools stay calm; games ge
 - **Full screen on phones:** like every page (4.1): counters at the top, the board in the middle, main buttons at the bottom, everything else in the options sheet. Boards that can't fit at a 32px cell size scroll inside their area rather than shrinking below the touch target size.
 - **Vectors only:** CSS and inline SVG, within the size budget (Part 2). No images, video or animation libraries.
 - **Still accessible:** contrast rules apply to the game's own colours too (4.5:1 for text such as numbers, 3:1 between states that need telling apart and for pieces against their background), colour is never the only signal, and everything decorative is hidden from screen readers. Under `prefers-reduced-motion` the game is fully playable with all animation off.
+
+### 4.7 Party
+
+The `party` category is for things a group uses together on one screen: picking who goes first, splitting teams. It follows every rule in 4.6, plus:
+
+- **Readable from across a table:** the result in very large type, and one big main button within thumb reach.
+- **Suspense is the point:** a reveal (a spin, a countdown) may run a few seconds, but it's decided before it starts, never blocks the rest of the page, and can be skipped. Under `prefers-reduced-motion` the result shows at once.
+- **Extras stay optional:** vibration where the browser supports it, and nothing that makes sound unless the visitor turns it on.
+
+The base doesn't change: neutral chrome, sharp corners, 1px lines, system fonts, the tokens and the accessibility rules all still apply. Tools never take on this style; they stay utilitarian.
 
 ---
 
