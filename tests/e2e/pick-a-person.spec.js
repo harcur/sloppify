@@ -142,6 +142,19 @@ test('fingers on the screen: five fingers, one picked, and it starts again', asy
   await expect(page.locator('.pp-touch-hint')).toHaveText('Waiting for more fingers');
 });
 
+test('fingers: says so when the phone cancels the touches', async ({ page }) => {
+  await page.goto(URL);
+  test.skip(!(await canTouch(page)), 'this browser cannot create touch events');
+  await mode(page, 'fingers').click();
+  const area = page.locator('.pp-touch');
+  await touch(area, 'touchstart', FIVE.slice(0, 3));
+  await touch(area, 'touchcancel', []); // what a three-finger system gesture does
+  await expect(page.locator('.pp-touch-hint')).toContainText('Your phone took over the touch');
+  await expect(page.locator('.pp-finger.is-win')).toHaveCount(0);
+  await touch(area, 'touchstart', [[8, 0.5, 0.5]]);
+  await expect(page.locator('.pp-touch-hint')).toHaveText('Waiting for more fingers');
+});
+
 test('fingers: a lift the browser never reported does not leave a finger stuck', async ({ page }) => {
   await page.goto(URL);
   test.skip(!(await canTouch(page)), 'this browser cannot create touch events');
