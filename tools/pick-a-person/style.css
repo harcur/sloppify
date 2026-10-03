@@ -268,31 +268,35 @@
   gap: 8px; padding-top: 16px;
 }
 .pp-turn { min-height: 1.3em; }
-.pp-straws { position: relative; isolation: isolate; width: clamp(240px, calc(var(--n, 6) * 56px + 120px), 100%); height: min(76cqh, 480px); }
-.pp-straw-row {
-  position: absolute; inset: 0;
-  display: flex; justify-content: center; gap: 8px;
-  padding: 0 40px;
-  overflow-x: auto; overflow-y: hidden;
+.pp-straws {
+  position: relative; isolation: isolate; container-type: size;
+  width: clamp(240px, calc(var(--n, 6) * 56px + 120px), 100%); height: min(76cqh, 480px);
 }
-.pp-straw-row.is-many { gap: 2px; padding: 0 24px; }
+/* Inset so every straw stands inside the cup, even at its narrow base. */
+.pp-straw-row { position: absolute; top: 0; bottom: 0; left: 9%; right: 9%; }
+/* Placed by straws.js: --x and --w across the row, --t and --h its tap area
+   and --rest its straw's resting top, all in percent of the straws area. */
 .pp-straw {
-  position: relative; flex: 0 1 44px; min-width: 24px; height: 100%;
+  position: absolute;
+  left: calc(var(--x, 0) * 1%); width: calc(var(--w, 10) * 1%);
+  top: calc(var(--t, 0) * 1cqh); height: calc(var(--h, 100) * 1cqh);
   padding: 0; border: 0; background: transparent;
+  --bw: clamp(8px, 50%, 14px);
 }
 .pp-straw:focus-visible { outline: 2px solid #FFFFFF; outline-offset: -2px; }
 .pp-straw-body {
-  position: absolute; z-index: 1; left: 50%; top: 38%;
-  width: 14px; height: 62%; margin-left: -7px;
+  position: absolute; z-index: 1; left: calc(50% - var(--bw) / 2);
+  top: calc((var(--rest, 38) - var(--t, 0)) * 1cqh);
+  width: var(--bw); height: 62cqh;
   background: repeating-linear-gradient(-45deg, var(--c) 0 7px, #FFFFFF 7px 12px);
   border: 1px solid var(--pp-ink);
   transition: top 650ms cubic-bezier(0.2, 0.9, 0.3, 1.25), height 0ms;
   animation: pp-sprout 420ms cubic-bezier(0.2, 0.9, 0.3, 1.4) var(--d, 0ms) backwards;
 }
-.pp-straw-row.is-many .pp-straw-body { width: 10px; margin-left: -5px; }
-@media (hover: hover) { .pp-straw:not(:disabled):hover .pp-straw-body { top: 35%; } }
-.pp-straw.is-drawn .pp-straw-body, .pp-straw.is-revealed .pp-straw-body { top: 0; }
-.pp-straw.is-short .pp-straw-body { height: 30%; top: 32%; animation: pp-shake 500ms ease-in-out 400ms; outline: 3px solid #FFFFFF; }
+@media (hover: hover) { .pp-straw:not(:disabled):hover .pp-straw-body { top: calc((var(--rest, 38) - 3 - var(--t, 0)) * 1cqh); } }
+.pp-straw.is-drawn .pp-straw-body, .pp-straw.is-revealed .pp-straw-body { top: calc(var(--t, 0) * -1cqh); }
+.pp-straw.is-drawn .pp-straw-body { z-index: 3; }
+.pp-straw.is-short .pp-straw-body { height: 30cqh; top: calc((32 - var(--t, 0)) * 1cqh); animation: pp-shake 500ms ease-in-out 400ms; outline: 3px solid #FFFFFF; }
 .pp-straw.is-revealed .pp-straw-body { opacity: 0.6; }
 .pp-straw:disabled { cursor: default; }
 .pp-cup {

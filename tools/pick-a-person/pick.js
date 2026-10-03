@@ -107,3 +107,33 @@ export function clockHour(angle) {
   const h = Math.round(mod(angle) / 30) % 12;
   return h === 0 ? 12 : h;
 }
+
+export const STRAW_MIN = 28; // narrowest straw a finger can still hit (px), above the 24px target size
+const STRAW_MAX = 44;
+const STRAW_ROWS = 3;
+
+// Bunch `n` straws into the fewest staggered rows (up to three) where each
+// one is at least STRAW_MIN wide, so they stand inside the cup instead of
+// spilling out of it.
+// Returns, per straw, its row and its centre and width as a percentage of
+// the row's width. Row 0 is the back row.
+export function strawLayout(n, width) {
+  let rows = 1;
+  let cols = n;
+  let cell = width / n;
+  while (rows < STRAW_ROWS && cell < STRAW_MIN) {
+    rows++;
+    cols = Math.ceil(n / rows);
+    cell = width / (cols + 0.5); // rows are offset by half a straw
+  }
+  rows = Math.ceil(n / cols);
+  cell = Math.min(cell, STRAW_MAX);
+  const w = (cell / width) * 100;
+  return Array.from({ length: n }, (_, i) => {
+    const r = Math.floor(i / cols);
+    const inRow = Math.min(cols, n - r * cols);
+    const shift = rows > 1 ? (r % 2 ? 0.25 : -0.25) * w : 0;
+    const x = 50 + (i - r * cols - (inRow - 1) / 2) * w + shift;
+    return { r, rows, x, w };
+  });
+}

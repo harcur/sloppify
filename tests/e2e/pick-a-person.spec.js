@@ -222,6 +222,30 @@ test('straws: each person taps one straw until the short one', async ({ page }) 
   await expect(page.getByRole('button', { name: /^Straw \d+$/ })).toHaveCount(4);
 });
 
+test('straws: thirty straws bunch up inside the cup, each wide enough to tap', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem('sloppify:pick-a-person:__schema')) return;
+    localStorage.setItem('sloppify:pick-a-person:__schema', '1');
+    localStorage.setItem('sloppify:pick-a-person:count', '30');
+  });
+  await page.goto(URL);
+  await mode(page, 'straws').click();
+  await expect(page.locator('.pp-straw')).toHaveCount(30);
+  const box = await page.evaluate(() => {
+    const cup = document.querySelector('.pp-cup').getBoundingClientRect();
+    const straws = [...document.querySelectorAll('.pp-straw')].map((b) => b.getBoundingClientRect());
+    const bodies = [...document.querySelectorAll('.pp-straw-body')].map((b) => b.getBoundingClientRect());
+    return {
+      inside: bodies.every((r) => r.left >= cup.left + cup.width * 0.07 && r.right <= cup.right - cup.width * 0.07),
+      minWidth: Math.min(...straws.map((r) => r.width)),
+      minHeight: Math.min(...straws.map((r) => r.height)),
+    };
+  });
+  expect(box.inside).toBe(true);
+  expect(box.minWidth).toBeGreaterThanOrEqual(24);
+  expect(box.minHeight).toBeGreaterThanOrEqual(24);
+});
+
 test('teams: everyone in one team, sizes within one', async ({ page }) => {
   await withNames(page, [...NAMES, 'Gus']);
   await page.goto(URL);
