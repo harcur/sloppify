@@ -8,10 +8,17 @@
 
 import { h } from '../../shared/dom.js';
 import { t } from '../../shared/i18n.js';
-import { randomInt } from './pick.js';
+import { randomInt, strawLayout } from './pick.js';
 import { colour, confetti, reduced } from './fx.js';
 
 const PASS_MS = 900; // after a long straw, a moment to pass the phone on
+
+// Heights as a percentage of the straws area: a resting straw's top in the
+// front row, how much higher each row behind it stands, and how far above
+// its straw a row's tap area starts.
+const REST = 38;
+const STEP = 9;
+const LIFT = 6;
 
 export function createStraws(ctx) {
   let count = 0;
@@ -24,6 +31,8 @@ export function createStraws(ctx) {
   const turn = h('p', { class: 'pp-turn' });
   const cup = h('div', { class: 'pp-cup', 'aria-hidden': 'true' });
   const stage = h('div', { class: 'pp-straws-stage' }, turn, h('div', { class: 'pp-straws' }, row, cup));
+  let laidWidth = 0;
+  new ResizeObserver(() => { if (row.clientWidth !== laidWidth) layout(); }).observe(row);
   const mainBtn = h('button', { type: 'button', class: 'btn pp-go', onclick: () => newRound(true) }, t('pick-a-person.straws.again'));
 
   function newRound(announce) {
@@ -40,10 +49,28 @@ export function createStraws(ctx) {
       b.style.setProperty('--d', `${i * 30}ms`);
       return b;
     }));
-    row.classList.toggle('is-many', count > 12);
     stage.style.setProperty('--n', String(count));
+    layout();
     render();
     if (announce) ctx.say(t('pick-a-person.straws.ready', { n: count }));
+  }
+
+  function layout() {
+    laidWidth = row.clientWidth;
+    if (!laidWidth) return; // hidden: the observer lays out once it shows
+    const spots = strawLayout(count, laidWidth);
+    [...row.children].forEach((b, i) => {
+      const { r, rows, x, w } = spots[i];
+      const back = rows - 1 - r; // rows in front of this one
+      const rest = REST - back * STEP;
+      const top = r === 0 ? 0 : rest - LIFT;
+      const bottom = back === 0 ? 100 : rest + STEP - LIFT;
+      b.style.setProperty('--x', String(x - w / 2));
+      b.style.setProperty('--w', String(w));
+      b.style.setProperty('--t', String(top));
+      b.style.setProperty('--h', String(bottom - top));
+      b.style.setProperty('--rest', String(rest));
+    });
   }
 
   function render() {

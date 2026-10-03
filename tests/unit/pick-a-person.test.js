@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   randomInt, shuffle, pickMany, splitTeams, cleanNames, clampInt, range,
-  mod, spinTo, segmentAt, wheelTarget, clockHour, MAX_PLAYERS, MAX_NAME,
+  mod, spinTo, segmentAt, wheelTarget, clockHour, strawLayout, STRAW_MIN, MAX_PLAYERS, MAX_NAME,
 } from '../../tools/pick-a-person/pick.js';
 
 // Deterministic 32-bit numbers for repeatable tests.
@@ -110,4 +110,25 @@ test('clock hours', () => {
   assert.equal(clockHour(90), 3);
   assert.equal(clockHour(-90), 9);
   assert.equal(clockHour(350), 12);
+});
+
+test('strawLayout: straws stay inside the row and wide enough to tap', () => {
+  for (const width of [200, 294, 650]) {
+    for (let n = 2; n <= MAX_PLAYERS; n++) {
+      const spots = strawLayout(n, width);
+      assert.equal(spots.length, n);
+      for (const { x, w, r, rows } of spots) {
+        assert.ok(x - w / 2 >= -1e-9 && x + w / 2 <= 100 + 1e-9, `n=${n} width=${width}`);
+        assert.ok(r >= 0 && r < rows && rows <= 3);
+      }
+      const px = (spots[0].w / 100) * width;
+      if (spots[0].rows < 3) assert.ok(px >= STRAW_MIN, `n=${n} width=${width}`);
+      assert.ok(px <= 44 + 1e-9);
+    }
+  }
+  assert.equal(strawLayout(4, 294)[0].rows, 1);
+  assert.equal(strawLayout(30, 294)[0].rows, 3);
+  assert.ok(strawLayout(30, 294).every((s) => (s.w / 100) * 294 >= STRAW_MIN));
+  assert.deepEqual(strawLayout(4, 294).map((s) => s.r), [0, 0, 0, 0]);
+  assert.deepEqual(strawLayout(4, 60).map((s) => s.r), [0, 0, 1, 1]); // never an empty front row
 });
