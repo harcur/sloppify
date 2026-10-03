@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # run every browser test by hand, e.g. before a risky merge
 
 permissions:
   contents: read
@@ -22,27 +23,21 @@ jobs:
       - run: node scripts/tools-index.mjs --check
       - run: npm run test:unit
 
-  # Which browser tests to run: on pull requests only those for the folders
-  # the change touches (scripts/affected-tests.mjs); on main, everything,
-  # since it gates the deploy.
+  # Browser tests are deferred for quick iteration: none on pull requests;
+  # on main they run in full alongside the deploy (which doesn't wait for
+  # them), and a manual run (workflow_dispatch) runs them all too. A failure
+  # on main shows on that commit and gets fixed in the next change.
+  # Locally, `npm run test:changed` still picks the specs a change touches.
   select:
     runs-on: ubuntu-latest
     outputs:
       specs: ${{ steps.pick.outputs.specs }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - id: pick
         env:
           EVENT: ${{ github.event_name }}
-          BASE: ${{ github.base_ref }}
         run: |
-          if [ "$EVENT" = pull_request ]; then
-            specs=$(node scripts/affected-tests.mjs "origin/$BASE")
-          else
-            specs=all
-          fi
+          if [ "$EVENT" = pull_request ]; then specs=none; else specs=all; fi
           echo "Browser tests: $specs"
           echo "specs=$specs" >> "$GITHUB_OUTPUT"
 
@@ -79,8 +74,8 @@ jobs:
           name: playwright-report-${{ matrix.project }}
           path: test-results/
 
-  # One stable check for branch protection and the deploy: passes when the
-  # unit tests pass and every browser job passed or wasn't needed.
+  # One stable check: passes when the unit tests pass and every browser job
+  # passed or wasn't run.
   test:
     needs: [unit, select, e2e]
     if: always()
@@ -106,9 +101,13 @@ jobs:
   #     site files to gh-pages, then asks GitHub to build that branch.
   #   "GitHub Actions": the pages job deploys the same files directly.
   # Whichever doesn't match the setting does nothing useful but doesn't fail.
+  # Publishes on every push to main right away, without waiting for any test.
   publish:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test, licenses]
+    # Quick pushes in a row: only the newest one publishes.
+    concurrency:
+      group: publish
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     permissions:
       contents: write

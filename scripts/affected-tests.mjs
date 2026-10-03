@@ -14,7 +14,8 @@
 //   node scripts/affected-tests.mjs --run [base] [-- playwright args]
 //                                                  run them (base defaults to origin/main)
 //
-// Dev tooling only, never deployed. CI runs everything on main before deploying.
+// Dev tooling only, never deployed. Used locally (`npm run test:changed`); CI
+// skips browser tests on pull requests and runs them all on main.
 
 import { existsSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
