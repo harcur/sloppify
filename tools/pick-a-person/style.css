@@ -152,7 +152,6 @@
   border: 3px solid #FFFFFF;
   transform: rotate(45deg);
 }
-.pp-wheel.is-spinning .pp-wheel-hub { animation: pp-spin-hub 600ms linear infinite; }
 
 /* Bottle ------------------------------------------------------------- */
 .pp-bottle-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
@@ -290,14 +289,6 @@
 .pp-straw.is-short .pp-straw-body { height: 30%; top: 32%; animation: pp-shake 500ms ease-in-out 400ms; outline: 3px solid #FFFFFF; }
 .pp-straw.is-revealed .pp-straw-body { opacity: 0.6; }
 .pp-straw:disabled { cursor: default; }
-.pp-straw-who {
-  position: absolute; z-index: 3; left: 50%; top: 67%;
-  max-height: 24%; overflow: hidden;
-  writing-mode: vertical-rl; transform: translateX(-50%) rotate(180deg);
-  color: var(--pp-ink); background: var(--c);
-  font-family: var(--mono); font-size: 13px; font-weight: 700; line-height: 1.4;
-}
-.pp-straw-who:empty { display: none; }
 .pp-cup {
   position: absolute; z-index: 2; left: 0; right: 0; bottom: 0; height: 36%;
   background: repeating-linear-gradient(90deg, var(--pp-cup-a) 0 22px, var(--pp-cup-b) 22px 44px);
@@ -347,7 +338,6 @@
 @keyframes pp-zoom { 0% { transform: scale(0.3); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } }
 @keyframes pp-throb { 50% { transform: scale(1.06); } }
 @keyframes pp-tick { 40% { transform: rotate(-22deg); } }
-@keyframes pp-spin-hub { to { transform: rotate(405deg); } }
 @keyframes pp-wobble { 30% { transform: rotate(-4deg); } 60% { transform: rotate(2.5deg); } 85% { transform: rotate(-1deg); } }
 @keyframes pp-land { from { transform: rotate(-45deg) scale(0.2); opacity: 0; } }
 @keyframes pp-orbit { to { transform: rotate(360deg); } }

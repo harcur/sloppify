@@ -20,7 +20,7 @@ export function createFingers(ctx) {
   if (!KINDS.includes(set.kind)) set.kind = 'one';
   set.teams = clampInt(set.teams, 2, 6, 2);
 
-  const touch = new Map(); // pointerId -> marker
+  const touch = new Map(); // touch identifier -> marker
   let markers = []; // in the order they arrived
   let phase = 'idle'; // idle | waiting | counting | done
   let settle = 0;
@@ -187,34 +187,38 @@ export function createFingers(ctx) {
 
   // Touch input ---------------------------------------------------------
 
-  const local = (e) => {
+  // Touch events give the full list of fingers on the screen each time, so
+  // the markers are rebuilt from that list. A missed lift can't leave a
+  // finger stuck, which pointer events allow when many fingers are down.
+  function sync(e) {
+    e.preventDefault(); // no scrolling, zooming or system gestures
     const r = area.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top];
-  };
-
-  area.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse') return;
-    e.preventDefault();
-    if (simulated || (phase === 'done' && !touch.size)) reset();
-    else if (phase === 'done') return; // wait until everyone has let go
-    touch.set(e.pointerId, addMarker(...local(e)));
-    ctx.buzz(10);
-    changed();
-  });
-  area.addEventListener('pointermove', (e) => {
-    const m = touch.get(e.pointerId);
-    if (m) place(m, ...local(e));
-  });
-  const lift = (e) => {
-    const m = touch.get(e.pointerId);
-    if (!m) return;
-    touch.delete(e.pointerId);
-    if (phase === 'done') return setHint(); // the result stays until the next touch
-    removeMarker(m);
-    changed();
-  };
-  area.addEventListener('pointerup', lift);
-  area.addEventListener('pointercancel', lift);
+    const live = new Map([...e.touches].filter((tc) => area.contains(tc.target)).map((tc) => [tc.identifier, [tc.clientX - r.left, tc.clientY - r.top]]));
+    let lifted = 0;
+    for (const id of [...touch.keys()]) {
+      if (live.has(id)) continue;
+      lifted += 1;
+      const m = touch.get(id);
+      touch.delete(id);
+      if (phase !== 'done') removeMarker(m); // after a result the markers stay
+    }
+    const fresh = [...live.keys()].filter((id) => !touch.has(id));
+    if (phase === 'done') {
+      // A new round starts with the first touch after everyone has let go.
+      if (!fresh.length || touch.size) return setHint();
+      reset();
+    } else if (simulated && fresh.length) reset();
+    for (const [id, [x, y]] of live) {
+      if (touch.has(id)) place(touch.get(id), x, y);
+      else touch.set(id, addMarker(x, y));
+    }
+    if (fresh.length) ctx.buzz(10);
+    if (fresh.length || lifted) changed(); // any new or lifted finger restarts the wait
+  }
+  for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+    area.addEventListener(type, sync, { passive: false });
+  }
+  area.addEventListener('gesturestart', (e) => e.preventDefault()); // Safari pinch
   area.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // Without touch: the players stand in a circle and the same countdown runs.

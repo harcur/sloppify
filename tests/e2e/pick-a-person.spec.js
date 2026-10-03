@@ -102,28 +102,65 @@ test('the bottle points at a name, or at an hour without names', async ({ page }
   await expect(said(page)).toHaveText(/pointing at \d+ o’clock/);
 });
 
-test('fingers on the screen: one is picked after a countdown', async ({ page }) => {
+// Sends a touch event listing every finger now on the area, as browsers do.
+// fingers: [[id, x, y], ...] with x and y as fractions of the area.
+async function touch(area, type, fingers) {
+  return area.evaluate((el, [kind, list]) => {
+    const r = el.getBoundingClientRect();
+    const all = list.map(([id, x, y]) => new Touch({
+      identifier: id, target: el, clientX: r.left + r.width * x, clientY: r.top + r.height * y,
+    }));
+    el.dispatchEvent(new TouchEvent(kind, { touches: all, targetTouches: all, changedTouches: all, bubbles: true, cancelable: true }));
+  }, [type, fingers]);
+}
+const canTouch = (page) => page.evaluate(() => {
+  try { return !!new Touch({ identifier: 1, target: document.body }); } catch { return false; }
+});
+const FIVE = [[1, 0.2, 0.3], [2, 0.8, 0.3], [3, 0.5, 0.5], [4, 0.25, 0.75], [5, 0.75, 0.75]];
+
+test('fingers on the screen: five fingers, one picked, and it starts again', async ({ page }) => {
   await page.goto(URL);
+  test.skip(!(await canTouch(page)), 'this browser cannot create touch events');
   await mode(page, 'fingers').click();
   const area = page.locator('.pp-touch');
-  const box = await area.boundingBox();
-  // Three touches, sent as pointer events.
-  await area.evaluate((el, b) => {
-    const at = [[0.3, 0.4], [0.7, 0.4], [0.5, 0.7]];
-    at.forEach(([x, y], i) => el.dispatchEvent(new PointerEvent('pointerdown', {
-      pointerId: 10 + i, pointerType: 'touch', isPrimary: i === 0, bubbles: true, cancelable: true,
-      clientX: b.x + b.width * x, clientY: b.y + b.height * y,
-    })));
-  }, box);
-  await expect(page.locator('.pp-finger')).toHaveCount(3);
+  for (let n = 1; n <= 5; n++) await touch(area, 'touchstart', FIVE.slice(0, n));
+  await expect(page.locator('.pp-finger')).toHaveCount(5);
+  await touch(area, 'touchmove', FIVE.map(([id, x, y]) => [id, x + 0.01, y]));
   await expect(page.locator('.pp-finger.is-win')).toHaveCount(1, { timeout: 4000 });
-  await expect(page.locator('.pp-finger.is-out')).toHaveCount(2);
-  await expect(said(page)).toHaveText(/^[123] is picked\.$/);
+  await expect(page.locator('.pp-finger.is-out')).toHaveCount(4);
+  await expect(said(page)).toHaveText(/^[1-5] is picked\.$/);
   await expect(page.locator('.pp-touch-hint')).toHaveText('Lift all fingers to start again');
-  await area.evaluate((el) => {
-    for (const id of [10, 11, 12]) el.dispatchEvent(new PointerEvent('pointerup', { pointerId: id, pointerType: 'touch', bubbles: true }));
-  });
+  // A new finger while others still hold is ignored.
+  await touch(area, 'touchstart', [...FIVE, [6, 0.5, 0.2]]);
+  await expect(page.locator('.pp-finger')).toHaveCount(5);
+  await touch(area, 'touchend', []);
   await expect(page.locator('.pp-touch-hint')).toHaveText('Touch the screen to start again');
+  // The next touch starts a new round.
+  await touch(area, 'touchstart', [[7, 0.5, 0.5]]);
+  await expect(page.locator('.pp-finger')).toHaveCount(1);
+  await expect(page.locator('.pp-finger.is-win, .pp-finger.is-out')).toHaveCount(0);
+  await expect(page.locator('.pp-touch-hint')).toHaveText('Waiting for more fingers');
+});
+
+test('fingers: a lift the browser never reported does not leave a finger stuck', async ({ page }) => {
+  await page.goto(URL);
+  test.skip(!(await canTouch(page)), 'this browser cannot create touch events');
+  await mode(page, 'fingers').click();
+  const area = page.locator('.pp-touch');
+  await touch(area, 'touchstart', FIVE.slice(0, 3));
+  await expect(page.locator('.pp-finger.is-win')).toHaveCount(1, { timeout: 4000 });
+  // No touchend arrives; the next touch lists only a new finger.
+  await touch(area, 'touchstart', [[9, 0.5, 0.5]]);
+  await expect(page.locator('.pp-finger')).toHaveCount(1);
+  await touch(area, 'touchstart', [[9, 0.5, 0.5], [10, 0.2, 0.2]]);
+  await expect(page.locator('.pp-finger.is-win')).toHaveCount(1, { timeout: 4000 });
+  // Lifting during the wait takes the finger away and waits again.
+  await touch(area, 'touchend', [[9, 0.5, 0.5]]);
+  await touch(area, 'touchstart', [[11, 0.5, 0.5], [12, 0.2, 0.2]]);
+  await expect(page.locator('.pp-finger')).toHaveCount(2);
+  await touch(area, 'touchend', [[11, 0.5, 0.5]]);
+  await expect(page.locator('.pp-finger:not(.is-gone)')).toHaveCount(1);
+  await expect(page.locator('.pp-touch-hint')).toHaveText('Waiting for more fingers');
 });
 
 test('fingers without touch: teams from the player list', async ({ page }) => {
@@ -140,25 +177,31 @@ test('fingers without touch: teams from the player list', async ({ page }) => {
   for (const letter of ['A', 'B', 'C']) await expect(page.locator('.pp-finger-tag', { hasText: letter })).toHaveCount(2);
 });
 
-test('straws: players draw in turn until the short one', async ({ page }) => {
-  await withNames(page);
-  await page.goto(URL);
-  await mode(page, 'straws').click();
-  await expect(page.locator('.pp-turn')).toHaveText('Ada, pick a straw');
-  const straws = page.getByRole('button', { name: /^Straw \d+$/ });
-  await expect(straws).toHaveCount(6);
-  await straws.first().click();
-  const short = await page.locator('.pp-straw.is-short').count();
-  if (!short) {
-    await expect(page.getByRole('button', { name: /drawn by Ada: long/ })).toBeDisabled();
-    await expect(page.locator('.pp-turn')).toHaveText('Ben, pick a straw');
-    await page.getByRole('button', { name: 'Draw the rest' }).click();
+// Taps straws left to right, one per person, until the short one comes out.
+async function drawUntilShort(page) {
+  for (let i = 0; i < 30 && !(await page.locator('.pp-straw.is-short').count()); i++) {
+    await page.getByRole('button', { name: /^Straw \d+$/ }).first().click();
   }
+}
+
+test('straws: each person taps one straw until the short one', async ({ page }) => {
+  await page.goto(URL); // 4 players by default, no names needed
+  await mode(page, 'straws').click();
+  await expect(page.locator('.pp-turn')).toHaveText('Tap a straw. 4 left');
+  const straws = page.locator('.pp-straw');
+  await expect(straws).toHaveCount(4);
+  await straws.first().click();
+  if (!(await page.locator('.pp-straw.is-short').count())) {
+    await expect(page.getByRole('button', { name: 'Straw 1: long' })).toBeDisabled();
+    await expect(page.locator('.pp-turn')).toHaveText('Tap a straw. 3 left');
+  }
+  await drawUntilShort(page);
   await expect(page.locator('.pp-straw.is-short')).toHaveCount(1);
-  await expect(page.locator('.pp-result-sub')).toHaveText('drew the short straw');
-  await expect(result(page)).toHaveText(new RegExp(`^(${NAMES.join('|')})$`));
+  await expect(result(page)).toHaveText('Short straw');
+  await expect(page.locator('.pp-result-sub')).toHaveText('whoever drew it is picked');
+  await expect(page.getByRole('button', { name: /^Straw \d+$/ })).toHaveCount(0); // all taken or shown
   await page.getByRole('button', { name: 'New draw' }).click();
-  await expect(straws).toHaveCount(6);
+  await expect(page.getByRole('button', { name: /^Straw \d+$/ })).toHaveCount(4);
 });
 
 test('teams: everyone in one team, sizes within one', async ({ page }) => {
@@ -220,7 +263,7 @@ for (const scheme of ['light', 'dark']) {
     await expect(page.locator('.pp-finger.is-win')).toHaveCount(1, { timeout: 4000 });
     await expectAccessible(page, 'fingers');
     await mode(page, 'straws').click();
-    await page.getByRole('button', { name: 'Draw the rest' }).click();
+    await drawUntilShort(page);
     await expect(page.locator('.pp-straw.is-short')).toHaveCount(1);
     await expectAccessible(page, 'straws');
     await mode(page, 'teams').click();
