@@ -26,6 +26,7 @@ export function createFingers(ctx) {
   let settle = 0;
   let count = null;
   let simulated = false;
+  let interrupted = false; // the phone cancelled the touches (a system gesture)
 
   const hint = h('p', { class: 'pp-touch-hint' });
   const area = h('div', { class: 'pp-touch' }, hint);
@@ -58,11 +59,12 @@ export function createFingers(ctx) {
   }
 
   function setHint() {
-    const key = phase === 'counting' ? 'hold'
+    const key = interrupted && (phase === 'idle' || phase === 'waiting') ? 'cancelled'
+      : phase === 'counting' ? 'hold'
       : phase === 'done' ? (simulated ? null : touch.size ? 'lift' : 'again')
         : markers.length === 1 ? 'more'
           : coarse.matches ? 'touch' : 'noTouch';
-    hint.textContent = !key || (phase === 'waiting' && markers.length > 1) ? '' : t(`pick-a-person.fingers.hint.${key}`);
+    hint.textContent = !key || (phase === 'waiting' && markers.length > 1 && key !== 'cancelled') ? '' : t(`pick-a-person.fingers.hint.${key}`);
     area.dataset.phase = phase;
   }
 
@@ -206,6 +208,7 @@ export function createFingers(ctx) {
     if (phase === 'done') {
       // A new round starts with the first touch after everyone has let go.
       if (!fresh.length || touch.size) return setHint();
+      interrupted = false;
       reset();
     } else if (simulated && fresh.length) reset();
     for (const [id, [x, y]] of live) {
@@ -213,6 +216,14 @@ export function createFingers(ctx) {
       else touch.set(id, addMarker(x, y));
     }
     if (fresh.length) ctx.buzz(10);
+    // Phones that use three fingers for screenshots and the like cancel the
+    // page's touches when a third finger lands. Say so, since a page can't
+    // stop it; the next new touch clears the message.
+    if (fresh.length) interrupted = false;
+    if (e.type === 'touchcancel' && lifted) {
+      interrupted = true;
+      ctx.say(t('pick-a-person.fingers.hint.cancelled'));
+    }
     if (fresh.length || lifted) changed(); // any new or lifted finger restarts the wait
   }
   for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {

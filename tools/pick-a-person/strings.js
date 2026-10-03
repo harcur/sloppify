@@ -59,6 +59,7 @@ export const strings = {
     'fingers.hint.noTouch': 'This needs a touch screen. Or pick from the players below.',
     'fingers.hint.more': 'Waiting for more fingers',
     'fingers.hint.hold': 'Hold still',
+    'fingers.hint.cancelled': 'Your phone took over the touch. Some phones use three fingers for screenshots: turn that off in the phone’s settings to play with more people.',
     'fingers.hint.lift': 'Lift all fingers to start again',
     'fingers.hint.again': 'Touch the screen to start again',
     'fingers.said.one': '{name} is picked.',

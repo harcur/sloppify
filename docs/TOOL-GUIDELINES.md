@@ -230,11 +230,11 @@ WCAG 2.2 AA on every page, checked automatically and by hand.
 
 ## Part 6: Tests
 
-Every tool comes with tests and must pass CI before it's deployed. Test tooling is dev-only and never deployed.
+Every tool comes with tests. Publishing doesn't wait for them (see `docs/DECISIONS.md`), so run them locally before merging, and fix any failure CI reports on `main` straight away. Test tooling is dev-only and never deployed.
 
 - **Unit tests** (`tests/unit/<id>.test.js`, Node's built-in `node:test`) for the tool's logic: calculations, solvers, generators, rules and migrations. Keep that logic in plain modules without DOM access so it can be tested directly.
 - **Browser tests** (`tests/e2e/<id>.spec.js`, Playwright) for the main flows, on mobile and desktop in Chromium, Firefox and WebKit. Use the helpers in `tests/e2e/helpers.js`: track external requests (must stay empty), skip the first-visit notice, and run `expectAccessible` with axe-core in both light and dark mode, including any dialogs and game states. The accessibility checks run in Chromium only (desktop and mobile); the other browsers run the same tests without them.
-- **The spec's file name ties it to its tool.** On a pull request, CI only runs the browser tests for the folders the change touches (`scripts/affected-tests.mjs`): a change in `tools/<id>/` runs `tests/e2e/<id>.spec.js`, hub files run `hub.spec.js`, and anything shared (`shared/`, `sw.js`, test helpers, config, CI) runs everything. So a tool's browser tests go in `tests/e2e/<id>.spec.js` and test only that tool. On `main`, everything runs before each deploy. Locally, `npm run test:changed` does the same selection against `origin/main`.
+- **The spec's file name ties it to its tool.** `npm run test:changed` runs only the browser tests for the folders a change touches (`scripts/affected-tests.mjs`): a change in `tools/<id>/` runs `tests/e2e/<id>.spec.js`, hub files run `hub.spec.js`, and anything shared (`shared/`, `sw.js`, test helpers, config, CI) runs everything. So a tool's browser tests go in `tests/e2e/<id>.spec.js` and test only that tool. CI runs every browser test on `main`, alongside the deploy.
 - **Size budgets** are checked automatically (2.1).
 - **Licences** are checked by REUSE lint.
 
@@ -263,4 +263,4 @@ Answer these in the pull request or issue before building:
 - [ ] Designed mobile and desktop layouts; on phones an app layout (`app: true`, state on top, main thing in the middle, actions at the bottom, the rest in the options sheet); tokens only; colour by zone; light and dark
 - [ ] WCAG 2.2 AA: keyboard, screen reader, contrast, reduced motion
 - [ ] SPDX headers on every file; licence set correctly
-- [ ] Unit and browser tests, passing in CI
+- [ ] Unit and browser tests, passing locally (`npm run test:unit`, `npm run test:changed`)
