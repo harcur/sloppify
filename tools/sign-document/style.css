@@ -50,7 +50,7 @@
 .sd-item-label { margin: 0; font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
 .sd-field { margin-top: 12px; }
 .sd-field label { display: block; margin-bottom: 4px; font-size: 14px; }
-.sd-input { width: 100%; min-height: 44px; padding: 0 10px; background: var(--surface); border: 1px solid var(--muted); }
+.sd-input { width: 100%; min-height: 44px; padding: 0 10px; background: var(--surface); border: 1px solid var(--muted); font: inherit; color: inherit; border-radius: 0; }
 .sd-sel .sd-hint { margin-top: 12px; }
 
 /* Signatures */
@@ -119,6 +119,8 @@
   }
   .sd-has-doc .sd-sel { z-index: 14; padding-top: 10px; padding-bottom: 10px; }
   .sd-has-doc .sd-sel .sd-row { margin-top: 8px; }
+  .sd-has-doc .sd-date-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .sd-has-doc .sd-date-fields .sd-field { margin-top: 8px; }
   .sd-has-doc .sd-sig-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   body:has(.sd-has-doc) .toast { bottom: calc(69px + env(safe-area-inset-bottom, 0px)); }
 }

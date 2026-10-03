@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 sloppify contributors
 // SPDX-License-Identifier: MIT
 
-// Signature and drawing helpers with no DOM access.
+// Signature, drawing and date helpers with no DOM access.
 
 export const INKS = { black: [22, 22, 22], blue: [24, 54, 140] };
 
@@ -99,3 +99,13 @@ export function resize(item, k, pw) {
 }
 
 export const isSignatureList = (v) => Array.isArray(v) && v.every((s) => s && typeof s.id === 'string' && typeof s.src === 'string' && s.src.startsWith('data:image/png;base64,'));
+
+// Dates: YYYY-MM-DD in, written out in a locale (undefined means the browser's own).
+export const DATE_FORMATS = ['long', 'medium', 'short', 'iso'];
+export const isIsoDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+export const todayIso = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+export function formatDate(iso, fmt, locale) {
+  if (fmt === 'iso') return iso;
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Intl.DateTimeFormat(locale, { dateStyle: DATE_FORMATS.includes(fmt) ? fmt : 'long' }).format(new Date(y, m - 1, d));
+}

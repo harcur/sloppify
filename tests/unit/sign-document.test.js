@@ -8,7 +8,7 @@ import { PdfDoc, PdfError, Lexer, Name, Ref, Str, Op, latin1, bytes, viewport, m
 import { signPdf, imagePdf, ser, placement } from '../../tools/sign-document/write.js';
 import { parseCMap, glyphChar, winAnsi } from '../../tools/sign-document/fonts.js';
 import { Gfx } from '../../tools/sign-document/render.js';
-import { trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, INKS } from '../../tools/sign-document/sig.js';
+import { trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, INKS, formatDate, todayIso, isIsoDate } from '../../tools/sign-document/sig.js';
 
 // Builds a PDF with a classic cross-reference table from [num, body] pairs.
 function classicPdf(objs, trailer = '/Root 1 0 R') {
@@ -250,4 +250,16 @@ test('operators come back as Op tokens', () => {
   for (let t = lx.token(); t !== undefined; t = lx.token()) toks.push(t);
   assert.ok(toks[0] instanceof Op && toks[0].o === 'q');
   assert.equal(toks.length, 9);
+});
+
+test('dates are written in the requested locale and style', () => {
+  assert.equal(formatDate('2026-10-03', 'long', 'en-GB'), '3 October 2026');
+  assert.equal(formatDate('2026-10-03', 'long', 'en-US'), 'October 3, 2026');
+  assert.equal(formatDate('2026-10-03', 'medium', 'de-DE'), '03.10.2026');
+  assert.equal(formatDate('2026-10-03', 'short', 'en-GB'), '03/10/2026');
+  assert.equal(formatDate('2026-10-03', 'iso', 'en-US'), '2026-10-03');
+  assert.equal(formatDate('2026-01-31', 'long', 'en-GB'), '31 January 2026'); // local date, no time zone shift
+  assert.equal(todayIso(new Date(2026, 0, 5)), '2026-01-05');
+  assert.ok(isIsoDate('2026-02-28'));
+  assert.ok(!isIsoDate('') && !isIsoDate('28/02/2026'));
 });

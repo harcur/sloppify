@@ -1,6 +1,6 @@
 # sign document
 
-Open a PDF or a picture of a document, place a saved signature, draw on it or add text, and save a signed copy. Signatures can be drawn, typed or made from a photo of a signature on paper. Everything happens in the browser; documents are never stored or uploaded, only the signatures are saved locally.
+Open a PDF or a picture of a document, place a saved signature, draw on it, add text or a date written the local way, and save a signed copy. Signatures can be drawn, typed or made from a photo of a signature on paper. Everything happens in the browser; documents are never stored or uploaded, only the signatures are saved locally.
 
 It adds a picture of a signature, not a certified digital signature.
 

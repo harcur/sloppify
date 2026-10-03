@@ -116,6 +116,42 @@ test('the pen draws and text starts as a date that can be edited', async ({ page
   await expect(items(page)).toHaveCount(2);
 });
 
+test('the Text and Date tools add items from the keyboard too', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  await page.getByRole('button', { name: 'Text', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Text', { exact: true })).toBeFocused();
+  await page.keyboard.type('Oslo');
+  await expect(page.getByRole('button', { name: /^Text 1, page 1: Oslo/ })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Date', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByLabel('Date', { exact: true })).toBeFocused();
+  await expect(items(page)).toHaveCount(2);
+});
+
+test.describe('in a German browser', () => {
+  test.use({ locale: 'de-DE' });
+
+  test('the date is written the local way and can be changed', async ({ page }) => {
+    await openPdf(page);
+    await waitForPages(page);
+    await page.getByRole('button', { name: 'Date', exact: true }).click();
+    const box = await page.locator('.sd-page').first().boundingBox();
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 4);
+    const date = page.getByLabel('Date', { exact: true });
+    const iso = await date.inputValue();
+    const [y, m, d] = iso.split('-').map(Number);
+    const long = new Intl.DateTimeFormat('de-DE', { dateStyle: 'long' }).format(new Date(y, m - 1, d));
+    await expect(page.locator('.sd-overlay text')).toHaveText(long);
+    await date.fill('2026-01-31');
+    await expect(page.locator('.sd-overlay text')).toHaveText('31. Januar 2026');
+    await page.getByLabel('Written as').selectOption('iso');
+    await expect(page.locator('.sd-overlay text')).toHaveText('2026-01-31');
+    expect(await page.evaluate(() => localStorage.getItem('sloppify:sign-document:dateFormat'))).toBe('"iso"');
+  });
+});
+
 test('a drawn signature is remembered and can be removed', async ({ page }) => {
   await page.getByRole('button', { name: 'New signature' }).click();
   await page.getByRole('button', { name: 'Save signature' }).click();

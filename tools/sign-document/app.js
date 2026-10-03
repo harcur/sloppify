@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: MIT
 
 import { initPage, guardStore } from '../../shared/page.js';
-import { extendStrings, t, lang } from '../../shared/i18n.js';
+import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
 import { icon } from '../../shared/icons.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog, messageDialog } from '../../shared/dialog.js';
 import { toast } from '../../shared/toast.js';
 import { strings } from './strings.js';
-import { INKS, trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList } from './sig.js';
+import { INKS, trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, DATE_FORMATS, isIsoDate, todayIso, formatDate } from './sig.js';
 
 extendStrings(strings);
 
@@ -18,11 +18,12 @@ const name = t(`${TOOL_ID}.name`);
 const k = (key, vars) => t(`${TOOL_ID}.${key}`, vars);
 const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: 'tools/sign-document/' });
 
-// Saved: signatures (small PNGs) and the ink colour. Documents are never stored.
+// Saved: signatures (small PNGs), the ink colour and the date format. Documents are never stored.
 const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 let signatures = saving && isSignatureList(store.get('signatures')) ? store.get('signatures') : [];
 let ink = saving && INKS[store.get('ink')] ? store.get('ink') : 'black';
+let dateFormat = saving && DATE_FORMATS.includes(store.get('dateFormat')) ? store.get('dateFormat') : 'long';
 
 const SANS = 'Helvetica, Arial, sans-serif';
 const SCRIPT = '"Segoe Script", "Bradley Hand", "Apple Chancery", "URW Chancery L", cursive';
@@ -94,8 +95,11 @@ const docBar = h('section', { class: 'sd-doc', 'aria-label': k('document') },
   h('div', { class: 'sd-row' }, saveBtn, savePdfBtn, closeBtn),
 );
 
-const modeBtns = ['move', 'pen', 'text'].map((m) => h('button', {
-  type: 'button', class: 'sd-tool', 'data-mode': m, 'aria-pressed': 'false', onclick: () => setMode(m),
+// Text and Date add to the page that's tapped. From the keyboard (no click position),
+// pressing them adds to the middle of the page in view instead.
+const modeBtns = ['move', 'pen', 'text', 'date'].map((m) => h('button', {
+  type: 'button', class: 'sd-tool', 'data-mode': m, 'aria-pressed': 'false',
+  onclick: (e) => { setMode(m); if (e.detail === 0 && kind && (m === 'text' || m === 'date')) addText(currentPage(), null, m === 'date'); },
 }, k(`mode.${m}`)));
 const undoBtn = h('button', { type: 'button', class: 'sd-tool', disabled: true, onclick: () => undo() }, k('undo'));
 const sigsToggle = h('button', {
@@ -116,8 +120,13 @@ const modeHint = toolBar.querySelector('.sd-mode-hint');
 const itemLabel = h('p', { class: 'sd-item-label' });
 const textInput = h('input', { type: 'text', id: 'sd-text', class: 'sd-input', autocomplete: 'off', oninput: () => editText() });
 const textField = h('div', { class: 'sd-field' }, h('label', { for: 'sd-text' }, k('item.textLabel')), textInput);
+const dateInput = h('input', { type: 'date', id: 'sd-date', class: 'sd-input', required: true, onchange: () => editDate() });
+const fmtSelect = h('select', { id: 'sd-fmt', class: 'sd-input', onchange: () => editDate() });
+const dateFields = h('div', { class: 'sd-date-fields' },
+  h('div', { class: 'sd-field' }, h('label', { for: 'sd-date' }, k('item.dateLabel')), dateInput),
+  h('div', { class: 'sd-field' }, h('label', { for: 'sd-fmt' }, k('item.formatLabel')), fmtSelect));
 const itemPanel = h('section', { class: 'sd-sel', 'aria-label': k('item.panel'), hidden: true },
-  itemLabel, textField,
+  itemLabel, textField, dateFields,
   h('div', { class: 'sd-row' },
     h('button', { type: 'button', class: 'btn', onclick: () => scaleSelected(1 / 1.15) }, k('item.smaller')),
     h('button', { type: 'button', class: 'btn', onclick: () => scaleSelected(1.15) }, k('item.larger')),
@@ -311,11 +320,13 @@ new ResizeObserver(() => {
 const unitsPerPx = (p) => p.w / (p.svg.getBoundingClientRect().width || p.w);
 const local = (it) => it.w / it.w0;
 
-function itemNode(p, it, i) {
+const itemName = (p, it) => k(it.date ? 'item.date' : `item.${it.type}`, { n: p.items.indexOf(it) + 1, page: pages.indexOf(p) + 1, text: it.text ?? '' });
+
+function itemNode(p, it) {
   const sel = selected?.item === it;
   const g = svgEl('g', {
     class: `sd-item${sel ? ' sd-selected' : ''}`, tabindex: '0', role: 'button', 'data-id': it.id,
-    'aria-pressed': String(sel), 'aria-label': k(`item.${it.type}`, { n: i + 1, page: pages.indexOf(p) + 1, text: it.text ?? '' }),
+    'aria-pressed': String(sel), 'aria-label': itemName(p, it),
     'aria-describedby': 'sd-keys', transform: `translate(${it.x} ${it.y}) scale(${local(it)})`,
   });
   g.append(svgEl('rect', { class: 'sd-hit', width: it.w0, height: it.h0 }));
@@ -332,7 +343,7 @@ function itemNode(p, it, i) {
 
 function drawOverlay(p) {
   const focusedId = document.activeElement?.closest?.('.sd-item')?.dataset.id;
-  p.svg.replaceChildren(...p.items.map((it, i) => itemNode(p, it, i)));
+  p.svg.replaceChildren(...p.items.map((it) => itemNode(p, it)));
   if (selected?.p === p) {
     const it = selected.item;
     const s = 22 * unitsPerPx(p);
@@ -374,9 +385,20 @@ function updateItemPanel() {
   itemPanel.hidden = !selected;
   if (!selected) return;
   const { p, item } = selected;
-  itemLabel.textContent = k(`item.${item.type}`, { n: p.items.indexOf(item) + 1, page: pages.indexOf(p) + 1, text: item.text ?? '' });
-  textField.hidden = item.type !== 'text';
-  if (item.type === 'text' && textInput.value !== item.text) textInput.value = item.text;
+  itemLabel.textContent = itemName(p, item);
+  textField.hidden = item.type !== 'text' || !!item.date;
+  dateFields.hidden = !item.date;
+  if (item.date) {
+    dateInput.value = item.date;
+    // Some locales write two styles the same way; list each wording once.
+    const seen = new Set();
+    fmtSelect.replaceChildren(...DATE_FORMATS.flatMap((f) => {
+      const text = formatDate(item.date, f);
+      if (seen.has(text) && f !== item.fmt) return [];
+      seen.add(text);
+      return h('option', { value: f, selected: f === item.fmt }, text);
+    }));
+  } else if (item.type === 'text' && textInput.value !== item.text) textInput.value = item.text;
 }
 
 function addItem(p, item) {
@@ -421,12 +443,40 @@ function editText() {
   if (!textTimer) snapshot();
   clearTimeout(textTimer);
   textTimer = setTimeout(() => { textTimer = 0; }, 800);
+  setText(p, item, textInput.value);
+}
+
+function setText(p, item, text) {
   const f = local(item);
-  item.text = textInput.value;
-  item.w0 = textWidth(item.text, item.fs);
+  item.text = text;
+  item.w0 = textWidth(text, item.fs);
   item.w = item.w0 * f;
   drawOverlay(p);
-  itemLabel.textContent = k('item.text', { n: p.items.indexOf(item) + 1, page: pages.indexOf(p) + 1, text: item.text });
+  itemLabel.textContent = itemName(p, item);
+}
+
+function editDate() {
+  if (!selected?.item.date) return;
+  const { p, item } = selected;
+  snapshot();
+  if (isIsoDate(dateInput.value)) item.date = dateInput.value;
+  item.fmt = dateFormat = DATE_FORMATS.includes(fmtSelect.value) ? fmtSelect.value : dateFormat;
+  if (saving) store.set('dateFormat', dateFormat);
+  setText(p, item, formatDate(item.date, item.fmt));
+  updateItemPanel();
+}
+
+// Text starts as a placeholder to type over; a date starts as today in the browser's own locale.
+function addText(p, at, isDate) {
+  const fs = Math.max(p.w, p.h) / 60;
+  const date = isDate ? todayIso() : undefined;
+  const text = isDate ? formatDate(date, dateFormat) : k('item.defaultText');
+  const w0 = textWidth(text, fs), h0 = fs * 1.3;
+  const [x, y] = at ? [at[0], at[1] - fs] : [(p.w - w0) / 2, viewCentreY(p) - h0 / 2];
+  addItem(p, { type: 'text', text, date, fmt: isDate ? dateFormat : undefined, fs, color: rgb(INKS[ink]), x, y, w: w0, h: h0, w0, h0 });
+  const field = isDate ? dateInput : textInput;
+  field.focus();
+  if (!isDate) textInput.select();
 }
 
 // Pointer and keyboard ------------------------------------------------
@@ -452,14 +502,9 @@ function onPointer(e, p) {
     } else if (item) {
       select(p, item);
       drag = { kind: 'move', item, x, y, ix: item.x, iy: item.y, before: false };
-    } else if (mode === 'text') {
-      const fs = Math.max(p.w, p.h) / 60;
-      const text = new Date().toLocaleDateString(lang);
-      const w0 = textWidth(text, fs);
-      addItem(p, { type: 'text', text, fs, color: rgb(INKS[ink]), x, y: y - fs, w: w0, h: fs * 1.3, w0, h0: fs * 1.3 });
+    } else if (mode === 'text' || mode === 'date') {
       e.preventDefault();
-      textInput.focus();
-      textInput.select();
+      addText(p, [x, y], mode === 'date');
       return;
     } else {
       select(null, null);
@@ -546,12 +591,16 @@ function currentPage() {
   return best;
 }
 
+// Middle of the visible part of a page, in page units.
+function viewCentreY(p) {
+  const r = p.el.getBoundingClientRect();
+  return ((Math.max(r.top, 0) + Math.min(r.bottom, innerHeight)) / 2 - r.top) * unitsPerPx(p);
+}
+
 function placeSignature(sig) {
   if (!kind) return;
   const p = currentPage();
-  const r = p.el.getBoundingClientRect();
-  const upp = unitsPerPx(p);
-  const cy = ((Math.max(r.top, 0) + Math.min(r.bottom, innerHeight)) / 2 - r.top) * upp;
+  const cy = viewCentreY(p);
   const w = p.w * 0.28, hh = (w * sig.h) / sig.w;
   addItem(p, { type: 'sig', src: sig.src, x: (p.w - w) / 2, y: cy - hh / 2, w, h: hh, w0: w, h0: hh });
   if (narrow.matches) showSheet(false, false);
