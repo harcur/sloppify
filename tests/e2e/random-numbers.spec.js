@@ -107,6 +107,19 @@ test('on phones Pick is pinned to the bottom of the screen', async ({ page }) =>
   expect(link.y + link.height).toBeLessThanOrEqual(bar.y);
 });
 
+test('on phones Pick stays at the bottom of the visible area when it is smaller than the page', async ({ page, browserName }) => {
+  test.skip((page.viewportSize()?.width ?? 1000) >= 720, 'narrow screens only');
+  test.skip(browserName !== 'chromium', 'zooms through the Chrome DevTools Protocol');
+  await page.goto('./tools/random-numbers/');
+  // Zooming in shrinks the visual viewport, like an open keyboard does.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setPageScaleFactor', { pageScaleFactor: 2 });
+  await expect.poll(() => page.evaluate(() => {
+    const bar = document.querySelector('.rn-actions').getBoundingClientRect();
+    return Math.abs(visualViewport.offsetTop + visualViewport.height - bar.bottom);
+  })).toBeLessThan(2);
+});
+
 for (const scheme of ['light', 'dark']) {
   test(`accessibility (${scheme})`, async ({ page }) => {
     await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });

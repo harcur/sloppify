@@ -53,6 +53,34 @@ const pickBtn = h('button', { type: 'button', class: 'btn btn-primary rn-pick', 
 const copyBtn = h('button', { type: 'button', class: 'btn rn-copy', onclick: () => copy() }, t2('copy'));
 const actions = h('div', { class: 'rn-actions' }, pickBtn, copyBtn);
 
+// On phones Pick/Copy are position: fixed, which pins them to the layout
+// viewport. While the keyboard is open, the page is zoomed or the browser bars
+// slide in and out, the visible area is smaller than that, so the bar floats
+// above the bottom edge or slides with the scroll. Shift it to the bottom of
+// the visual viewport instead.
+const phone = matchMedia('(max-width: 719px)');
+let shift = 0;
+function pinActions() {
+  const vv = window.visualViewport;
+  let next = 0;
+  if (vv && phone.matches) {
+    // Where the bar's bottom would be without the shift, against where the
+    // visible area ends, both measured from the top of the layout viewport.
+    const bottom = actions.getBoundingClientRect().bottom - shift;
+    next = Math.round(vv.offsetTop + vv.height - bottom);
+    if (Math.abs(next) < 1) next = 0;
+  }
+  if (next === shift) return;
+  shift = next;
+  actions.style.setProperty('--rn-shift', `${shift}px`);
+}
+if (window.visualViewport) {
+  visualViewport.addEventListener('resize', pinActions);
+  visualViewport.addEventListener('scroll', pinActions);
+}
+window.addEventListener('scroll', pinActions, { passive: true });
+phone.addEventListener('change', pinActions);
+
 function numberField(value, onchange, attrs = {}) {
   const input = h('input', { type: 'text', inputmode: 'numeric', autocomplete: 'off', class: 'rn-input', value: fmt(value), ...attrs });
   input.addEventListener('input', () => onchange(readInt(input.value), input));
@@ -222,3 +250,4 @@ else {
   out.replaceChildren(h('p', { class: 'rn-hint' }, t2('waiting')));
 }
 renderHistory();
+pinActions();
