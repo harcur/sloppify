@@ -12,7 +12,11 @@ const BUDGET = { tool: 100 * KB, data: 200 * KB, shared: 50 * KB, hub: 20 * KB, 
 
 // Tools allowed over budget. Each needs a reason here and an entry in docs/DECISIONS.md.
 // Example: 'chess': { tool: 200 * KB, reason: 'vendored engine' },
-const EXCEPTIONS = {};
+const EXCEPTIONS = {
+  // Its own PDF reader, preview renderer and writer instead of a library (pdf.js alone is over 1 MB).
+  // The PDF half (about 50 KB) loads only in a worker, when a PDF is opened.
+  'sign-document': { tool: 110 * KB, reason: 'built-in PDF reader, renderer and writer' },
+};
 
 const root = new URL('../../', import.meta.url).pathname;
 const IGNORED = new Set(['README.md', 'LICENSE']);
