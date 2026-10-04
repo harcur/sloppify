@@ -5,11 +5,15 @@
 // so it's unit tested and shared by the editor, the worker and the view page.
 
 export const SIZES = { '1920x1080': [1920, 1080], '1280x720': [1280, 720], '2560x1440': [2560, 1440], '1080x1920': [1080, 1920] };
-export const KINDS = ['camera', 'chat', 'game', 'alerts', 'info', 'buttons', 'other'];
-export const EFFECTS = ['lift', 'sink', 'orbit', 'splash', 'pile', 'none'];
+// Links store indexes into these lists, so new entries only ever go at the end.
+export const KINDS = ['camera', 'chat', 'game', 'alerts', 'info', 'buttons', 'other', 'canvas'];
+export const EFFECTS = ['lift', 'sink', 'orbit', 'splash', 'pile', 'none', 'tape', 'brush', 'sketch', 'watercolor', 'vines', 'glitch'];
+// The order effects are offered in: plain window last.
+export const EFFECT_ORDER = ['lift', 'sink', 'orbit', 'splash', 'pile', 'tape', 'brush', 'sketch', 'watercolor', 'vines', 'glitch', 'none'];
 // over: the content sits on top of the art. under: the art's edges cover the content.
 export const PLACES = ['over', 'under'];
-export const STYLES = ['sheet', 'flow', 'contour', 'dots', 'none'];
+export const STYLES = ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch'];
+export const STYLE_ORDER = ['sheet', 'flow', 'contour', 'dots', 'hatch', 'none'];
 export const MAX_ZONES = 12;
 export const MIN_SIDE = 40;
 
@@ -21,6 +25,8 @@ export const PALETTES = {
   ocean: { bg: '#08263A', frame: '#FFFFFF', colors: ['#5EC2E8', '#A8E6F0', '#F7B267', '#FFFFFF'] },
   paper: { bg: '#F3ECE0', frame: '#1D1D1D', colors: ['#1D1D1D', '#E4572E', '#2E86AB', '#B8A88A'] },
   mono: { bg: '#121212', frame: '#F5F5F5', colors: ['#F5F5F5', '#9E9E9E', '#5C5C5C', '#FFFFFF'] },
+  kraft: { bg: '#D9C4A0', frame: '#F4EDE1', colors: ['#2B2B2B', '#B5452B', '#3C6E71', '#F4EDE1'] },
+  pastel: { bg: '#2E2A3A', frame: '#FBF6EE', colors: ['#F2A7A0', '#9CC5E8', '#B8D8A8', '#E6D3F7'] },
 };
 
 // Numeric settings: [min, max, default].
@@ -37,6 +43,7 @@ const KIND_DEFAULTS = {
   info: { effect: 'orbit', place: 'over', frame: 0, fuzz: 12, w: 520, h: 100 },
   buttons: { effect: 'pile', place: 'over', frame: 0, fuzz: 8, w: 420, h: 90 },
   other: { effect: 'lift', place: 'over', frame: 0, fuzz: 16, w: 400, h: 240 },
+  canvas: { effect: 'tape', place: 'under', frame: 0, fuzz: 6, w: 1100, h: 700 },
 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -140,6 +147,15 @@ const PRESETS = {
     zones: [
       { kind: 'info', x: 560, y: 400, w: 800, h: 280, r: 40, effect: 'splash', place: 'over', fuzz: 14, power: 7 },
       { kind: 'alerts', x: 660, y: 120, w: 600, h: 140, effect: 'orbit', place: 'over', fuzz: 16, power: 5 },
+    ],
+  },
+  art: {
+    style: 'hatch', palette: 'kraft', density: 5, reach: 100, fill: true,
+    zones: [
+      { kind: 'canvas', x: 60, y: 60, w: 1240, h: 760, effect: 'tape', place: 'under', fuzz: 6, power: 6 },
+      { kind: 'camera', x: 1360, y: 60, w: 500, h: 380, effect: 'watercolor', place: 'under', frame: 12, fuzz: 16, power: 6 },
+      { kind: 'chat', x: 1360, y: 500, w: 500, h: 520, effect: 'sketch', place: 'over', fuzz: 10, power: 5 },
+      { kind: 'info', x: 60, y: 880, w: 1240, h: 140, effect: 'brush', place: 'over', fuzz: 12, power: 6 },
     ],
   },
 };

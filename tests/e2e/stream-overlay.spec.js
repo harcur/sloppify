@@ -98,6 +98,22 @@ test('a starting layout replaces the zones after confirming', async ({ page }) =
   await expect(page.getByText('the front layer is empty')).toBeVisible();
 });
 
+test('the art stream layout uses a taped canvas, hatching and the art effects', async ({ page }) => {
+  await open(page);
+  await page.getByLabel('Starting layout').selectOption('art');
+  await page.getByRole('button', { name: 'Use layout' }).click();
+  await page.getByRole('dialog', { name: 'replace this layout?' }).getByRole('button', { name: 'Replace' }).click();
+  await expect(page.getByLabel('Style')).toHaveValue('hatch');
+  await zone(page, 'canvas').click();
+  await expect(page.getByLabel('Effect on the art')).toHaveValue('tape');
+  for (const [name, hint] of [['vines', 'Vines grow out'], ['glitch', 'Colour slices tear off']]) {
+    await page.getByLabel('Effect on the art').selectOption(name);
+    await expect(page.getByText(hint)).toBeVisible();
+  }
+  await expect(page.locator('.so-stage[data-drawn="true"]')).toBeAttached();
+  expect(await coverage(page.locator('canvas.so-layer').first())).toBeGreaterThan(0.15);
+});
+
 test('downloads a full size layer as a PNG', async ({ page }) => {
   await open(page);
   const [download] = await Promise.all([

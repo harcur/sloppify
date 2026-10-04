@@ -78,7 +78,10 @@ export const smooth = (a, b, x) => {
 export const falloff = (d, soft) => (d <= 0 ? 1 : 1 / (1 + (d / soft) * (d / soft)));
 
 // How much each effect raises (or sinks) the field around its zone.
-const LIFT = { lift: 1, sink: -1, orbit: 0.35, splash: 0.45, pile: 0.45, none: 0 };
+const LIFT = {
+  lift: 1, sink: -1, orbit: 0.35, splash: 0.45, pile: 0.45, none: 0,
+  tape: 0.6, brush: 0.4, sketch: 0.3, watercolor: -0.4, vines: 0.5, glitch: 0.2,
+};
 
 /**
  * The shared field for a design. probe(x, y) fills `out` with:
@@ -149,7 +152,9 @@ export function field(design) {
         let dy = ty;
         if (z.effect === 'lift') { dx += gx * 0.3; dy += gy * 0.3; }
         else if (z.effect === 'sink') { dx = tx * 0.6 - gx; dy = ty * 0.6 - gy; }
-        else if (z.effect === 'splash' || z.effect === 'pile') { dx = tx * 0.3; dy = 1; }
+        else if (z.effect === 'splash' || z.effect === 'pile' || z.effect === 'vines') { dx = tx * 0.3; dy = 1; }
+        else if (z.effect === 'brush') { dx = tx * 1.5; dy = ty * 1.5; }
+        else if (z.effect === 'glitch') { dx = z.spin; dy = 0; }
         vx += dx * w;
         vy += dy * w;
       }
