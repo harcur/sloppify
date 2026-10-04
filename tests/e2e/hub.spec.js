@@ -9,6 +9,10 @@ let external;
 test.beforeEach(async ({ page, baseURL }) => { external = trackExternalRequests(page, baseURL); });
 test.afterEach(() => { expect(external, 'requests outside the site').toEqual([]); });
 
+// The notice is marked as seen when the dialog's close event fires, a moment
+// after the dialog is hidden. Reloading before that would show it again.
+const noticeSaved = (page) => page.waitForFunction(() => localStorage.getItem('sloppify:hub:noticeSeen') === 'true');
+
 test('first visit shows the notice once', async ({ page }) => {
   await page.goto('./');
   const dialog = page.getByRole('dialog', { name: 'before you start' });
@@ -16,6 +20,7 @@ test('first visit shows the notice once', async ({ page }) => {
   await expect(dialog).toContainText('no greed');
   await dialog.getByRole('button', { name: 'Got it' }).click();
   await expect(dialog).toBeHidden();
+  await noticeSaved(page);
   await page.reload();
   await expect(page.getByRole('heading', { level: 3, name: 'sudoku' })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -25,7 +30,8 @@ test('Escape dismisses the notice too', async ({ page }) => {
   await page.goto('./');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('dialog')).toHaveCount(0); // saved when the dialog's close event fires
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await noticeSaved(page);
   await page.reload();
   await expect(page.getByRole('heading', { level: 3, name: 'sudoku' })).toBeVisible();
   await expect(page.getByRole('dialog')).toHaveCount(0);
