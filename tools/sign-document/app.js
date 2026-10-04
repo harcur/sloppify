@@ -194,6 +194,15 @@ const pagesEl = h('div', { class: 'sd-pages', role: 'region', 'aria-label': k('p
 const side = h('div', { class: 'sd-side' }, docBar, toolBar, itemPanel, sigsPanel);
 const layout = h('div', { class: 'sd-layout' }, side, pagesEl);
 
+// Zoom: page width as a multiple of the fitted width. Pages scroll sideways when wider.
+const ZOOMS = [1, 1.5, 2, 3];
+let zoom = 0;
+const zoomOut = h('button', { type: 'button', class: 'btn sd-zoom-btn', 'aria-label': k('zoom.out'), disabled: true, onclick: () => setZoom(zoom - 1) }, '\u2212');
+const zoomIn = h('button', { type: 'button', class: 'btn sd-zoom-btn', 'aria-label': k('zoom.in'), onclick: () => setZoom(zoom + 1) }, '+');
+const zoomLevel = h('span', { class: 'sd-zoom-level', 'aria-live': 'polite' }, '100%');
+const zoomRow = h('div', { class: 'sd-zoom', role: 'group', 'aria-label': k('zoom.title') },
+  h('span', { class: 'sd-label', 'aria-hidden': 'true' }, k('zoom.title')), zoomOut, zoomLevel, zoomIn);
+
 const stateLine = h('p', { class: 'sd-state' }, name);
 const bodyEl = h('div', { class: 'sd-body' }, openPanel, layout);
 main.append(h('h1', { class: 'tool-title' }, name), stateLine, bodyEl, fileInput);
@@ -203,11 +212,12 @@ main.classList.add('sd-main');
 // the options sheet; on wider screens both sit in the side panel.
 function arrange() {
   if (narrow.matches) {
-    options.body.prepend(docBar);
+    options.body.prepend(docBar, zoomRow);
     main.insertBefore(toolBar, fileInput);
   } else {
     options.close();
     side.prepend(docBar, toolBar);
+    toolBar.append(zoomRow);
   }
   updateUi();
 }
@@ -271,6 +281,7 @@ function resetDoc() {
   selected = null;
   history = [];
   dirty = false;
+  setZoom(0);
 }
 
 async function closeDoc() {
@@ -346,13 +357,30 @@ function renderPage(i) {
   });
 }
 
-new ResizeObserver(() => {
+// Sharper pages after a resize or zoom: re-render the ones near the screen at the new width.
+function refreshPages() {
   for (const [i, p] of pages.entries()) {
     const r = p.el.getBoundingClientRect();
     if (p.canvas && r.bottom > -innerHeight && r.top < innerHeight * 2) renderPage(i);
   }
   drawOverlays();
-}).observe(pagesEl);
+}
+new ResizeObserver(refreshPages).observe(pagesEl);
+
+function setZoom(i) {
+  i = Math.max(0, Math.min(ZOOMS.length - 1, i));
+  const scroller = narrow.matches ? bodyEl : document.scrollingElement;
+  const at = scroller.scrollTop / (scroller.scrollHeight || 1);
+  zoom = i;
+  pagesEl.style.setProperty('--sd-zoom', ZOOMS[i]);
+  pagesEl.classList.toggle('sd-zoomed', i > 0);
+  zoomLevel.textContent = `${ZOOMS[i] * 100}%`;
+  zoomOut.disabled = i === 0;
+  zoomIn.disabled = i === ZOOMS.length - 1;
+  scroller.scrollTop = at * scroller.scrollHeight;
+  pagesEl.scrollLeft = (pagesEl.scrollWidth - pagesEl.clientWidth) / 2;
+  refreshPages();
+}
 
 // Overlay items -------------------------------------------------------
 // Items keep their own local size (w0 x h0) and are scaled uniformly to w x h.
@@ -895,7 +923,7 @@ async function removeSignature(s) {
 
 function updateUi() {
   openPanel.hidden = !!kind;
-  docBar.hidden = !kind;
+  docBar.hidden = zoomRow.hidden = !kind;
   toolBar.hidden = !kind && !narrow.matches;
   stateLine.textContent = kind ? `${fileName} \u00B7 ${docMeta.textContent}` : name;
   if (!kind) itemPanel.hidden = true;

@@ -41,6 +41,9 @@ export const strings = {
     'sign-document.undo': 'Undo',
     'sign-document.undone': 'Undone',
     'sign-document.ink': 'Ink',
+    'sign-document.zoom.title': 'Zoom',
+    'sign-document.zoom.in': 'Zoom in',
+    'sign-document.zoom.out': 'Zoom out',
     'sign-document.ink.black': 'Black',
     'sign-document.ink.blue': 'Blue',
 

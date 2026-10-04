@@ -127,6 +127,22 @@ test('ticks and crosses go on the page in view and are saved', async ({ page }) 
   expect(Object.keys(doc.pages[0].resources.XObject)).toEqual(['SlpSig1']);
 });
 
+test('zoom makes the pages wider and back', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  const first = page.locator('.sd-page').first();
+  const before = (await first.boundingBox()).width;
+  await inOptions(page);
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await expect(page.locator('.sd-zoom-level')).toHaveText('200%');
+  await expect.poll(async () => (await first.boundingBox()).width).toBeGreaterThan(before * 1.9);
+  await page.getByRole('button', { name: 'Zoom out' }).click();
+  await page.getByRole('button', { name: 'Zoom out' }).click();
+  await expect(page.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+  await expect.poll(async () => Math.round((await first.boundingBox()).width)).toBe(Math.round(before));
+});
+
 test('the pen draws and text starts as a date that can be edited', async ({ page }) => {
   await openPdf(page);
   await waitForPages(page);
