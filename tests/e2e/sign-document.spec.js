@@ -113,6 +113,20 @@ test('a signature can be put on every page', async ({ page }) => {
   await expect(items(page)).toHaveCount(1);
 });
 
+test('ticks and crosses go on the page in view and are saved', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  await showSignatures(page);
+  await page.getByRole('button', { name: 'Tick', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Tick 1, page 1/ })).toBeFocused();
+  await showSignatures(page);
+  await page.getByRole('button', { name: 'Cross', exact: true }).click();
+  await expect(page.getByRole('button', { name: /^Cross 2, page 1/ })).toBeFocused();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save signed PDF' }).filter({ visible: true }).click()]);
+  const doc = await PdfDoc.open(readFileSync(await download.path()));
+  expect(Object.keys(doc.pages[0].resources.XObject)).toEqual(['SlpSig1']);
+});
+
 test('the pen draws and text starts as a date that can be edited', async ({ page }) => {
   await openPdf(page);
   await waitForPages(page);

@@ -151,6 +151,15 @@ const itemPanel = h('section', { class: 'sd-sel', 'aria-label': k('item.panel'),
 // Signatures: saved list plus the editor.
 const sigList = h('ul', { class: 'sd-sig-list' });
 const sigEmpty = h('p', { class: 'sd-hint' }, k('sig.none'));
+// Ticks and crosses for checkboxes: fixed strokes on a 24-unit square, placed like a signature.
+const MARKS = { tick: 'M3 13L9 19L21 5', cross: 'M5 5L19 19M19 5L5 19' };
+const markSvg = (m) => {
+  const svg = svgEl('svg', { class: 'sd-mark-icon', viewBox: '0 0 24 24', 'aria-hidden': 'true', focusable: 'false' });
+  svg.append(svgEl('path', { d: MARKS[m] }));
+  return svg;
+};
+const markBtns = Object.keys(MARKS).map((m) => h('button', { type: 'button', class: 'btn', onclick: () => placeMark(m) }, markSvg(m), k(`mark.${m}`)));
+const marksRow = h('div', { class: 'sd-marks', role: 'group', 'aria-label': k('mark.title') }, h('span', { class: 'sd-label' }, k('mark.title')), markBtns);
 const newSigBtn = h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false', 'aria-controls': 'sd-editor', onclick: () => openEditor(!editorOpen) }, k('sig.new'));
 const pad = h('canvas', { class: 'sd-pad', width: 900, height: 300, role: 'img', 'aria-label': k('sig.padLabel') });
 const nameInput = h('input', { type: 'text', id: 'sd-name', class: 'sd-input', autocomplete: 'name', oninput: () => drawPad() });
@@ -178,7 +187,7 @@ const sigsPanel = h('section', { class: 'sd-sigs', id: 'sd-sigs', 'aria-labelled
   h('div', { class: 'sd-sheet-head' },
     h('h2', { class: 'sd-h2', id: 'sd-sigs-title' }, k('sig.title')),
     h('button', { type: 'button', class: 'btn btn-link sd-mob', onclick: () => showSheet(false) }, k('sig.hide'))),
-  sigList, sigEmpty, newSigBtn, editor,
+  sigList, sigEmpty, newSigBtn, marksRow, editor,
 );
 
 const pagesEl = h('div', { class: 'sd-pages', role: 'region', 'aria-label': k('pages') });
@@ -351,7 +360,7 @@ new ResizeObserver(() => {
 const unitsPerPx = (p) => p.w / (p.svg.getBoundingClientRect().width || p.w);
 const local = (it) => it.w / it.w0;
 
-const itemName = (p, it) => k(it.date ? 'item.date' : `item.${it.type}`, { n: p.items.indexOf(it) + 1, page: pages.indexOf(p) + 1, text: it.text ?? '' });
+const itemName = (p, it) => k(it.date ? 'item.date' : it.mark ? `item.${it.mark}` : `item.${it.type}`, { n: p.items.indexOf(it) + 1, page: pages.indexOf(p) + 1, text: it.text ?? '' });
 
 function itemNode(p, it) {
   const sel = selected?.item === it;
@@ -378,7 +387,7 @@ function drawOverlay(p) {
   if (selected?.p === p) {
     const it = selected.item;
     const s = 22 * unitsPerPx(p);
-    p.svg.append(svgEl('rect', { class: 'sd-handle', x: it.x + it.w - s / 2, y: it.y + it.h - s / 2, width: s, height: s, 'aria-hidden': 'true' }));
+    p.svg.append(svgEl('rect', { class: 'sd-handle', x: it.x + it.w - s * 0.2, y: it.y + it.h - s * 0.2, width: s, height: s, 'aria-hidden': 'true' }));
   }
   if (focusedId && p.svg.contains(document.activeElement) === false) p.svg.querySelector(`[data-id="${focusedId}"]`)?.focus();
 }
@@ -653,6 +662,15 @@ function placeSignature(sig) {
   toast(k('placed', { page: pages.indexOf(p) + 1 }));
 }
 
+function placeMark(m) {
+  if (!kind) return;
+  const p = currentPage();
+  const size = Math.max(p.w, p.h) / 35;
+  addItem(p, { type: 'ink', mark: m, d: MARKS[m], lw: 3, color: rgb(INKS[ink]), x: (p.w - size) / 2, y: viewCentreY(p) - size / 2, w: size, h: size, w0: 24, h0: 24 });
+  if (narrow.matches) showSheet(false, false);
+  p.svg.querySelector(`[data-id="${selected.item.id}"]`)?.focus();
+}
+
 function showSheet(open, focus = true) {
   sigsPanel.classList.toggle('sd-open-sheet', open);
   sigsToggle.setAttribute('aria-expanded', String(open));
@@ -863,6 +881,7 @@ function renderSigs() {
     h('button', { type: 'button', class: 'icon-btn sd-sig-remove', 'aria-label': k('sig.remove', { n: i + 1 }), onclick: () => removeSignature(s) }, icon('trash')),
   )));
   sigEmpty.textContent = k(signatures.length ? (kind ? 'sig.tap' : 'sig.openFirst') : 'sig.none');
+  for (const b of markBtns) b.disabled = !kind;
 }
 
 async function removeSignature(s) {
