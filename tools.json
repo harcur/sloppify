@@ -50,6 +50,23 @@
       "path": "tools/mines/"
     },
     {
+      "id": "solitaire",
+      "name": {
+        "en": "solitaire"
+      },
+      "description": {
+        "en": "The patience card game: build four suits from ace to king"
+      },
+      "category": "game",
+      "tags": [
+        "cards",
+        "patience",
+        "klondike"
+      ],
+      "license": "MIT",
+      "path": "tools/solitaire/"
+    },
+    {
       "id": "sudoku",
       "name": {
         "en": "sudoku"
