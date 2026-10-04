@@ -92,6 +92,16 @@
 .sd-canvas, .sd-img, .sd-overlay { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
 .sd-loading { position: absolute; inset: 0; margin: 0; padding: 16px; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: #5A5A5A; }
 .sd-overlay { overflow: hidden; }
+.sd-fields { position: absolute; inset: 0; pointer-events: none; }
+.sd-field-input {
+  position: absolute; margin: 0; padding: 0 2px; min-height: 0; pointer-events: auto;
+  border: 1px solid #2F5D8A; border-radius: 0; background: rgba(47, 93, 138, 0.08); color: #161616;
+  font: calc(var(--sd-ppu, 1) * var(--fs, 10) * 1px) Helvetica, Arial, sans-serif;
+}
+textarea.sd-field-input { resize: none; }
+.sd-field-check, .sd-field-radio { accent-color: #161616; }
+.sd-field-input:focus-visible { outline: 2px solid #161616; outline-offset: 1px; }
+.sd-main[data-mode="pen"] .sd-field-input { pointer-events: none; }
 .sd-main[data-mode="pen"] .sd-overlay, .sd-main[data-mode="text"] .sd-overlay { cursor: crosshair; }
 .sd-main[data-mode="pen"] .sd-overlay { touch-action: none; }
 .sd-main[data-mode="pen"] .sd-item { pointer-events: none; }

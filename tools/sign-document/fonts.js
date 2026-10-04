@@ -18,7 +18,7 @@ const MORE = {
   multiply: '×', divide: '÷', plusminus: '±', nbspace: ' ', exclamdown: '¡', questiondown: '¿', dotlessi: 'ı',
 };
 const MARKS = { grave: '̀', acute: '́', circumflex: '̂', tilde: '̃', dieresis: '̈', ring: '̊', cedilla: '̧', caron: '̌' };
-const WIN = '€\0‚ƒ„…†‡ˆ‰Š‹Œ\0Ž\0\0‘’“”•–—˜™š›œ\0žŸ';
+export const WIN = '€\0‚ƒ„…†‡ˆ‰Š‹Œ\0Ž\0\0‘’“”•–—˜™š›œ\0žŸ';
 
 export function glyphChar(name) {
   if (name.length === 1) return name;

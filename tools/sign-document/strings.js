@@ -24,6 +24,8 @@ export const strings = {
     'sign-document.saving': 'Saving…',
     'sign-document.saved': 'Saved. Check your downloads.',
     'sign-document.pages': 'Pages',
+    'sign-document.field': 'Form field',
+    'sign-document.meta.fields': '{n} form fields',
     'sign-document.page': 'Page {n} of {total}',
     'sign-document.loadingPage': 'Loading page…',
     'sign-document.pageFailed': 'This page couldn’t be shown. Anything you add is still saved on it.',

@@ -44,7 +44,7 @@ const svgEl = (tag, attrs = {}) => {
 let kind = null; // 'pdf' | 'image'
 let fileName = '';
 let imageType = '';
-let pages = []; // { w, h, items, el, svg, canvas, img, scale }
+let pages = []; // { w, h, items, fields, el, svg, canvas, img, scale }
 let mode = 'move';
 let selected = null; // { p, item }
 let history = [];
@@ -244,7 +244,7 @@ async function openFile(file) {
     if (pdf) {
       const buffer = await file.arrayBuffer();
       const res = await call({ type: 'open', buffer }, [buffer]);
-      list = res.pages.map((p) => ({ w: p.w, h: p.h }));
+      list = res.pages.map((p, i) => ({ w: p.w, h: p.h, fields: res.fields.filter((f) => f.page === i) }));
     } else {
       img = new Image();
       img.alt = '';
@@ -263,12 +263,14 @@ async function openFile(file) {
   kind = pdf ? 'pdf' : 'image';
   imageType = file.type;
   fileName = file.name;
-  pages = list.map((p) => ({ ...p, items: [], scale: 0 }));
+  pages = list.map((p) => ({ fields: [], ...p, items: [], scale: 0 }));
   buildPages();
   pageInView = 0;
   pageSelect.replaceChildren(...pages.map((_, i) => h('option', { value: i + 1 }, k('page', { n: i + 1, total: pages.length }))));
   docName.textContent = fileName;
   docMeta.textContent = k(kind === 'image' ? 'meta.image' : pages.length === 1 ? 'meta.pdf1' : 'meta.pdf', { n: pages.length });
+  const nFields = pages.reduce((n, p) => n + p.fields.length, 0);
+  if (nFields) docMeta.textContent += ` \u00B7 ${k('meta.fields', { n: nFields })}`;
   savePdfBtn.hidden = kind === 'pdf';
   saveBtn.lastChild.textContent = barSave.lastChild.textContent = k(kind === 'pdf' ? 'save' : 'saveImage');
   main.classList.add('sd-has-doc');
@@ -316,6 +318,27 @@ const observer = new IntersectionObserver((entries) => {
   for (const en of entries) if (en.isIntersecting) renderPage(+en.target.dataset.page);
 }, { rootMargin: '100% 0px' });
 
+// The PDF's own form fields as real inputs over the page; their values go into the saved file.
+function fieldInput(p, f) {
+  const attrs = { class: `sd-field-input sd-field-${f.type}`, 'aria-label': f.name || k('field'), readonly: f.readOnly && f.type === 'text', disabled: f.readOnly && f.type !== 'text' };
+  let el;
+  if (f.type === 'text') el = f.multiline ? h('textarea', attrs) : h('input', { ...attrs, type: 'text', maxlength: f.maxLen || null });
+  else if (f.type === 'choice') {
+    const opts = f.options.includes(f.value) ? f.options : [f.value, ...f.options];
+    el = h('select', attrs, opts.map((o) => h('option', { value: o }, o)));
+  } else el = h('input', { ...attrs, type: f.type === 'radio' ? 'radio' : 'checkbox', name: f.type === 'radio' ? `sd-radio-${f.field}` : null });
+  if (f.type === 'check' || f.type === 'radio') el.checked = f.value;
+  else el.value = f.value;
+  Object.assign(el.style, { left: `${(f.x / p.w) * 100}%`, top: `${(f.y / p.h) * 100}%`, width: `${(f.w / p.w) * 100}%`, height: `${(f.h / p.h) * 100}%` });
+  el.style.setProperty('--fs', f.multiline ? 10 : Math.max(6, Math.min(12, f.h * 0.7)));
+  el.addEventListener('input', () => { dirty = true; });
+  el.addEventListener('change', () => { dirty = true; });
+  f.el = el;
+  return el;
+}
+const fieldValues = () => Object.fromEntries(pages.flatMap((p) => p.fields).map((f) => [f.id, f.type === 'check' || f.type === 'radio' ? f.el.checked : f.el.value]));
+const fieldsChanged = () => pages.some((p) => p.fields.some((f) => (f.type === 'check' || f.type === 'radio' ? f.el.checked : f.el.value) !== f.value));
+
 function buildPages() {
   pages.forEach((p, i) => {
     p.svg = svgEl('svg', { class: 'sd-overlay', viewBox: `0 0 ${p.w} ${p.h}`, 'data-page': i });
@@ -328,6 +351,7 @@ function buildPages() {
       observer.observe(p.el);
     }
     p.el.append(p.svg);
+    if (p.fields.length) p.el.append(h('div', { class: 'sd-fields' }, p.fields.map((f) => fieldInput(p, f))));
     pagesEl.append(p.el);
     for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'pointercancel']) p.svg.addEventListener(ev, (e) => onPointer(e, p));
     p.svg.addEventListener('keydown', (e) => onKey(e, p));
@@ -351,7 +375,7 @@ function renderPage(i) {
   queue = queue.then(async () => {
     if (current !== pages) return;
     try {
-      const res = await call({ type: 'render', page: i, scale: want });
+      const res = await call({ type: 'render', page: i, scale: want, skip: p.fields.map((f) => f.id) });
       if (current !== pages) { res.bitmap.close?.(); return; }
       p.canvas.getContext('bitmaprenderer').transferFromImageBitmap(res.bitmap);
       p.scale = want;
@@ -366,6 +390,7 @@ function renderPage(i) {
 
 // Sharper pages after a resize or zoom: re-render the ones near the screen at the new width.
 function refreshPages() {
+  for (const p of pages) p.el.style.setProperty('--sd-ppu', p.el.clientWidth / p.w);
   for (const [i, p] of pages.entries()) {
     const r = p.el.getBoundingClientRect();
     if (p.canvas && r.bottom > -innerHeight && r.top < innerHeight * 2) renderPage(i);
@@ -779,7 +804,7 @@ let busy = false;
 
 async function save(asPdf = false) {
   if (!kind || busy) return;
-  if (!pages.some((p) => p.items.length) && !(await confirmDialog({ title: k('empty.title'), body: k('empty.body'), confirmLabel: k('empty.ok') }))) return;
+  if (!pages.some((p) => p.items.length) && !fieldsChanged() && !(await confirmDialog({ title: k('empty.title'), body: k('empty.body'), confirmLabel: k('empty.ok') }))) return;
   busy = true;
   toast(k('saving'));
   try {
@@ -797,7 +822,7 @@ async function save(asPdf = false) {
         const rgba = ctx.getImageData(0, 0, c.width, c.height).data;
         overlays.push({ page: i, rect: box, width: c.width, height: c.height, rgba });
       }
-      const res = await call({ type: 'save', overlays }, overlays.map((o) => o.rgba.buffer));
+      const res = await call({ type: 'save', overlays, values: fieldValues() }, overlays.map((o) => o.rgba.buffer));
       download(new Blob([res.bytes], { type: 'application/pdf' }), `${baseName()}-signed.pdf`);
     } else {
       const p = pages[0];
