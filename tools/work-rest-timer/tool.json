@@ -1,0 +1,17 @@
+{
+  "name": {
+    "en": "work and rest timer"
+  },
+  "description": {
+    "en": "Alternate work and rest intervals with an hourglass, sounds and alerts"
+  },
+  "category": "tool",
+  "tags": [
+    "timer",
+    "focus",
+    "break",
+    "interval",
+    "hourglass"
+  ],
+  "license": "MIT"
+}
