@@ -238,9 +238,6 @@
   white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis;
   transition: background-color 300ms var(--d, 0ms);
 }
-.pp-touch.is-crowded .pp-finger-gem { width: 56px; height: 56px; margin: -28px 0 0 -28px; }
-.pp-touch.is-crowded .pp-finger-ring { width: 84px; height: 84px; margin: -42px 0 0 -42px; }
-.pp-touch.is-crowded .pp-finger-tag { margin-top: -78px; font-size: 14px; max-width: 96px; }
 .pp-finger.is-gone { opacity: 0; transition: opacity 200ms; }
 .pp-finger.is-out .pp-finger-gem { transform: rotate(45deg) scale(0.6); opacity: 0.35; }
 .pp-finger.is-out .pp-finger-tag { background: transparent; color: #FFFFFF; outline: 1px solid rgba(255, 255, 255, 0.6); outline-offset: -1px; }
