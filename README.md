@@ -2,7 +2,7 @@
 
 Small tools and games that run entirely in your browser.
 
-Not hand-coded at all, just generated with AI by a dev with no greed behind it. No ads, no tracking, and no server. Everything is stored locally in your browser, and you can export, import or reset all of it from the menu on any page.
+Not hand-coded at all, just generated with AI by a dev with no greed behind it. No ads, no tracking, and no server. Everything is stored locally in your browser, and you can export, import or reset all of it from the menu on any page, or reset a single tool's data from the menu on its page.
 
 ## How it works
 

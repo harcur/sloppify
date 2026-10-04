@@ -12,6 +12,7 @@ export const BACKUP_FORMAT_VERSION = 1;
 const SCHEMA = '__schema';
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
+let frozen = false;
 let backend = (() => {
   try { return globalThis.localStorage ?? null; } catch { return null; }
 })();
@@ -52,8 +53,14 @@ function read(k) {
 }
 
 function write(k, v) {
+  if (frozen) throw new Error('Storage frozen');
   backend.setItem(k, JSON.stringify(v)); // throws when full or blocked
 }
+
+// Blocks all further writes until the page reloads. Called after a reset or
+// import, right before reloading, so a tool saving on pagehide can't put
+// back the data that was just cleared.
+export function freeze() { frozen = true; }
 
 function remove(k) {
   try { backend?.removeItem(k); } catch { /* blocked */ }
@@ -162,6 +169,14 @@ export function validateBackup(b) {
 
 export function resetAll() {
   for (const k of ownKeys()) remove(k);
+}
+
+// Clears one tool's data, schema version included. Other tools and the hub
+// (favourites, recents, theme) are left alone.
+export function resetTool(id) {
+  if (!ID_RE.test(id)) throw new Error(`Invalid store id: ${id}`);
+  const base = PREFIX + id + ':';
+  for (const k of ownKeys()) if (k.startsWith(base)) remove(k);
 }
 
 // Replaces everything. On failure, restores the previous data and rethrows.
