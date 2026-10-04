@@ -133,6 +133,27 @@ test('resetting mines data clears the game but keeps favourites', async ({ page 
   await expect(page.getByRole('button', { name: 'Remove from favourites' })).toBeVisible();
 });
 
+test('the density slider sets the mine count, at once before the first move', async ({ page }) => {
+  await page.goto('./tools/mines/');
+  if (isNarrow(page)) await page.getByRole('button', { name: 'Options' }).click();
+  const slider = page.getByRole('slider', { name: 'Mine density' });
+  await expect(slider).toHaveAttribute('aria-valuetext', '10 mines, 12%');
+  await slider.fill('20');
+  await expect(slider).toHaveAttribute('aria-valuetext', '20 mines, 25%');
+  await expect(minesLeft(page)).toHaveText('20');
+  await expect(page.locator('.mines-level[data-level="small"]')).toContainText('20 mines');
+  await expect(page.locator('.mines-record')).toContainText('small, 20 mines');
+  if (isNarrow(page)) await page.getByRole('button', { name: 'Close' }).click();
+  await cell(page, 5, 5).click();
+  if (isNarrow(page)) await page.getByRole('button', { name: 'Options' }).click();
+  await slider.fill('15');
+  await expect(page.getByText('This game has 20 mines.')).toBeVisible();
+  await expect(minesLeft(page)).toHaveText('20');
+  await page.reload();
+  await expect(minesLeft(page)).toHaveText('20');
+  await expect(page.locator('#mines-density')).toHaveValue('15'); // in the closed sheet on narrow screens
+});
+
 test('the large board turns on its side on narrow screens', async ({ page }) => {
   await page.goto('./tools/mines/');
   await chooseLevel(page, 'large');

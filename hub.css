@@ -51,6 +51,7 @@
 }
 .card.cat-tool { --cat: var(--tool); }
 .card.cat-game { --cat: var(--game); }
+.card.cat-party { --cat: var(--party); }
 .card:hover { border-color: var(--muted); border-top-color: var(--cat); }
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .card-cat { font-family: var(--mono); font-size: 11px; color: var(--cat); }

@@ -4,12 +4,11 @@
 import { initPage, guardStore } from '../../shared/page.js';
 import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
-import { icon } from '../../shared/icons.js';
-import { sourceUrl } from '../../shared/config.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
+import { optionsSheet } from '../../shared/sheet.js';
 import { strings } from './strings.js';
-import { LEVELS, newGame, reveal, chord, toggleFlag, count, flagsLeft, serialize, deserialize } from './logic.js';
+import { LEVELS, mineRange, validMines, newGame, reveal, chord, toggleFlag, count, flagsLeft, serialize, deserialize } from './logic.js';
 
 extendStrings(strings);
 
@@ -19,11 +18,16 @@ const SOURCE_PATH = 'tools/mines/';
 const narrow = matchMedia('(max-width: 719px)');
 const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: SOURCE_PATH, app: true });
 
-// Saved: level, game in progress, and wins/best times per level.
+// Saved: level, mine count chosen per level, game in progress, and wins/best
+// times per level and mine count.
 const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 
-let g = (saving && deserialize(store.get('game'))) || newGame(LEVELS[store.get('level')] ? store.get('level') : 'small');
+let chosen = saving ? store.get('mines', {}) : {};
+if (!chosen || typeof chosen !== 'object') chosen = {};
+const minesFor = (level) => validMines(level, chosen[level]);
+const startLevel = LEVELS[store.get('level')] ? store.get('level') : 'small';
+let g = (saving && deserialize(store.get('game'))) || newGame(startLevel, minesFor(startLevel));
 let stats = saving ? store.get('stats', {}) : {};
 if (!stats || typeof stats !== 'object') stats = {};
 let flagMode = false;
@@ -53,14 +57,33 @@ const announcer = h('p', { class: 'sr-only', 'aria-live': 'polite' });
 const scroller = h('div', { class: 'mines-scroll' });
 const levelBtns = Object.keys(LEVELS).map((lv) => h('button', {
   type: 'button', class: 'seg-btn mines-level', 'data-level': lv,
-  onclick: async () => { if (await startNew(lv) && sheet.open) sheet.close(); },
-}, h('span', {}, t(`mines.level.${lv}`)), h('span', { class: 'mines-level-detail' }, t('mines.level.detail', LEVELS[lv]))));
+  onclick: async () => { if (await startNew(lv)) options.close(); },
+}, h('span', {}, t(`mines.level.${lv}`)), h('span', { class: 'mines-level-detail' })));
+const levelDetail = (lv) => t('mines.level.detail', { ...LEVELS[lv], mines: minesFor(lv) });
+
+// Mine density: the mine count for the current size, from 8% to 30% of the
+// cells. It applies at once before the first move, otherwise from the next game.
+const densityValue = h('span', { class: 'mines-density-value' });
+const densityInput = h('input', {
+  type: 'range', class: 'mines-density-input', id: 'mines-density', step: '1',
+  'aria-labelledby': 'mines-density-label',
+  oninput: () => setDensity(+densityInput.value),
+});
+const densityNote = h('p', { class: 'mines-density-note', 'aria-live': 'polite' });
 const statsList = h('dl', { class: 'mines-record' });
 
 const side = h('div', { class: 'mines-side' },
       h('div', { class: 'mines-section', role: 'group', 'aria-labelledby': 'mines-level-label' },
         h('h2', { class: 'mines-h2', id: 'mines-level-label' }, t('mines.level')),
         h('div', { class: 'seg mines-seg' }, levelBtns),
+      ),
+      h('div', { class: 'mines-section mines-density' },
+        h('div', { class: 'mines-density-head' },
+          h('h2', { class: 'mines-h2', id: 'mines-density-label' }, t('mines.density')),
+          densityValue,
+        ),
+        densityInput,
+        densityNote,
       ),
       h('section', { class: 'mines-section', 'aria-labelledby': 'mines-stats-label' },
         h('h2', { class: 'mines-h2', id: 'mines-stats-label' }, t('mines.stats')),
@@ -86,29 +109,18 @@ const layout = h('div', { class: 'mines-layout' },
 
 // On narrow screens the game fills the screen. The side panel, plus the
 // footer's text and source link that the page hides there, move into a sheet.
-const sheetBody = h('div', { class: 'mines-sheet-body' });
-const sheet = h('dialog', { class: 'dialog mines-sheet', 'aria-labelledby': 'mines-sheet-title' },
-  h('div', { class: 'mines-sheet-head' },
-    h('h2', { class: 'dialog-title', id: 'mines-sheet-title' }, t('mines.options')),
-    h('button', { type: 'button', class: 'btn', onclick: () => sheet.close() }, t('mines.close')),
-  ),
-  sheetBody,
-  h('div', { class: 'mines-sheet-foot' },
-    h('p', {}, t('footer.text')),
-    h('p', {}, h('a', { href: sourceUrl(SOURCE_PATH), rel: 'noreferrer' }, icon('source'), t('footer.source'))),
-  ),
-);
-sheet.addEventListener('close', () => { if (moreBtn.isConnected) moreBtn.focus(); });
+const options = optionsSheet({ title: t('mines.options'), sourcePath: SOURCE_PATH, returnFocus: moreBtn });
+const { sheet } = options;
 
 function openSheet() {
   renderStats();
-  sheet.showModal();
+  options.open();
 }
 
 function placeSide() {
-  if (narrow.matches) sheetBody.append(side);
+  if (narrow.matches) options.body.append(side);
   else {
-    if (sheet.open) sheet.close();
+    options.close();
     layout.append(side);
   }
 }
@@ -212,7 +224,11 @@ function renderAll() {
 function renderBar() {
   leftValue.textContent = String(flagsLeft(g));
   renderTime();
-  for (const b of levelBtns) b.setAttribute('aria-pressed', String(b.dataset.level === g.level));
+  for (const b of levelBtns) {
+    b.setAttribute('aria-pressed', String(b.dataset.level === g.level));
+    b.lastElementChild.textContent = levelDetail(b.dataset.level);
+  }
+  renderDensity();
   board?.classList.toggle('is-over', g.state === 'won' || g.state === 'lost');
 }
 
@@ -258,6 +274,33 @@ function act(i, mode) {
   save();
 }
 
+function densityText(level, mines) {
+  const { rows, cols } = LEVELS[level];
+  return t('mines.density.value', { mines, pct: Math.round((mines / (rows * cols)) * 100) });
+}
+
+function renderDensity() {
+  const { min, max } = mineRange(g.level);
+  const next = minesFor(g.level);
+  densityInput.min = String(min);
+  densityInput.max = String(max);
+  densityInput.value = String(next);
+  const text = densityText(g.level, next);
+  densityValue.textContent = text;
+  densityInput.setAttribute('aria-valuetext', text);
+  densityNote.textContent = next === g.mines ? '' : t('mines.density.next', { mines: g.mines });
+}
+
+function setDensity(mines) {
+  chosen[g.level] = validMines(g.level, mines);
+  if (saving) store.set('mines', chosen);
+  // Before the first move nothing is placed yet, so the change applies now.
+  if (g.state === 'ready') g = newGame(g.level, chosen[g.level]);
+  renderBar();
+  renderStats();
+  save();
+}
+
 function flag(i) {
   if (!toggleFlag(g, i)) return;
   renderCell(i);
@@ -268,7 +311,8 @@ function flag(i) {
 
 function finish(from) {
   syncTimer();
-  const rec = record(g.level);
+  const key = statKey(g.level, g.mines);
+  const rec = record(key);
   rec.played += 1;
   let message;
   if (g.state === 'won') {
@@ -280,7 +324,7 @@ function finish(from) {
   } else {
     message = t('mines.status.lost');
   }
-  stats[g.level] = rec;
+  stats[key] = rec;
   if (saving) store.set('stats', stats);
   status.textContent = message;
   status.dataset.state = g.state;
@@ -347,7 +391,7 @@ async function startNew(level) {
   }
   clearInterval(tick);
   runStart = 0;
-  g = newGame(level);
+  g = newGame(level, minesFor(level));
   if (saving) store.set('level', level);
   status.textContent = '';
   delete status.dataset.state;
@@ -367,19 +411,25 @@ function save() {
 
 function say(text) { announcer.textContent = text; }
 
-function record(level) {
-  const r = stats[level];
+// Records are kept per size and mine count; a size's own count keeps the
+// plain key used before mine counts could change.
+const statKey = (level, mines) => (mines === LEVELS[level].mines ? level : `${level}:${mines}`);
+
+function record(key) {
+  const r = stats[key];
   const num = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
   return { played: num(r?.played), won: num(r?.won), best: Number.isFinite(r?.best) ? r.best : null };
 }
 
 function renderStats() {
   statsList.replaceChildren(...Object.keys(LEVELS).flatMap((lv) => {
-    const r = record(lv);
+    const mines = minesFor(lv);
+    const r = record(statKey(lv, mines));
     const parts = [];
     if (r.played) parts.push(t('mines.stats.won', r));
     if (r.best != null) parts.push(t('mines.stats.best', { time: formatTime(r.best) }));
-    return [h('dt', {}, t(`mines.level.${lv}`)), h('dd', {}, parts.join(', ') || t('mines.stats.none'))];
+    const label = mines === LEVELS[lv].mines ? t(`mines.level.${lv}`) : t('mines.stats.custom', { level: t(`mines.level.${lv}`), mines });
+    return [h('dt', {}, label), h('dd', {}, parts.join(', ') || t('mines.stats.none'))];
   }));
 }
 

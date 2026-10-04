@@ -21,6 +21,7 @@ export const strings = {
 
     'footer.text': 'AI-generated, no greed involved. No ads, no tracking, your data stays in this browser.',
     'footer.source': 'Source on GitHub',
+    'sheet.close': 'Close',
 
     'notice.title': 'before you start',
     'notice.body': 'Not hand-coded at all, just generated with AI by a dev with no greed behind it. No ads, no tracking, and no server, so I couldn\u2019t collect your data even if I wanted to. Everything here is free to copy.',
