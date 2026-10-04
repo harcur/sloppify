@@ -28,15 +28,22 @@
 .sd-doc-note { margin: 12px 0 0; padding-left: 10px; border-left: 2px solid var(--tool); font-size: 14px; }
 .sd-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
-/* Tools */
-.sd-modes { display: flex; border: 1px solid var(--line); }
-.sd-tool { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 6px; border: 0; background: transparent; font-size: 14px; }
+/* Tools: icons with short captions, compact like a design tool's toolbar */
+.sd-modes { display: flex; border: 1px solid var(--line); background: var(--surface); }
+.sd-tool {
+  flex: 1 1 0; min-width: 0; min-height: 48px; padding: 4px 2px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border: 0; background: transparent;
+}
 .sd-tool + .sd-tool { border-left: 1px solid var(--line); }
+.sd-tool .sd-ico { width: 22px; height: 22px; }
+.sd-cap { font-size: 11px; line-height: 1.2; white-space: nowrap; }
 .sd-tool[aria-pressed="true"], .sd-tool[aria-expanded="true"] { background: var(--text); color: var(--surface); }
 .sd-tool:disabled { color: var(--muted); cursor: default; }
 .sd-tool:focus-visible { outline-offset: -4px; }
-.sd-tool[aria-pressed="true"]:focus-visible { outline-color: var(--surface); }
-.sd-tool-save { font-weight: 600; }
+.sd-tool[aria-pressed="true"]:focus-visible, .sd-tool[aria-expanded="true"]:focus-visible { outline-color: var(--surface); }
+.sd-tool-save { background: var(--text); color: var(--surface); }
+.sd-tool-save:focus-visible { outline-color: var(--surface); }
 .sd-mode-hint { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
 .sd-ink { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 .sd-label { font-size: 14px; }
@@ -45,29 +52,39 @@
 .sd-swatch { display: inline-block; width: 12px; height: 12px; margin-right: 6px; border: 1px solid var(--paper); vertical-align: -1px; }
 .sd-swatch-black { background: rgb(22, 22, 22); }
 .sd-swatch-blue { background: rgb(24, 54, 140); }
-
-/* Selected item */
-.sd-item-label { margin: 0; font-family: var(--mono); font-size: 14px; overflow-wrap: anywhere; }
 .sd-field { margin-top: 12px; }
 .sd-field label { display: block; margin-bottom: 4px; font-size: 14px; }
 .sd-input { width: 100%; min-height: 44px; padding: 0 10px; background: var(--surface); border: 1px solid var(--muted); font: inherit; color: inherit; border-radius: 0; }
-.sd-sel .sd-hint { margin-top: 12px; }
+
+/* The selected item's toolbar, floating next to it on the page */
+.sd-ctx {
+  position: absolute; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  max-width: calc(100% - 8px); padding: 3px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--text);
+}
+.sd-ctx-btn { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; background: transparent; }
+.sd-ctx-btn:hover { background: var(--bg); }
+.sd-ctx-btn .icon { width: 20px; height: 20px; }
+.sd-ctx-btn:focus-visible { outline-offset: -3px; }
+.sd-ctx-input { height: 36px; min-width: 0; padding: 0 8px; border: 1px solid var(--muted); border-radius: 0; background: var(--surface); color: inherit; font: inherit; font-size: 15px; }
+input[type="text"].sd-ctx-input { width: 11em; }
 
 /* Signatures */
-.sd-sig-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.sd-sig-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; }
+.sd-sig-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 0; padding: 0; list-style: none; }
 .sd-sig-list:empty { display: none; }
-.sd-sig { display: flex; border: 1px solid var(--line); }
-.sd-sig-place { flex: 1; min-width: 0; min-height: 64px; padding: 6px; display: flex; align-items: center; justify-content: center; background: var(--paper); border: 0; }
-.sd-sig-place img { max-width: 100%; max-height: 52px; }
+.sd-sig { position: relative; display: flex; border: 1px solid var(--line); }
+.sd-sig-place { flex: 1; min-width: 0; min-height: 56px; padding: 6px 28px 6px 6px; display: flex; align-items: center; justify-content: center; background: var(--paper); border: 0; }
+.sd-sig-place img { max-width: 100%; max-height: 44px; }
 .sd-sig-place:disabled { cursor: default; }
 .sd-sig-place:focus-visible { outline-offset: -4px; outline-color: #161616; }
-.sd-sig-remove { border-left: 1px solid var(--line); height: auto; }
-.sd-sigs > .sd-hint { margin-bottom: 12px; }
-.sd-sheet-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-.sd-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.sd-main .sd-sig-remove { position: absolute; top: 0; right: 0; width: 28px; height: 28px; color: #5A5A5A; }
+.sd-main .sd-sig-remove .icon { width: 16px; height: 16px; }
+.sd-sigs > .sd-hint { margin-top: 8px; }
+.sd-new-sig { order: -1; }
+.sd-marks { display: flex; align-items: center; gap: 8px; }
 .sd-marks .sd-label { margin-right: 4px; }
 .sd-mark-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
-.sd-editor { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
 .sd-pad-wrap { position: relative; margin: 12px 0 6px; background: var(--paper); border: 1px solid var(--muted); }
 .sd-pad { display: block; width: 100%; height: auto; aspect-ratio: 3 / 1; }
 .sd-pad-draw { cursor: crosshair; touch-action: none; }
@@ -117,6 +134,7 @@ textarea.sd-field-input { resize: none; }
 
 @media (min-width: 720px) {
   .sd-mob, .sd-bar-main { display: none !important; }
+  .sd-editor-dialog { width: min(560px, calc(100% - 32px)); }
   .sd-has-doc .sd-layout { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
   .sd-has-doc .sd-side {
     position: sticky; top: calc(var(--header-h) + 16px);
@@ -125,8 +143,9 @@ textarea.sd-field-input { resize: none; }
 }
 
 /* Phones: an app screen. The state on top, the document (or the open prompt and
-   signatures) scrolling in the middle, the main action and tools at the bottom.
-   Signatures and the selected item open above the tools. */
+   signatures) scrolling in the middle, one slim row of tools at the bottom. The
+   signature strip takes its own room above the tools, so it never covers the page,
+   and the selected item's toolbar floats next to the item itself. */
 @media (max-width: 719px) {
   .sd-main {
     display: flex; flex-direction: column;
@@ -152,36 +171,29 @@ textarea.sd-field-input { resize: none; }
 
   .sd-main .sd-tools {
     flex: none; display: grid; gap: 6px;
-    padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+    padding: 6px max(6px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
     background: var(--bg); border: 0; border-top: 1px solid var(--line);
   }
   .sd-bar-main { width: 100%; }
-  .sd-main:not(.sd-has-doc) .sd-doc-only, .sd-has-doc .sd-no-doc { display: none; }
-  .sd-modes { background: var(--surface); }
+  .sd-has-doc .sd-bar-main { display: none; }
   .sd-main:not(.sd-has-doc) .sd-modes > :not(.sd-opt) { display: none; }
-  .sd-tool { font-size: 13px; padding: 0 2px; }
   .sd-mode-hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
   .sd-has-doc .sd-sigs:not(.sd-open-sheet) { display: none; }
-  .sd-has-doc .sd-sigs, .sd-has-doc .sd-sel {
-    position: fixed; left: 0; right: 0; bottom: var(--sd-bar-h, 108px); z-index: 16;
-    max-height: calc(100dvh - var(--sd-bar-h, 108px) - 56px); overflow: auto;
-    border: 0; border-top: 1px solid var(--text);
-    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  .sd-has-doc .sd-sigs {
+    flex: none; max-height: 40dvh; overflow: auto;
+    padding: 8px max(8px, env(safe-area-inset-right, 0px)) 8px max(8px, env(safe-area-inset-left, 0px));
+    background: var(--surface); border-top: 1px solid var(--line);
   }
-  .sd-has-doc .sd-sel { z-index: 14; padding-top: 10px; padding-bottom: 10px; }
-  .sd-has-doc .sd-sel .sd-row { margin-top: 8px; }
-  .sd-has-doc .sd-date-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-  .sd-has-doc .sd-date-fields .sd-field { margin-top: 8px; }
-  .sd-has-doc .sd-sig-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sd-has-doc .sd-sigs > .sd-h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sd-has-doc .sd-sig-row { flex-wrap: nowrap; overflow-x: auto; }
+  .sd-has-doc .sd-sig-list { display: flex; width: auto; }
+  .sd-has-doc .sd-sig { flex: none; width: 112px; }
+  .sd-has-doc .sd-new-sig, .sd-has-doc .sd-marks .btn { flex: none; min-height: 56px; padding: 0 12px; }
+  .sd-has-doc .sd-marks .sd-label, .sd-has-doc .sd-sigs > .sd-hint.sd-has-sigs { display: none; }
   .sheet .sd-doc { padding: 0; border: 0; }
   .sheet .sd-doc .btn-primary { display: none; }
   .sheet .sd-zoom { margin: 16px 0 0; }
-  body:has(.sd-main) .toast { bottom: calc(var(--sd-bar-h, 108px) + 12px); }
+  body:has(.sd-main) .toast { bottom: calc(var(--sd-bar-h, 64px) + 12px); }
 }
-@media (max-width: 420px) {
-  .sd-has-doc .sd-sig-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 719px) {
-  .sd-main:not(.sd-has-doc) .sd-sheet-head .sd-mob { display: none; }
-}
+
