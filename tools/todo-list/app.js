@@ -66,9 +66,12 @@ const listName = h('input', {
   type: 'text', class: 'todo-list-name', 'aria-label': s('listName'), maxlength: 500,
   autocomplete: 'off', spellcheck: 'false', 'data-key': 'listname',
   oninput: () => { renameList(currentList(state), listName.value); save(); renderNav(); },
+  // The nav is already up to date from typing. Leaving the field changes
+  // nothing else unless an empty name has to be put back.
   onchange: () => {
     const list = currentList(state);
-    if (!list.name) renameList(list, s('defaultList'));
+    if (list.name) return;
+    renameList(list, s('defaultList'));
     listName.value = list.name;
     save();
     renderNav();
@@ -184,9 +187,11 @@ function render({ fallback = [] } = {}) {
   if (key) focusKey([key, ...fallback, 'add']);
 }
 
-// List buttons and their contents are kept and only their text updated, so
-// a click that starts while the list name field is losing focus still lands.
+// List buttons and their contents are kept, and only what changed is
+// written. A tap that makes the list name field lose focus must not change
+// the page: WebKit on touch screens drops a tap when the page changes under it.
 const navItems = new Map();
+const writeText = (el, text) => { if (el.textContent !== text) el.textContent = text; };
 function renderNav() {
   const list = currentList(state);
   const ids = new Set(state.lists.map((l) => l.id));
@@ -205,11 +210,14 @@ function renderNav() {
     }
     const p = navItems.get(l.id);
     const n = openItems(l).length;
-    if (l.id === list.id) p.btn.setAttribute('aria-current', 'true');
-    else p.btn.removeAttribute('aria-current');
-    p.name.textContent = l.name || s('defaultList');
-    p.count.textContent = n || '';
-    p.sr.textContent = n ? `, ${s('openCount', { n })}` : '';
+    const current = l.id === list.id;
+    if (current !== p.btn.hasAttribute('aria-current')) {
+      if (current) p.btn.setAttribute('aria-current', 'true');
+      else p.btn.removeAttribute('aria-current');
+    }
+    writeText(p.name, l.name || s('defaultList'));
+    writeText(p.count, n ? String(n) : '');
+    writeText(p.sr, n ? `, ${s('openCount', { n })}` : '');
     return p.li;
   });
   if (items.length !== listNav.children.length || items.some((li, i) => listNav.children[i] !== li)) listNav.replaceChildren(...items);
