@@ -16,6 +16,7 @@ export const strings = {
     'menu.data': 'your data',
     'data.export': 'Export',
     'data.import': 'Import',
+    'data.resetTool': 'Reset {tool} data',
     'data.reset': 'Reset everything',
 
     'footer.text': 'AI-generated, no greed involved. No ads, no tracking, your data stays in this browser.',
@@ -41,6 +42,9 @@ export const strings = {
     'reset.body': 'This deletes everything sloppify has stored in this browser: favourites, settings and saved data from every tool. This can\u2019t be undone.',
     'reset.confirm': 'Reset everything',
 
+    'resetTool.title': 'Reset {tool} data?',
+    'resetTool.body': 'This deletes everything {tool} has stored in this browser, such as saved progress, records and settings. Other tools, favourites and the theme are kept. This can\u2019t be undone.',
+
     'incompat.title': 'Saved data needs attention',
     'incompat.body': 'The saved data for {tool} is from a version this page can\u2019t read. Export it to keep a copy, then reset {tool} to continue.',
     'incompat.reset': 'Reset {tool}',
@@ -48,6 +52,7 @@ export const strings = {
     'toast.exported': 'Exported',
     'toast.imported': 'Imported',
     'toast.reset': 'Everything reset',
+    'toast.resetTool': '{tool} data reset',
     'toast.favAdded': '{name} added to favourites',
     'toast.favRemoved': '{name} removed from favourites',
     'storage.unavailable': 'This browser is blocking storage, so nothing will be saved between visits.',

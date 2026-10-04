@@ -18,7 +18,7 @@ Games:
 
 1. **No data is sent anywhere.** Zero external requests: no CDNs, no remote fonts, no analytics, no telemetry. System fonts and self-hosted assets only.
 2. **All data is stored locally** in the visitor's browser.
-3. **Everything can be exported, imported and reset**, across all tools at once.
+3. **Everything can be exported, imported and reset**, across all tools at once. Each tool's data can also be reset on its own.
 4. **Open about AI.** The site states clearly that it was made with AI and that it never shares data.
 5. **Every page links to its source code** on GitHub.
 6. **Mobile and desktop are both first-class.** Every page has a deliberate mobile layout and desktop layout, not just a stacked fallback. Smooth and responsive.
@@ -136,10 +136,12 @@ Each tool owns its schema version and provides migrations so older backups can b
 
 - Clears all site data after confirmation, with the same "export first" option.
 - A full reset also clears the "notice seen" flag, so the first-visit notice shows again.
+- **Per-tool reset:** on a tool page the data menu also offers "Reset <tool> data", next to Reset everything. It clears only `sloppify:<tool-id>:*` (saved progress, records, settings, schema version), with the same confirmation and "export first" option. Hub data (favourites, recents, theme) and other tools are kept.
+- After a reset or import the page reloads, and storage refuses writes until it does (`freeze()` in `shared/storage.js`), so a tool that saves on `pagehide` can't write back the data that was just cleared.
 
 ## Data menu
 
-- A small menu on **every page** containing: back to hub and add/remove favourite (tool pages only), theme toggle (system / light / dark), Export, Import and Reset everything.
+- A small menu on **every page** containing: back to hub and add/remove favourite (tool pages only), theme toggle (system / light / dark), Export, Import, Reset <tool> data (tool pages only) and Reset everything.
 - Implemented once in `shared/page.js` so all pages behave identically.
 - **App pages** (games, `initPage({ app: true })`): on narrow screens the header shrinks to the menu button alone, floating top right, so the game can fill the screen. The footer is hidden there and its text and source link move into the game's own options sheet.
 

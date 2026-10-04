@@ -125,7 +125,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 
 - All storage goes through `openStore(id, { version, migrate })` from `shared/storage.js`. Never use `localStorage`, `sessionStorage` or IndexedDB directly. Keys become `sloppify:<tool-id>:<key>`; nothing ever touches keys without the `sloppify:` prefix.
 - The store's API: `get(key, fallback)`, `set(key, value)` (returns `false` when storage is full or blocked), `remove(key)`, `keys()`, `getAll()` and `clear()`. Values are anything JSON can hold.
-- Whatever a tool saves is automatically included in the site-wide export, import and reset. A tool doesn't add its own.
+- Whatever a tool saves is automatically included in the site-wide export, import and reset, and in the "Reset <tool> data" item the menu adds on the tool's page. A tool doesn't add its own.
 - **Migrations, not breaking changes.** Each store has a schema `version`. When the shape of saved data changes, bump the version and handle the old shape in `migrate(data, fromVersion, toVersion)`. It runs on the tool's own page, so an imported old backup is upgraded the next time the tool opens.
 - After opening a store, call `await guardStore(store, name)` from `shared/page.js`. If the data can't be migrated, or comes from a newer version, it's left untouched and the visitor is offered an export and a reset of that tool. This is the only update notice anyone ever sees; updates are otherwise silent.
 - Tools must still work when storage is unavailable (private browsing, blocked storage): they just don't remember anything.

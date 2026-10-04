@@ -5,7 +5,7 @@ import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { MemoryStorage } from './memory-storage.js';
 import {
-  setBackend, openStore, exportAll, importAll, resetAll, validateBackup, storageAvailable, BACKUP_FORMAT,
+  setBackend, openStore, exportAll, importAll, resetAll, resetTool, validateBackup, storageAvailable, BACKUP_FORMAT,
 } from '../../shared/storage.js';
 
 let mem;
@@ -35,6 +35,22 @@ test('reset and export never touch keys from other sites on the same origin', ()
   resetAll();
   assert.equal(mem.getItem('other-project:settings'), 'keep me');
   assert.equal(mem.getItem('sloppify:hub:theme'), null);
+});
+
+test('resetting one tool leaves other tools, the hub and other sites alone', () => {
+  mem.setItem('other-project:settings', 'keep me');
+  openStore('mines').set('game', { cells: [1] });
+  openStore('minesweeper').set('game', 'similar prefix');
+  openStore('sudoku').set('best', 90);
+  openStore('hub').set('favourites', ['mines']);
+  resetTool('mines');
+  assert.equal(mem.getItem('sloppify:mines:game'), null);
+  assert.equal(mem.getItem('sloppify:mines:__schema'), null);
+  assert.equal(openStore('minesweeper').get('game'), 'similar prefix');
+  assert.equal(openStore('sudoku').get('best'), 90);
+  assert.deepEqual(openStore('hub').get('favourites'), ['mines']);
+  assert.equal(mem.getItem('other-project:settings'), 'keep me');
+  assert.throws(() => resetTool('../x'));
 });
 
 test('export then import restores the same data', () => {
