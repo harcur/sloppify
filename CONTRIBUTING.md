@@ -12,7 +12,7 @@ In short, a new tool must:
 - keep every visible string in its `strings.js`
 - save data only through `openStore`, with a `migrate` function whenever the data's shape changes
 - make no requests outside the site
-- have designed mobile and desktop layouts and meet WCAG 2.2 AA
+- have designed mobile and desktop layouts, feel like an app on phones, and meet WCAG 2.2 AA
 - carry SPDX license headers on every file
 - include tests, and pass CI
 

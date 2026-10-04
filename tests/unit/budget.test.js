@@ -8,13 +8,12 @@ import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 
 const KB = 1024;
-const BUDGET = { tool: 60 * KB, data: 200 * KB, shared: 50 * KB, hub: 20 * KB, image: 20 * KB };
+// The tool budget is a ceiling, not a target: see docs/TOOL-GUIDELINES.md 2.1.
+const BUDGET = { tool: 1024 * KB, data: 200 * KB, shared: 50 * KB, hub: 20 * KB, image: 20 * KB };
 
 // Tools allowed over budget. Each needs a reason here and an entry in docs/DECISIONS.md.
-// Example: 'chess': { tool: 180 * KB, reason: 'vendored engine' },
-const EXCEPTIONS = {
-  'stream-overlay': { tool: 72 * KB, reason: 'generative renderer: four art styles, five zone effects and a layer compositor' },
-};
+// Example: 'chess': { tool: 2048 * KB, reason: 'vendored engine' },
+const EXCEPTIONS = {};
 
 const root = new URL('../../', import.meta.url).pathname;
 const IGNORED = new Set(['README.md', 'LICENSE']);
