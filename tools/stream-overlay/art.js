@@ -199,6 +199,48 @@ const STYLES = {
       c.fill();
     });
   },
+
+  // Pen hatching: up to three layers of parallel strokes, more of them
+  // where the field turns away from a light at the top left.
+  hatch(c, d, F, colors, s) {
+    const sp = Math.max(2.5 / s, gapOf(d) * 0.45);
+    const gs = 8;
+    const gw = Math.ceil(d.w / gs) + 1;
+    const gh = Math.ceil(d.h / gs) + 1;
+    const dark = new Float32Array(gw * gh);
+    for (let j = 0; j < gh; j++) {
+      for (let i = 0; i < gw; i++) {
+        const x = i * gs;
+        const y = j * gs;
+        const h = F.probe(x, y).h;
+        const slope = F.probe(x + 4, y).h - h + F.probe(x, y + 4).h - h;
+        dark[j * gw + i] = 0.5 - slope * 16 - h * 0.1 + F.noise(x * 0.01, y * 0.01) * 0.2;
+      }
+    }
+    const R = Math.hypot(d.w, d.h) / 2;
+    c.lineWidth = Math.max(0.8 / s, sp * 0.14);
+    [[0.7071, 0.7071, 0.3], [-0.7071, 0.7071, 0.5], [1, 0, 0.7]].forEach(([dx, dy, th], k) => {
+      c.beginPath();
+      c.strokeStyle = colors[k];
+      for (let o = -R; o < R; o += sp * (1 + k * 0.2)) {
+        let on = false;
+        let lx = 0;
+        let ly = 0;
+        for (let t = -R; t <= R; t += 4) {
+          const x = d.w / 2 - dy * o + dx * t;
+          const y = d.h / 2 + dx * o + dy * t;
+          const ink = x >= 0 && y >= 0 && x <= d.w && y <= d.h && dark[Math.round(y / gs) * gw + Math.round(x / gs)] > th;
+          if (ink && !on) c.moveTo(x, y);
+          else if (!ink && on) c.lineTo(lx, ly);
+          on = ink;
+          lx = x;
+          ly = y;
+        }
+        if (on) c.lineTo(lx, ly);
+      }
+      c.stroke();
+    });
+  },
 };
 
 // Zone effects --------------------------------------------------------
@@ -225,6 +267,36 @@ function edgePoint(z, t) {
   if (p < z.w + z.h) return [z.x + z.w, z.y + p - z.w, 1, 0];
   if (p < z.w * 2 + z.h) return [z.x + z.w - (p - z.w - z.h), z.y + z.h, 0, 1];
   return [z.x, z.y + z.h - (p - z.w * 2 - z.h), -1, 0];
+}
+
+// A point on the zone's outline grown by `grow` (rounded at the corners),
+// and its outward normal, for t in [0, 1).
+function ringPoint(z, t, grow = 0) {
+  const x = z.x - grow;
+  const y = z.y - grow;
+  const w = z.w + grow * 2;
+  const h = z.h + grow * 2;
+  const R = Math.max(0, Math.min(z.r + grow, w / 2, h / 2));
+  const arc = (cx, cy, a) => [cx + Math.cos(a) * R, cy + Math.sin(a) * R, Math.cos(a), Math.sin(a)];
+  const a = w - 2 * R;
+  const b = h - 2 * R;
+  const q = (Math.PI * R) / 2;
+  const pieces = [
+    [a, (u) => [x + R + u, y, 0, -1]],
+    [q, (u) => arc(x + w - R, y + R, -Math.PI / 2 + u / R)],
+    [b, (u) => [x + w, y + R + u, 1, 0]],
+    [q, (u) => arc(x + w - R, y + h - R, u / R)],
+    [a, (u) => [x + w - R - u, y + h, 0, 1]],
+    [q, (u) => arc(x + R, y + h - R, Math.PI / 2 + u / R)],
+    [b, (u) => [x, y + h - R - u, -1, 0]],
+    [q, (u) => arc(x + R, y + R, Math.PI + u / R)],
+  ];
+  let p = (((t % 1) + 1) % 1) * (2 * a + 2 * b + 4 * q);
+  for (const [len, f] of pieces) {
+    if (p <= len) return f(p);
+    p -= len;
+  }
+  return pieces[0][1](0);
 }
 
 const EFFECTS = {
@@ -366,7 +438,204 @@ const EFFECTS = {
     }
     for (let i = 0; i < settled.length; i += 2) piece(settled[i], settled[i + 1], ps * (0.85 + r() * 0.3));
   },
+
+  // See-through tape with torn ends across the corners, as if the zone is
+  // taped to the wall.
+  tape(c, z, F, colors, r) {
+    const len = 120 + z.power * 16;
+    const wid = 36 + z.power * 3;
+    const corners = [[z.x, z.y, -1, -1], [z.x + z.w, z.y + z.h, 1, 1], [z.x + z.w, z.y, 1, -1], [z.x, z.y + z.h, -1, 1]];
+    corners.slice(0, z.power < 4 ? 2 : z.power < 8 ? 3 : 4).forEach(([cx, cy, sx, sy], k) => {
+      c.save();
+      c.translate(cx - sx * wid * 0.15, cy - sy * wid * 0.15);
+      c.rotate((sx * sy > 0 ? -1 : 1) * Math.PI / 4 + (r() - 0.5) * 0.35);
+      c.beginPath();
+      c.moveTo(-len / 2, -wid / 2);
+      c.lineTo(len / 2, -wid / 2);
+      for (let i = 1; i <= 5; i++) c.lineTo(len / 2 + (r() - 0.5) * 7, -wid / 2 + (wid * i) / 5);
+      c.lineTo(-len / 2, wid / 2);
+      for (let i = 4; i >= 0; i--) c.lineTo(-len / 2 + (r() - 0.5) * 7, -wid / 2 + (wid * i) / 5);
+      c.globalAlpha = 0.78;
+      c.fillStyle = colors[[1, 2, 0][k % 3]];
+      c.fill();
+      c.clip();
+      c.globalAlpha = 0.22;
+      c.fillStyle = '#FFFFFF';
+      for (let x = -len / 2; x < len / 2; x += 10) c.fillRect(x, -wid / 2, 3.5, wid);
+      c.fillRect(-len / 2, -wid / 2, len, wid * 0.18);
+      c.restore();
+    });
+  },
+
+  // Dry-brush strokes sweeping around the edges: wet and solid where they
+  // start, breaking into bristle streaks where they run dry.
+  brush(c, z, F, colors, r, s) {
+    const width = 14 + z.power * 3.5;
+    const bristles = 9;
+    const around = 2 * (z.w + z.h);
+    c.lineWidth = Math.max(1 / s, (width / bristles) * 1.4);
+    for (let k = 0, n = 2 + Math.round(z.power / 2); k < n; k++) {
+      const t0 = r();
+      const span = 0.12 + r() * 0.25;
+      const grow = width * (r() * 1.1 - 0.3);
+      const steps = Math.max(12, Math.round((span * around) / 6));
+      const dry = 0.9 + r() * 0.6;
+      c.strokeStyle = colors[Math.floor(r() * 4)];
+      for (let b = 0; b < bristles; b++) {
+        const lat = (b / (bristles - 1) - 0.5) * width;
+        c.globalAlpha = 0.55 + r() * 0.4;
+        c.beginPath();
+        let on = false;
+        for (let i = 0; i <= steps; i++) {
+          const u = i / steps;
+          const [x, y] = ringPoint(z, t0 + span * u, grow + lat * (1 - 0.6 * u * u));
+          const ink = F.noise(u * 10 + b * 3.1, k * 7 + b * 1.3) > u * dry - 1;
+          if (ink && on) c.lineTo(x, y);
+          else if (ink) c.moveTo(x, y);
+          on = ink;
+        }
+        c.stroke();
+      }
+    }
+    c.globalAlpha = 1;
+  },
+
+  // Pencil construction lines that overshoot the corners, with hatched
+  // shading on the shadow side.
+  sketch(c, z, F, colors, r, s) {
+    c.strokeStyle = colors[0];
+    c.lineWidth = Math.max(1 / s, 1.4);
+    const line = (x0, y0, x1, y1) => {
+      const l = Math.hypot(x1 - x0, y1 - y0) || 1;
+      const nx = -(y1 - y0) / l;
+      const ny = (x1 - x0) / l;
+      const seed = r() * 50;
+      c.globalAlpha = 0.45 + r() * 0.45;
+      c.beginPath();
+      for (let u = 0; u <= 1.0001; u += 0.04) {
+        const o = F.noise(u * 4 + seed, seed) * 3;
+        c.lineTo(x0 + (x1 - x0) * u + nx * o, y0 + (y1 - y0) * u + ny * o);
+      }
+      c.stroke();
+    };
+    const over = () => 10 + r() * (20 + z.power * 6);
+    const off = () => (r() - 0.5) * 5;
+    for (let pass = 0, n = z.power > 6 ? 3 : 2; pass < n; pass++) {
+      let o = off();
+      line(z.x - over(), z.y + o, z.x + z.w + over(), z.y + o);
+      o = off();
+      line(z.x - over(), z.y + z.h + o, z.x + z.w + over(), z.y + z.h + o);
+      o = off();
+      line(z.x + o, z.y - over(), z.x + o, z.y + z.h + over());
+      o = off();
+      line(z.x + z.w + o, z.y - over(), z.x + z.w + o, z.y + z.h + over());
+    }
+    const band = 16 + z.power * 5;
+    c.globalAlpha = 0.6;
+    c.beginPath();
+    for (let x = z.x + 12; x < z.x + z.w + band; x += 7) {
+      const k = 0.6 + r() * 0.4;
+      c.moveTo(x, z.y + z.h + 3);
+      c.lineTo(x - band * 0.8 * k, z.y + z.h + 3 + band * k);
+    }
+    for (let y = z.y + 12; y < z.y + z.h; y += 7) {
+      const k = 0.6 + r() * 0.4;
+      c.moveTo(z.x + z.w + 3, y);
+      c.lineTo(z.x + z.w + 3 + band * k, y + band * 0.8 * k);
+    }
+    c.stroke();
+    c.globalAlpha = 1;
+  },
+
+  // Watercolour washes bleeding out from the edges, built from thin
+  // translucent layers, with the pigment pooled darker at the rim.
+  watercolor(c, z, F, colors, r) {
+    for (let k = 0, n = 4 + z.power; k < n; k++) {
+      const [cx, cy] = ringPoint(z, r(), (r() - 0.25) * 40);
+      const rad = 40 + r() * (50 + z.power * 10);
+      const seed = r() * 100;
+      const color = colors[Math.floor(r() * 4)];
+      const shape = (scale, j) => {
+        c.beginPath();
+        for (let i = 0; i <= 28; i++) {
+          const a = (i / 28) * Math.PI * 2;
+          const rr = rad * scale * (0.7 + 0.45 * F.noise(Math.cos(a) * 1.5 + seed + j * 0.3, Math.sin(a) * 1.5 + seed));
+          c.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.85);
+        }
+        c.closePath();
+      };
+      c.fillStyle = c.strokeStyle = color;
+      c.globalAlpha = 0.08;
+      for (let j = 0; j < 6; j++) { shape(1 - j * 0.08, j); c.fill(); }
+      c.globalAlpha = 0.35;
+      c.lineWidth = 1.5;
+      shape(1, 0);
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+  },
+
+  // Vines growing out from the edges, drooping under their own weight,
+  // branching and putting out leaves.
+  vines(c, z, F, colors, r, s) {
+    const grow = (x, y, a, len, depth) => {
+      const leaves = [];
+      const branches = [];
+      c.beginPath();
+      c.moveTo(x, y);
+      for (let i = 0; i < len / 9; i++) {
+        a += F.noise(x * 0.01, y * 0.01 + depth * 9) * 0.3 + Math.sin(Math.PI / 2 - a) * 0.05;
+        x += Math.cos(a) * 9;
+        y += Math.sin(a) * 9;
+        c.lineTo(x, y);
+        if (i % 4 === 2) leaves.push([x, y, a + (i % 8 < 4 ? 1 : -1) * 0.9]);
+        if (depth < 2 && r() < 0.05) branches.push([x, y, a + (r() < 0.5 ? -0.8 : 0.8), len * 0.5, depth + 1]);
+      }
+      c.strokeStyle = colors[2];
+      c.lineWidth = Math.max(1 / s, 5 - depth * 1.5);
+      c.stroke();
+      leaves.forEach(([lx, ly, la], i) => {
+        c.save();
+        c.translate(lx, ly);
+        c.rotate(la);
+        c.fillStyle = colors[i % 2];
+        c.beginPath();
+        c.ellipse(11, 0, 13 - depth * 3, 5.5 - depth, 0, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      });
+      for (const b of branches) grow(...b);
+    };
+    for (let k = 0, n = 2 + Math.round(z.power * 0.8); k < n; k++) {
+      const [x, y, nx, ny] = ringPoint(z, r());
+      grow(x, y, Math.atan2(ny, nx) + (r() - 0.5) * 1.2, 120 + r() * (90 + z.power * 30), 0);
+    }
+  },
+
+  // Displaced colour slices torn off the sides, and outlines knocked out of
+  // register.
+  glitch(c, z, F, colors, r) {
+    c.globalAlpha = 0.85;
+    for (let k = 0, n = 8 + z.power * 3; k < n; k++) {
+      const y = z.y - 20 + r() * (z.h + 40);
+      const len = 50 + r() * (100 + z.power * 30);
+      const x = r() < 0.5 ? z.x - len : z.x + z.w - len * 0.3;
+      c.fillStyle = colors[k % 4];
+      c.fillRect(x, y, len * 1.3, 4 + r() * (10 + z.power * 2));
+    }
+    c.lineWidth = 3;
+    for (const [dx, k] of [[-(4 + z.power * 1.2), 0], [4 + z.power * 1.2, 1]]) {
+      c.strokeStyle = colors[k];
+      c.beginPath();
+      zonePath(c, { ...z, x: z.x + dx });
+      c.stroke();
+    }
+    c.globalAlpha = 1;
+  },
 };
+
+// For tests: every style and effect draws with only the 2D canvas API.
+export { STYLES, EFFECTS };
 
 // Compositing ----------------------------------------------------------
 

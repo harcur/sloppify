@@ -9,7 +9,7 @@ import { confirmDialog } from '../../shared/dialog.js';
 import { toast } from '../../shared/toast.js';
 import { strings } from './strings.js';
 import {
-  SIZES, KINDS, EFFECTS, PLACES, STYLES, PALETTES, RANGES, MAX_ZONES, PRESET_NAMES,
+  SIZES, KINDS, EFFECT_ORDER, PLACES, STYLE_ORDER, PALETTES, RANGES, MAX_ZONES, PRESET_NAMES,
   newZone, fitZone, normalize, resize, preset, usesFront, encode,
 } from './design.js';
 import { renderLayers } from './renderer.js';
@@ -107,7 +107,7 @@ const setZone = (key, value, commit = true) => {
   if (commit) changed(); else queueRender(true);
 };
 zf.kind = dropdown(KINDS.map((k) => [k, T(`kind.${k}`)]), (v) => setZone('kind', v));
-zf.effect = dropdown(EFFECTS.map((k) => [k, T(`effect.${k}`)]), (v) => setZone('effect', v));
+zf.effect = dropdown(EFFECT_ORDER.map((k) => [k, T(`effect.${k}`)]), (v) => setZone('effect', v));
 zf.hint = h('p', { class: 'so-hint', id: 'so-effect-hint' });
 zf.effect.setAttribute('aria-describedby', 'so-effect-hint');
 zf.place = dropdown(PLACES.map((k) => [k, T(`place.${k}`)]), (v) => setZone('place', v));
@@ -132,7 +132,7 @@ const noZones = h('p', { class: 'so-note' }, T('zone.none'));
 
 const setArt = (key, value, commit = true) => { design[key] = value; if (commit) changed(); else queueRender(true); };
 const af = {
-  style: dropdown(STYLES.map((k) => [k, T(`style.${k}`)]), (v) => setArt('style', v)),
+  style: dropdown(STYLE_ORDER.map((k) => [k, T(`style.${k}`)]), (v) => setArt('style', v)),
   palette: dropdown(Object.keys(PALETTES).map((k) => [k, T(`palette.${k}`)]), (v) => setArt('palette', v)),
   density: slider('density', T('density'), plain, (v, c) => setArt('density', v, c)),
   reach: slider('reach', T('reach'), (n) => (n >= 100 ? T('reach.all') : T('percent', { n })), (v, c) => setArt('reach', v, c)),

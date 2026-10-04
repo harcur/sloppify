@@ -4,10 +4,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  SIZES, KINDS, PRESET_NAMES, MAX_ZONES, MIN_SIDE, normalize, newZone, fitZone, resize, preset, usesFront, encode, decode,
+  SIZES, KINDS, EFFECTS, EFFECT_ORDER, STYLES, STYLE_ORDER, PALETTES, PRESET_NAMES, MAX_ZONES, MIN_SIDE, normalize, newZone, fitZone, resize, preset, usesFront, encode, decode,
 } from '../../tools/stream-overlay/design.js';
 import { rng, noise, sdBox, falloff, field } from '../../tools/stream-overlay/field.js';
-import { compose } from '../../tools/stream-overlay/art.js';
+import { compose, STYLES as DRAW_STYLES, EFFECTS as DRAW_EFFECTS } from '../../tools/stream-overlay/art.js';
 
 const inside = (z, d) => z.x >= 0 && z.y >= 0 && z.x + z.w <= d.w && z.y + z.h <= d.h && z.w >= MIN_SIDE && z.h >= MIN_SIDE;
 
@@ -131,4 +131,58 @@ test('reach fades the art away from the zones, and fill paints the background', 
   compose(normalize({ reach: 100, fill: true, zones }), 0.1, empty, new Uint8ClampedArray(192 * 108 * 4), 192, 108);
   assert.equal(empty[(100 * 192 + 180) * 4 + 3], 255, 'filled with no art drawn');
   assert.equal(filled.at(200, 150), 0);
+});
+
+test('links made before new options were added still mean the same thing', () => {
+  // Links store list indexes, so the original entries must keep their places.
+  assert.deepEqual(KINDS.slice(0, 7), ['camera', 'chat', 'game', 'alerts', 'info', 'buttons', 'other']);
+  assert.deepEqual(EFFECTS.slice(0, 6), ['lift', 'sink', 'orbit', 'splash', 'pile', 'none']);
+  assert.deepEqual(STYLES.slice(0, 5), ['sheet', 'flow', 'contour', 'dots', 'none']);
+  assert.deepEqual([...EFFECT_ORDER].sort(), [...EFFECTS].sort());
+  assert.deepEqual([...STYLE_ORDER].sort(), [...STYLES].sort());
+  // [version, size, seed, style, palette, density, reach, fill, zones]: a camera with "sink" in contours.
+  const old = btoa(JSON.stringify([1, '1920x1080', 5, 2, 'moss', 5, 40, 0, [[0, 10, 20, 300, 200, 0, 1, 1, 8, 12, 5]]]));
+  const d = decode(old);
+  assert.equal(d.style, 'contour');
+  assert.deepEqual([d.zones[0].kind, d.zones[0].effect, d.zones[0].place], ['camera', 'sink', 'under']);
+});
+
+// A stand-in 2D context: records which methods were called and whether any
+// coordinate came out as NaN or Infinity.
+function recorder() {
+  const calls = {};
+  const props = {};
+  let bad = 0;
+  const ctx = new Proxy({}, {
+    get: (_, k) => (k in props ? props[k] : (props[k] = (...args) => {
+      calls[k] = (calls[k] ?? 0) + 1;
+      if (args.some((a) => typeof a === 'number' && !Number.isFinite(a))) bad++;
+    })),
+    set: (_, k, v) => { props[k] = v; return true; },
+  });
+  return { ctx, calls, bad: () => bad };
+}
+
+test('every art style draws with finite coordinates', () => {
+  const design = preset('art', '1280x720', 3);
+  const F = field(design);
+  for (const name of STYLES.filter((n) => n !== 'none')) {
+    const { ctx, calls, bad } = recorder();
+    DRAW_STYLES[name](ctx, design, F, PALETTES.ember.colors, 0.25);
+    assert.ok((calls.stroke ?? 0) + (calls.fill ?? 0) > 0, `${name} drew nothing`);
+    assert.equal(bad(), 0, `${name} produced a bad coordinate`);
+  }
+});
+
+test('every zone effect draws with finite coordinates, at any strength and corner radius', () => {
+  for (const name of EFFECTS.filter((n) => n !== 'none')) {
+    for (const [power, r] of [[1, 0], [10, 60]]) {
+      const design = normalize({ zones: [{ kind: 'other', effect: name, x: 300, y: 300, w: 400, h: 200, power, r }] });
+      const F = field(design);
+      const { ctx, calls, bad } = recorder();
+      DRAW_EFFECTS[name](ctx, F.zones[0], F, PALETTES.kraft.colors, rng(1), 0.5);
+      assert.ok((calls.stroke ?? 0) + (calls.fill ?? 0) + (calls.fillRect ?? 0) > 0, `${name} drew nothing`);
+      assert.equal(bad(), 0, `${name} produced a bad coordinate`);
+    }
+  }
 });
