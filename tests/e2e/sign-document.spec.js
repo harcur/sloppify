@@ -143,6 +143,14 @@ test('zoom makes the pages wider and back', async ({ page }) => {
   await expect.poll(async () => Math.round((await first.boundingBox()).width)).toBe(Math.round(before));
 });
 
+test('go to page jumps to a page', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  await inOptions(page);
+  await page.getByLabel('Go to page').selectOption('2');
+  await expect(page.getByRole('group', { name: 'Page 2 of 2' })).toBeInViewport();
+});
+
 test('the pen draws and text starts as a date that can be edited', async ({ page }) => {
   await openPdf(page);
   await waitForPages(page);
