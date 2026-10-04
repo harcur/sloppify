@@ -138,3 +138,27 @@ export function strawFan(n, width, height) {
   });
   return { thick, length, hit, pivot, rim, cupW, cupH, straws };
 }
+
+// The straw nearest to a tap at (x, y) in the straws area, from those in
+// `open`: measured to the part of each straw above the rim (and a little
+// past its tip). A tap further than `reach` px beyond a straw's edge picks
+// nothing (-1), so thin straws are easy to hit without taps from far away
+// counting.
+export function nearestStraw(fan, x, y, open, reach) {
+  let best = -1;
+  let bestDist = fan.thick / 2 + reach;
+  for (const i of open) {
+    const { angle, sink } = fan.straws[i];
+    const ux = Math.sin((angle * Math.PI) / 180);
+    const uy = -Math.cos((angle * Math.PI) / 180);
+    const dx = x - fan.pivot.x;
+    const dy = y - fan.pivot.y;
+    const along = Math.min(fan.length + 8, Math.max(sink, dx * ux + dy * uy));
+    const dist = Math.hypot(dx - along * ux, dy - along * uy);
+    if (dist <= bestDist) {
+      best = i;
+      bestDist = dist;
+    }
+  }
+  return best;
+}
