@@ -9,7 +9,7 @@ Local-first hub of small tools and games, hosted on GitHub Pages at `harcur.gith
 - All paths relative, so the site works under the `/sloppify/` subpath.
 - Storage only through `shared/storage.js` (`openStore`). Keys are `sloppify:<tool-id>:<key>`. Never touch keys without the `sloppify:` prefix.
 - Every visible string goes in a `strings.js` file.
-- Size budgets (`tests/unit/budget.test.js`): 100 KB per tool, 200 KB per tool `data/` folder, 50 KB `shared/`, 20 KB hub, 20 KB per image. Long work goes in a Web Worker.
+- Size budgets (`tests/unit/budget.test.js`): 1 MB per tool (a ceiling, not a target: don't waste it; most tools should stay well under 100 KB), 200 KB per tool `data/` folder, 50 KB `shared/`, 20 KB hub, 20 KB per image. Long work goes in a Web Worker.
 - WCAG 2.2 AA, keyboard and screen reader support, designed mobile and desktop layouts.
 - On phones every tool and game feels like an app: `initPage({ app: true })`, fills the screen, state on top, main thing in the middle, actions at the bottom, everything else in the options sheet (`shared/sheet.js`). See `docs/TOOL-GUIDELINES.md` 4.1.
 - SPDX headers on every file (REUSE).

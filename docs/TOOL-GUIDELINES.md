@@ -63,13 +63,15 @@ Sizes are uncompressed bytes on disk. `README.md` and `LICENSE` files don't coun
 
 | What | Budget | Now |
 |---|---|---|
-| A tool's own files (everything in `tools/<id>/` except `data/`) | 100 KB | largest about 75 KB (pick a person) |
+| A tool's own files (everything in `tools/<id>/` except `data/`) | 1 MB | largest about 126 KB (sign document) |
 | A tool's `data/` folder (word lists, opening books, etc.) | 200 KB | none yet |
 | Shared files (`shared/`) | 50 KB | about 33 KB |
 | Hub (`index.html`, `hub*.js`, `hub.css`, `tools.json`) | 20 KB | about 11 KB |
 | Any single image | 20 KB | none yet |
 
-A tool that genuinely needs more (for example a vendored chess engine) adds an exception to the test with a one-line reason and records it in `docs/DECISIONS.md`.
+**The 1 MB tool budget is a ceiling, not a target. Don't waste it.** It's there so a tool that genuinely needs real code (a PDF reader, a chess engine) doesn't need an exception, not so ordinary tools can grow. Every byte still costs every visitor download time, parsing on slow phones and hosting. Most tools should stay well under 100 KB. Before adding weight, check whether the feature earns it, whether the code can be smaller, and whether the heavy part can load only when it's used (a worker, `data/`, a module imported on demand). Mention the tool's size in its pull request when it passes 100 KB.
+
+A tool that genuinely needs more than 1 MB adds an exception to the test with a one-line reason and records it in `docs/DECISIONS.md`.
 
 ### 2.2 Staying inside them
 
@@ -255,7 +257,7 @@ Answer these in the pull request or issue before building:
 ### Before merging
 
 - [ ] Fits Part 1: self-contained, a common use, low stakes, no trademarks or copies
-- [ ] Within its size budget; heavy work in a Worker
+- [ ] Within its size budget and no bigger than it needs to be (size noted in the PR if over 100 KB); heavy work in a Worker
 - [ ] Started from the template, `tool.json` filled in, `npm run tools` run, uses `initPage` and the shared helpers
 - [ ] No external requests; CSP untouched; no inline scripts or styles; all paths relative
 - [ ] Every visible string in `strings.js`
