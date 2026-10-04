@@ -59,6 +59,7 @@ export const strings = {
     'solitaire.say.undone': 'Move undone',
     'solitaire.say.finishing': 'Every card is face up. Finishing.',
 
+    'solitaire.status.dealing': 'Shuffling…',
     'solitaire.status.won': 'Solved in {time} with {moves} moves.',
     'solitaire.status.best': 'Solved in {time} with {moves} moves. New best.',
 
@@ -72,7 +73,7 @@ export const strings = {
     'solitaire.stats.none': 'no games yet',
 
     'solitaire.help.title': 'how to play',
-    'solitaire.help.goal': 'Move every card to the four foundations at the top, one suit on each, from ace to king.',
+    'solitaire.help.goal': 'Move every card to the four foundations at the top, one suit on each, from ace to king. Every deal has been played through to a win by a solver first, so every game can be won.',
     'solitaire.help.columns': 'In the seven columns, build down in alternating colours: a red 6 on a black 7. A run that follows this can move together. Only a king, or a run starting with a king, can fill an empty column.',
     'solitaire.help.stock': 'When you’re stuck, turn over cards from the stock. When it runs out, turn the waste back over and go through it again.',
     'solitaire.help.touch': 'Tap a card to send it to the best place, or drag it where you want it.',

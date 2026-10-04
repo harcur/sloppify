@@ -9,7 +9,7 @@ import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
 import { strings } from './strings.js';
 import {
-  SUITS, FOUNDATIONS, TABLEAU, suit, rank, tableauIndex, newGame, canTake, canMove, move, drawStock, undo,
+  SUITS, FOUNDATIONS, TABLEAU, suit, rank, tableauIndex, canTake, canMove, move, drawStock, undo,
   bestTarget, canFinish, nextFinishMove, serialize, deserialize,
 } from './logic.js';
 
@@ -27,8 +27,51 @@ const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sou
 const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 
+// Deals ---------------------------------------------------------------
+// Every deal is one the solver (solver.js) has won, so no game is hopeless.
+// Found in a Worker, with the next one made ahead so New game is instant.
+// If the browser can't start a Worker, found here instead.
+
+let worker = null;
+let nextId = 0;
+const waiting = new Map();
+try {
+  worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+  worker.addEventListener('message', (e) => {
+    waiting.get(e.data.id)?.resolve(e.data.game);
+    waiting.delete(e.data.id);
+  });
+  worker.addEventListener('error', (e) => {
+    e.preventDefault();
+    worker = null;
+    for (const w of waiting.values()) w.resolve(dealHere(w.draw));
+    waiting.clear();
+  });
+} catch { worker = null; }
+
+const dealHere = (draw) => import('./solver.js').then(({ winnableDeal }) => winnableDeal(draw).game);
+
+function findDeal(draw) {
+  if (!worker) return dealHere(draw);
+  return new Promise((resolve) => {
+    const id = ++nextId;
+    waiting.set(id, { resolve, draw });
+    worker.postMessage({ id, draw });
+  });
+}
+
+const ahead = new Map(); // draw setting → the next deal, being found or found
+function takeDeal(draw) {
+  const next = ahead.get(draw) ?? findDeal(draw);
+  ahead.delete(draw);
+  return next;
+}
+function dealAhead(draw) {
+  if (!ahead.has(draw)) ahead.set(draw, findDeal(draw));
+}
+
 const savedDraw = saving && store.get('draw') === 3 ? 3 : 1;
-let g = (saving && deserialize(store.get('game'))) || newGame(savedDraw);
+let g = (saving && deserialize(store.get('game'))) || await takeDeal(savedDraw);
 let stats = saving ? store.get('stats', {}) : {};
 if (!stats || typeof stats !== 'object') stats = {};
 let selection = null; // { pile, index } picked up with the keyboard
@@ -508,16 +551,27 @@ function celebrate() {
 }
 
 // Returns true when a new game started.
+let dealing = false;
 async function startNew(draw) {
+  if (dealing) return false;
   if (g.state === 'playing') {
     const ok = await confirmDialog({ title: t('solitaire.confirm.title'), body: t('solitaire.confirm.body'), confirmLabel: t('solitaire.confirm.ok') });
     if (!ok) return false;
   }
+  dealing = true;
+  busy = true; // the table waits for the new deal
+  newBtn.setAttribute('aria-disabled', 'true');
+  // Usually ready at once; say so only if finding one takes a moment.
+  const slow = setTimeout(() => { status.textContent = t('solitaire.status.dealing'); delete status.dataset.state; }, 200);
+  const next = await takeDeal(draw);
+  clearTimeout(slow);
+  dealing = false;
+  newBtn.removeAttribute('aria-disabled');
   clearInterval(tick);
   runStart = 0;
   busy = false;
   selection = null;
-  g = newGame(draw);
+  g = next;
   wasReady = true;
   if (saving) store.set('draw', draw);
   status.textContent = '';
@@ -531,6 +585,7 @@ async function startNew(draw) {
   render(true);
   renderBar();
   save();
+  dealAhead(draw);
   return true;
 }
 
@@ -730,3 +785,4 @@ renderBar();
 renderStats();
 syncTimer();
 if (canFinish(g)) autoFinish();
+dealAhead(g.draw);
