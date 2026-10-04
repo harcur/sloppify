@@ -21,6 +21,9 @@ const BOTTLE = `
 <path class="pp-shine" d="M-17 -16c-3 6-4 12-4 20v80"/>
 <path class="pp-label-star" d="M0 21l4 9h10l-8 6l3 10l-9-6l-9 6l3-10l-8-6h10z"/>`;
 
+const R_DIAL = 99; // edge of the marks, in the dial's 200-wide view box
+const R_HUB = 30; // sectors start here, clear of the bottle's middle
+
 export function createBottle(ctx) {
   let p = ctx.players();
   let angle = 0;
@@ -30,14 +33,44 @@ export function createBottle(ctx) {
   const art = s('svg', { viewBox: '-40 -100 80 230', class: 'pp-bottle-svg', 'aria-hidden': 'true', focusable: 'false' });
   art.innerHTML = BOTTLE;
   const bottle = h('div', { class: 'pp-bottle' }, h('div', { class: 'pp-bottle-inner' }, art));
+  const dial = s('svg', { viewBox: '-100 -100 200 200', class: 'pp-dial', 'aria-hidden': 'true', focusable: 'false' });
   const seats = h('div', { class: 'pp-seats', 'aria-hidden': 'true' });
-  const table = h('div', { class: 'pp-table' }, seats, bottle);
+  const table = h('div', { class: 'pp-table' }, dial, seats, bottle);
   const stage = h('div', { class: 'pp-bottle-stage' }, table);
   const spinBtn = h('button', { type: 'button', class: 'btn pp-go', onclick: () => go(1, 0) }, t('pick-a-person.bottle.spin'));
 
   const turn = (a) => { angle = a; bottle.style.transform = `rotate(${a}deg)`; };
 
+  // Marks round the edge: with names, a sector per seat with a line between
+  // neighbours; without, a clock face to read the hour from.
+  function drawDial() {
+    const pt = (r, deg) => {
+      const a = deg * Math.PI / 180;
+      return `${(r * Math.sin(a)).toFixed(2)} ${(-r * Math.cos(a)).toFixed(2)}`;
+    };
+    const tick = (r0, r1, deg, cls) => s('path', { d: `M${pt(r0, deg)}L${pt(r1, deg)}`, class: cls });
+    if (!p.names) {
+      dial.replaceChildren(...Array.from({ length: 60 }, (_, i) => (i % 5
+        ? tick(R_DIAL - 3, R_DIAL, i * 6, 'pp-dial-minor')
+        : tick(R_DIAL - (i % 15 ? 9 : 14), R_DIAL, i * 6, 'pp-dial-tick'))));
+      return;
+    }
+    const seg = 360 / p.count;
+    const sectors = p.labels.map((_, i) => {
+      const a0 = (i - 0.5) * seg;
+      const a1 = (i + 0.5) * seg;
+      const large = seg > 180 ? 1 : 0;
+      return s('path', {
+        class: 'pp-sector', 'data-i': i, fill: colour(i),
+        d: `M${pt(R_HUB, a0)}L${pt(R_DIAL, a0)}A${R_DIAL} ${R_DIAL} 0 ${large} 1 ${pt(R_DIAL, a1)}L${pt(R_HUB, a1)}A${R_HUB} ${R_HUB} 0 ${large} 0 ${pt(R_HUB, a0)}Z`,
+      });
+    });
+    const lines = p.labels.map((_, i) => tick(R_HUB, R_DIAL, (i + 0.5) * seg, 'pp-dial-tick'));
+    dial.replaceChildren(...sectors, ...lines);
+  }
+
   function drawSeats() {
+    drawDial();
     seats.replaceChildren(...(p.names ? p.labels.map((label, i) => {
       const a = (i / p.count) * 2 * Math.PI;
       const seat = h('span', { class: 'pp-seat', 'data-i': i }, label);
@@ -66,7 +99,7 @@ export function createBottle(ctx) {
     const to = spinTo(angle, mod(target), turns, dir);
     table.classList.remove('is-done');
     table.classList.add('is-spinning');
-    for (const seat of seats.children) seat.classList.remove('is-win');
+    for (const el of [...seats.children, ...dial.children]) el.classList.remove('is-win');
     ctx.result(null);
     spinBtn.textContent = t('pick-a-person.skip');
     ctx.say(t('pick-a-person.bottle.spinning'));
@@ -85,6 +118,7 @@ export function createBottle(ctx) {
           return;
         }
         seats.children[winner].classList.add('is-win');
+        dial.querySelector(`.pp-sector[data-i="${winner}"]`).classList.add('is-win');
         ctx.result(p.labels[winner], t('pick-a-person.bottle.picked'));
         confetti(ctx.stage, 50);
       },
