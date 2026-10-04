@@ -93,11 +93,16 @@ test('the bottle points at a name, or at an hour without names', async ({ page }
   await page.getByRole('button', { name: 'Spin', exact: true }).click();
   await expect(result(page)).toHaveText(new RegExp(`^(${NAMES.join('|')})$`));
   await expect(page.locator('.pp-seat.is-win')).toHaveText(await result(page).textContent());
+  await expect(page.locator('.pp-sector')).toHaveCount(NAMES.length);
+  const won = await page.locator('.pp-seat.is-win').getAttribute('data-i');
+  await expect(page.locator('.pp-sector.is-win')).toHaveAttribute('data-i', won);
 
   const panel = await openPanel(page);
   await panel.getByRole('button', { name: 'number', exact: true }).click();
   await closePanel(page);
   await expect(page.locator('.pp-seat')).toHaveCount(0);
+  await expect(page.locator('.pp-sector')).toHaveCount(0);
+  await expect(page.locator('.pp-dial-tick')).toHaveCount(12);
   await page.getByRole('button', { name: 'Spin', exact: true }).click();
   await expect(said(page)).toHaveText(/pointing at \d+ o’clock/);
 });
