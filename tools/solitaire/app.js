@@ -4,8 +4,7 @@
 import { initPage, guardStore } from '../../shared/page.js';
 import { extendStrings, t } from '../../shared/i18n.js';
 import { h } from '../../shared/dom.js';
-import { icon } from '../../shared/icons.js';
-import { sourceUrl } from '../../shared/config.js';
+import { optionsSheet } from '../../shared/sheet.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
 import { strings } from './strings.js';
@@ -94,7 +93,7 @@ const announcer = h('p', { class: 'sr-only', 'aria-live': 'polite' });
 const scroller = h('div', { class: 'sol-scroll' }, board);
 const drawBtns = [1, 3].map((n) => h('button', {
   type: 'button', class: 'seg-btn sol-draw', 'data-draw': n,
-  onclick: async () => { if (await startNew(n) && sheet.open) sheet.close(); },
+  onclick: async () => { if (await startNew(n)) options.close(); },
 }, h('span', {}, t(`solitaire.draw.${n}`)), h('span', { class: 'sol-draw-detail' }, t(`solitaire.draw.detail.${n}`))));
 const statsList = h('dl', { class: 'sol-record' });
 
@@ -125,29 +124,18 @@ const layout = h('div', { class: 'sol-layout' }, play, side);
 
 // On narrow screens the game fills the screen. The side panel, plus the
 // footer's text and source link that the page hides there, move into a sheet.
-const sheetBody = h('div', { class: 'sol-sheet-body' });
-const sheet = h('dialog', { class: 'dialog sol-sheet', 'aria-labelledby': 'sol-sheet-title' },
-  h('div', { class: 'sol-sheet-head' },
-    h('h2', { class: 'dialog-title', id: 'sol-sheet-title' }, t('solitaire.options')),
-    h('button', { type: 'button', class: 'btn', onclick: () => sheet.close() }, t('solitaire.close')),
-  ),
-  sheetBody,
-  h('div', { class: 'sol-sheet-foot' },
-    h('p', {}, t('footer.text')),
-    h('p', {}, h('a', { href: sourceUrl(SOURCE_PATH), rel: 'noreferrer' }, icon('source'), t('footer.source'))),
-  ),
-);
-sheet.addEventListener('close', () => { if (moreBtn.isConnected) moreBtn.focus(); });
+const options = optionsSheet({ title: t('solitaire.options'), sourcePath: SOURCE_PATH, returnFocus: moreBtn });
+const { sheet } = options;
 
 function openSheet() {
   renderStats();
-  sheet.showModal();
+  options.open();
 }
 
 function placeSide() {
-  if (narrow.matches) sheetBody.append(side);
+  if (narrow.matches) options.body.append(side);
   else {
-    if (sheet.open) sheet.close();
+    options.close();
     layout.append(side);
   }
 }
@@ -573,7 +561,7 @@ function renderStats() {
 function renderBar() {
   movesValue.textContent = String(g.moves);
   renderTime();
-  undoBtn.disabled = busy || g.state === 'won' || !g.history.length;
+  undoBtn.setAttribute('aria-disabled', String(busy || g.state === 'won' || !g.history.length));
   for (const b of drawBtns) b.setAttribute('aria-pressed', String(+b.dataset.draw === g.draw));
 }
 

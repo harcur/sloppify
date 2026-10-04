@@ -8,13 +8,13 @@
 // the server instead of using the browser's HTTP cache, because GitHub Pages
 // lets browsers keep files for 10 minutes, which would hide a fresh deploy.
 
-const VERSION = 2; // bump when SHELL changes
+const VERSION = 3; // bump when SHELL changes
 const CACHE = `sloppify-v${VERSION}`;
 const SHELL = [
   './', 'index.html', 'hub.js', 'hub.css', 'hub-order.js', 'tools.json', 'manifest.webmanifest', 'icon.svg',
   'shared/base.css', 'shared/theme-boot.js', 'shared/config.js', 'shared/strings.js', 'shared/i18n.js',
   'shared/dom.js', 'shared/icons.js', 'shared/storage.js', 'shared/toast.js', 'shared/backup.js',
-  'shared/dialog.js', 'shared/page.js',
+  'shared/dialog.js', 'shared/page.js', 'shared/sheet.js',
 ];
 const TIMEOUT_MS = 3000;
 

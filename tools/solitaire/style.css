@@ -53,7 +53,7 @@
 .sol-stat-label { font-size: 13px; color: var(--muted); }
 .sol-stat-value { font-family: var(--mono); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; min-width: 4ch; }
 .sol-actions { grid-area: actions; display: flex; gap: 8px; margin-bottom: 12px; }
-.sol-actions .btn:disabled { cursor: default; color: var(--muted); }
+.sol-actions .btn[aria-disabled="true"] { cursor: default; color: var(--muted); }
 .sol-more { display: none; }
 .sol-status { grid-area: status; margin: 0 0 12px; min-height: 1.5em; font-family: var(--mono); }
 
@@ -206,8 +206,7 @@
 
 /* Narrow screens: the game fills the screen like an app ----------------
    Counters on top, the table in the middle, buttons at the bottom within
-   thumb reach. Everything else is in the options sheet. */
-.sol-sheet-foot { display: none; }
+   thumb reach. Everything else is in the options sheet (shared/sheet.js). */
 @media (max-width: 719px) {
   .sol-layout { display: block; }
   .sol-play {
@@ -232,21 +231,4 @@
   .sol-actions .btn { padding: 0 6px; justify-content: center; font-size: 15px; white-space: nowrap; }
   .sol-more { display: inline-flex; align-items: center; justify-content: center; }
   .sol-board { margin: 6px; }
-
-  .sol-sheet {
-    width: 100%; max-width: none;
-    max-height: 88dvh;
-    margin: auto 0 0;
-    border-width: 1px 0 0;
-    padding: 16px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 16px);
-    animation: sol-sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
-  }
-  .sol-sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .sol-sheet-head .dialog-title { margin: 0; }
-  .sol-sheet-foot { display: block; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
-  .sol-sheet-foot p { margin: 0 0 8px; }
-  .sol-sheet-foot a { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--text); text-underline-offset: 3px; }
-  .sol-sheet-foot .icon { width: 16px; height: 16px; }
 }
-@keyframes sol-sheet-up { from { transform: translateY(40%); opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .sol-sheet { animation: none; } }

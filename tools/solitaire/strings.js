@@ -9,7 +9,6 @@ export const strings = {
     'solitaire.new': 'New game',
     'solitaire.undo': 'Undo',
     'solitaire.options': 'Options',
-    'solitaire.close': 'Close',
     'solitaire.table': 'Card table',
 
     'solitaire.draw': 'Turn over',

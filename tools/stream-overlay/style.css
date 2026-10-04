@@ -1,0 +1,127 @@
+/* SPDX-FileCopyrightText: 2026 sloppify contributors
+   SPDX-License-Identifier: MIT */
+
+/* The preview stands in for a video frame: a checkerboard shows where the
+   overlay is transparent, and striped blocks stand in for each zone's content. */
+:root {
+  --so-check-a: #DCDCD8; --so-check-b: #C9C9C4;
+  --so-mock-a: rgba(90, 90, 90, 0.55); --so-mock-b: rgba(90, 90, 90, 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --so-check-a: #2A2A2A; --so-check-b: #202020;
+    --so-mock-a: rgba(150, 150, 150, 0.45); --so-mock-b: rgba(150, 150, 150, 0.3);
+  }
+}
+:root[data-theme="dark"] {
+  --so-check-a: #2A2A2A; --so-check-b: #202020;
+  --so-mock-a: rgba(150, 150, 150, 0.45); --so-mock-b: rgba(150, 150, 150, 0.3);
+}
+
+select { font: inherit; color: inherit; }
+
+.so-intro { margin: 0 0 20px; max-width: 65ch; color: var(--muted); }
+.so-layout { display: grid; gap: 24px; }
+.so-view { --so-max-h: 38vh; min-width: 0; }
+@media (max-width: 899px) {
+  /* The preview stays in view while the settings scroll beneath it. */
+  .so-view {
+    position: sticky; z-index: 5;
+    top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    margin-inline: -16px; padding: 8px 16px 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .so-help { display: none; }
+}
+@media (min-width: 900px) {
+  .so-layout { grid-template-columns: minmax(0, 1fr) 320px; align-items: start; gap: 32px; }
+  .so-view { --so-max-h: 70vh; position: sticky; top: calc(var(--header-h) + 16px); }
+}
+
+/* Stage -------------------------------------------------------------- */
+.so-stage {
+  --ar: 1.7778;
+  position: relative;
+  container-type: inline-size;
+  width: min(100%, calc(var(--so-max-h) * var(--ar)));
+  aspect-ratio: var(--ar);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: repeating-conic-gradient(var(--so-check-a) 0 25%, var(--so-check-b) 0 50%) 0 0 / 16px 16px;
+  user-select: none; -webkit-user-select: none;
+}
+.so-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.so-mocks, .so-handles { position: absolute; inset: 0; }
+.so-mock {
+  position: absolute;
+  background: repeating-linear-gradient(45deg, var(--so-mock-a) 0 6px, var(--so-mock-b) 6px 12px);
+}
+
+/* Zone outlines: a white dashed line over a black one, visible on any art. */
+.so-zone {
+  position: absolute;
+  padding: 0;
+  border: 1px dashed #FFFFFF;
+  outline: 1px solid #161616; outline-offset: -2px;
+  background: transparent;
+  cursor: move;
+  touch-action: none;
+}
+.so-zone[aria-pressed="true"] { border: 2px solid #FFFFFF; outline: 2px solid #161616; outline-offset: -4px; }
+.so-zone:focus-visible { outline: 3px solid #161616; outline-offset: 0; border-color: #FFFFFF; }
+.so-zone-name {
+  position: absolute; left: 0; top: 0;
+  padding: 1px 6px;
+  background: #161616; color: #FFFFFF;
+  font-family: var(--mono); font-size: 11px; line-height: 1.6;
+  white-space: nowrap;
+}
+.so-grip {
+  position: absolute; right: 0; bottom: 0;
+  width: 24px; height: 24px;
+  background: linear-gradient(135deg, transparent 50%, #FFFFFF 50%, #FFFFFF 62%, #161616 62%);
+  cursor: nwse-resize;
+}
+.so-hide .so-mocks { display: none; }
+.so-hide .so-zone:not([aria-pressed="true"]):not(:focus-visible) { border-color: transparent; outline-color: transparent; }
+.so-hide .so-zone:not([aria-pressed="true"]):not(:focus-visible) > * { visibility: hidden; }
+
+.so-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 8px; }
+.so-busy { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.so-seed { margin-left: auto; }
+.so-help { margin: 0; font-size: 14px; color: var(--muted); max-width: 70ch; }
+.so-error { margin: 8px 0 0; color: var(--danger); }
+
+/* Panel -------------------------------------------------------------- */
+.so-panel { display: grid; gap: 28px; min-width: 0; }
+.so-section { display: grid; gap: 14px; }
+.so-h2 { margin: 0; font-family: var(--mono); font-size: 16px; font-weight: 400; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.so-field { display: grid; gap: 4px; min-width: 0; }
+.so-field > label { font-size: 14px; }
+.so-out { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+.so-input {
+  width: 100%; min-height: 44px; padding: 0 10px;
+  border: 1px solid var(--muted); border-radius: 0;
+  background: var(--surface);
+}
+.so-range { width: 100%; min-height: 32px; margin: 0; accent-color: var(--text); }
+.so-hint, .so-note { margin: 0; font-size: 14px; color: var(--muted); }
+.so-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.so-row { display: flex; align-items: flex-end; gap: 8px; }
+.so-row > .so-field { flex: 1; }
+.so-row > .btn { flex: none; }
+.so-check { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; font-size: 15px; }
+.so-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--text); }
+.so-remove { justify-self: start; color: var(--danger); }
+
+.so-zone-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.so-zone-item { min-height: 44px; padding: 0 14px; border: 1px solid var(--muted); background: transparent; font-size: 15px; }
+.so-zone-item[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface); }
+
+.so-downloads { display: grid; gap: 8px; }
+.so-downloads .btn:disabled { opacity: 0.45; cursor: default; }
+.so-link { font-family: var(--mono); font-size: 13px; }
+.so-steps { margin: 0; padding-left: 20px; font-size: 14px; display: grid; gap: 6px; }
+.so-steps li[hidden] { display: none; }

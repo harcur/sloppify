@@ -10,9 +10,24 @@ export const LEVELS = {
   large: { rows: 16, cols: 30, mines: 99 },
 };
 
+// The mine count each size allows: 8% to 30% of the cells, always leaving
+// room for the safe opening around the first move.
+export function mineRange(level) {
+  const { rows, cols } = LEVELS[level];
+  const n = rows * cols;
+  return { min: Math.max(1, Math.round(n * 0.08)), max: Math.min(n - 9, Math.round(n * 0.3)) };
+}
+
+// A mine count for the size: the size's own when missing or out of range.
+export function validMines(level, mines) {
+  const { min, max } = mineRange(level);
+  return Number.isInteger(mines) && mines >= min && mines <= max ? mines : LEVELS[level].mines;
+}
+
 // state: 'ready' (no mines placed yet) → 'playing' → 'won' | 'lost'
-export function newGame(level) {
-  const { rows, cols, mines } = LEVELS[level];
+export function newGame(level, mineCount) {
+  const { rows, cols } = LEVELS[level];
+  const mines = validMines(level, mineCount);
   const n = rows * cols;
   return {
     level, rows, cols, mines,
@@ -130,7 +145,7 @@ const unbits = (s, n) => (typeof s === 'string' && s.length === n && /^[01]*$/.t
 
 export function serialize(g) {
   return {
-    level: g.level, state: g.state, mine: bits(g.mine), open: bits(g.open), flag: bits(g.flag),
+    level: g.level, mines: g.mines, state: g.state, mine: bits(g.mine), open: bits(g.open), flag: bits(g.flag),
     exploded: g.exploded, elapsed: Math.round(g.elapsed),
   };
 }
@@ -138,7 +153,9 @@ export function serialize(g) {
 // Returns a game, or null when the saved data isn't a valid game.
 export function deserialize(d) {
   if (!d || !LEVELS[d.level] || !['ready', 'playing', 'won', 'lost'].includes(d.state)) return null;
-  const g = newGame(d.level);
+  // Games saved before mine counts could change have no count: the size's own.
+  const g = newGame(d.level, d.mines);
+  if (d.mines !== undefined && g.mines !== d.mines) return null;
   const n = g.rows * g.cols;
   const mine = unbits(d.mine, n);
   const open = unbits(d.open, n);

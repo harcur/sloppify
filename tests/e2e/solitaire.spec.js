@@ -123,7 +123,7 @@ test('the last cards finish on their own, and the win is recorded', async ({ pag
   await expect(page.getByRole('status')).toContainText('Solved in');
   await expect(page.getByRole('status')).toContainText('New best');
   await expect(pile(page, 'Foundation 4, 13 cards')).toHaveCount(1);
-  await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Undo' })).toHaveAttribute('aria-disabled', 'true');
   await expect(page.locator('.sol-record')).toContainText('1 won of 1');
   await page.reload();
   await expect(page.getByRole('status')).toContainText('Solved in');
