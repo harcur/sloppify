@@ -109,3 +109,9 @@ export function formatDate(iso, fmt, locale) {
   const [y, m, d] = iso.split('-').map(Number);
   return new Intl.DateTimeFormat(locale, { dateStyle: DATE_FORMATS.includes(fmt) ? fmt : 'long' }).format(new Date(y, m - 1, d));
 }
+
+// A copy of an item for another page, at the same relative spot and scaled with the page width.
+export function copyToPage(item, from, to) {
+  const rx = to.w / from.w, ry = to.h / from.h;
+  return keepOnPage({ ...item, x: item.x * rx, y: item.y * ry, w: item.w * rx, h: item.h * rx }, to.w, to.h);
+}

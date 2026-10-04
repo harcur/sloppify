@@ -8,7 +8,7 @@ import { PdfDoc, PdfError, Lexer, Name, Ref, Str, Op, latin1, bytes, viewport, m
 import { signPdf, imagePdf, ser, placement } from '../../tools/sign-document/write.js';
 import { parseCMap, glyphChar, winAnsi } from '../../tools/sign-document/fonts.js';
 import { Gfx } from '../../tools/sign-document/render.js';
-import { trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, INKS, formatDate, todayIso, isIsoDate } from '../../tools/sign-document/sig.js';
+import { trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, INKS, formatDate, todayIso, isIsoDate, copyToPage } from '../../tools/sign-document/sig.js';
 
 // Builds a PDF with a classic cross-reference table from [num, body] pairs.
 function classicPdf(objs, trailer = '/Root 1 0 R') {
@@ -262,4 +262,11 @@ test('dates are written in the requested locale and style', () => {
   assert.equal(todayIso(new Date(2026, 0, 5)), '2026-01-05');
   assert.ok(isIsoDate('2026-02-28'));
   assert.ok(!isIsoDate('') && !isIsoDate('28/02/2026'));
+});
+
+test('an item copied to another page keeps its relative spot and scales with the width', () => {
+  const item = { type: 'sig', x: 100, y: 700, w: 150, h: 50, w0: 150, h0: 50 };
+  assert.deepEqual(copyToPage(item, { w: 600, h: 800 }, { w: 300, h: 400 }), { ...item, x: 50, y: 350, w: 75, h: 25 });
+  const off = copyToPage({ ...item, x: 550 }, { w: 600, h: 800 }, { w: 600, h: 400 });
+  assert.ok(off.x < 600 && off.y + off.h > 0);
 });
