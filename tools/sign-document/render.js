@@ -15,12 +15,33 @@ const JOINS = ['miter', 'round', 'bevel'];
 const ABBR = { BPC: 'BitsPerComponent', CS: 'ColorSpace', D: 'Decode', DP: 'DecodeParms', F: 'Filter', H: 'Height', W: 'Width', IM: 'ImageMask', I: 'Interpolate', G: 'DeviceGray', RGB: 'DeviceRGB', CMYK: 'DeviceCMYK' };
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-export async function renderPage(doc, page, ctx, scale) {
-  const g = new Gfx(doc, ctx, viewport(page, scale));
+// skip: annotations not to draw (form fields the page shows as inputs instead).
+export async function renderPage(doc, page, ctx, scale, skip = new Set()) {
+  const base = viewport(page, scale);
+  const g = new Gfx(doc, ctx, base);
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   await g.run(await doc.contents(page), page.resources, 0);
-  return { missing: g.missing };
+  while (g.stack.length) { g.stack.pop(); ctx.restore(); }
+  // Annotations (stamps, notes, filled-in fields) draw their normal appearance, fitted to their rectangle.
+  const a = new Gfx(doc, ctx, base);
+  for (const ref of doc.get(page.dict.Annots) || []) {
+    const an = doc.get(ref);
+    if (skip.has(ref?.num) || !isDict(an) || (+doc.get(an.F) || 0) & 34) continue;
+    let ap = doc.get(doc.get(an.AP)?.N);
+    if (isDict(ap)) ap = doc.get(ap[nameOf(doc.get(an.AS))]);
+    const r = (doc.get(an.Rect) || []).map((v) => +doc.get(v));
+    const bb = (doc.get(ap?.dict?.BBox) || []).map((v) => +doc.get(v));
+    if (!(ap instanceof Stream) || r.length !== 4 || bb.length !== 4) continue;
+    const m = (doc.get(ap.dict.Matrix) || ID).map((v) => +doc.get(v));
+    const pts = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[0], bb[3]], [bb[2], bb[3]]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+    const x0 = Math.min(...pts.map((p) => p[0])), x1 = Math.max(...pts.map((p) => p[0]));
+    const y0 = Math.min(...pts.map((p) => p[1])), y1 = Math.max(...pts.map((p) => p[1]));
+    if (x1 - x0 < 1e-6 || y1 - y0 < 1e-6) continue;
+    const sx = (Math.max(r[0], r[2]) - Math.min(r[0], r[2])) / (x1 - x0), sy = (Math.max(r[1], r[3]) - Math.min(r[1], r[3])) / (y1 - y0);
+    try { await a.form(ap, page.resources, 1, [sx, 0, 0, sy, Math.min(r[0], r[2]) - x0 * sx, Math.min(r[1], r[3]) - y0 * sy]); } catch { a.missing = true; }
+  }
+  return { missing: g.missing || a.missing };
 }
 
 export class Gfx {
@@ -251,27 +272,8 @@ export class Gfx {
     const x = doc.get(ref);
     if (!(x instanceof Stream)) return;
     const type = nameOf(doc.get(x.dict.Subtype));
-    if (type === 'Form' && depth < 12) {
-      const { ctx } = this;
-      this.stack.push({ ...this.st });
-      ctx.save();
-      const m = doc.get(x.dict.Matrix);
-      if (Array.isArray(m) && m.length === 6) this.st.ctm = mul(m.map((v) => +doc.get(v)), this.st.ctm);
-      this.setT();
-      const bb = doc.get(x.dict.BBox);
-      if (Array.isArray(bb) && bb.length === 4) {
-        const [x0, y0, x1, y1] = bb.map((v) => +doc.get(v));
-        ctx.beginPath();
-        ctx.rect(x0, y0, x1 - x0, y1 - y0);
-        ctx.clip();
-        ctx.beginPath();
-      }
-      await this.run(await doc.decode(x), doc.r(x, 'Resources') || res, depth + 1);
-      this.st = this.stack.pop();
-      ctx.restore();
-      this.cssFont = null;
-      this.setT();
-    } else if (type === 'Image') {
+    if (type === 'Form' && depth < 12) await this.form(x, res, depth);
+    else if (type === 'Image') {
       const key = ref?.num;
       let bmp = key != null && !doc.get(x.dict.ImageMask) ? this.images.get(key) : undefined;
       if (bmp === undefined) {
@@ -280,6 +282,31 @@ export class Gfx {
       }
       this.drawImage(bmp);
     }
+  }
+
+  // A form XObject, optionally placed by `outer` first (annotation appearances).
+  async form(x, res, depth, outer = ID) {
+    const doc = this.doc;
+    const { ctx } = this;
+    this.stack.push({ ...this.st });
+    ctx.save();
+    const m = doc.get(x.dict.Matrix);
+    this.st.ctm = mul(outer, this.st.ctm);
+    if (Array.isArray(m) && m.length === 6) this.st.ctm = mul(m.map((v) => +doc.get(v)), this.st.ctm);
+    this.setT();
+    const bb = doc.get(x.dict.BBox);
+    if (Array.isArray(bb) && bb.length === 4) {
+      const [x0, y0, x1, y1] = bb.map((v) => +doc.get(v));
+      ctx.beginPath();
+      ctx.rect(x0, y0, x1 - x0, y1 - y0);
+      ctx.clip();
+      ctx.beginPath();
+    }
+    await this.run(await doc.decode(x), doc.r(x, 'Resources') || res, depth + 1);
+    this.st = this.stack.pop();
+    ctx.restore();
+    this.cssFont = null;
+    this.setT();
   }
 
   drawImage(bmp) {

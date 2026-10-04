@@ -6,6 +6,7 @@
 // update, so every byte of the original file stays as it was.
 
 import { Name, Ref, Str, Stream, isDict, bytes, concat, deflate, inverse, mul, viewport } from './pdf.js';
+import { fillFields } from './forms.js';
 
 const DELIMS = '()<>[]{}/%#';
 
@@ -51,7 +52,8 @@ async function imageObjects(ov, smaskNum) {
 }
 
 // overlays: [{ page, rect: { x, y, w, h } in display points, width, height, rgba }]
-export async function signPdf(doc, overlays) {
+// values: filled-in form fields, { [widget id]: string | boolean }.
+export async function signPdf(doc, overlays, values = {}) {
   let next = [...doc.xref.keys()].reduce((m, n) => Math.max(m, n + 1), +doc.get(doc.trailer.Size) || 1);
   const objs = [];
   for (const ov of overlays) {
@@ -72,6 +74,9 @@ export async function signPdf(doc, overlays) {
       [page.ref.num, page.ref.gen, { ...page.dict, Contents: [new Ref(pre, 0), ...list, new Ref(post, 0)], Resources: { ...page.resources, XObject: xo } }],
     );
   }
+  const mods = new Map();
+  fillFields(doc, values, mods, () => next++);
+  for (const [num, [gen, body]] of mods) objs.push([num, gen, body]);
   return doc.startxref ? update(doc, objs, next) : rewrite(doc, objs, next);
 }
 

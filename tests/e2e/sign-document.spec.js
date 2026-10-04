@@ -5,6 +5,7 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { trackExternalRequests, markNoticeSeen, expectAccessible } from './helpers.js';
 import { PdfDoc, latin1 } from '../../tools/sign-document/pdf.js';
+import { readFields } from '../../tools/sign-document/forms.js';
 
 let external;
 test.beforeEach(async ({ page, baseURL }) => {
@@ -24,6 +25,25 @@ function samplePdf() {
     '<< /Type /Page /Parent 2 0 R /Contents 5 0 R >>',
     `<< /Length ${content.length} >>\nstream\n${content}\nendstream`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+  ];
+  let out = '%PDF-1.4\n';
+  const offs = objs.map((o, i) => { const at = out.length; out += `${i + 1} 0 obj\n${o}\nendobj\n`; return at; });
+  const xref = out.length;
+  out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n${offs.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('')}`;
+  out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(out, 'latin1');
+}
+
+// A one-page form: a text field and a checkbox.
+function formPdf() {
+  const on = '0 0 20 20 re f';
+  const objs = [
+    '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 5 0 R] /DA (/Helv 0 Tf 0 g) >> >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Annots [4 0 R 5 0 R] >>',
+    '<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /TU (Full name) /Rect [100 700 400 730] >>',
+    '<< /Type /Annot /Subtype /Widget /FT /Btn /T (agree) /TU (I agree) /Rect [100 600 130 630] /V /Off /AS /Off /AP << /N << /Yes 6 0 R >> >> >>',
+    `<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length ${on.length} >>\nstream\n${on}\nendstream`,
   ];
   let out = '%PDF-1.4\n';
   const offs = objs.map((o, i) => { const at = out.length; out += `${i + 1} 0 obj\n${o}\nendobj\n`; return at; });
@@ -149,6 +169,17 @@ test('go to page jumps to a page', async ({ page }) => {
   await inOptions(page);
   await page.getByLabel('Go to page').selectOption('2');
   await expect(page.getByRole('group', { name: 'Page 2 of 2' })).toBeInViewport();
+});
+
+test('the PDF\u2019s own form fields can be filled in and are saved', async ({ page }) => {
+  await page.locator('#sd-file').setInputFiles({ name: 'form.pdf', mimeType: 'application/pdf', buffer: formPdf() });
+  await page.getByRole('textbox', { name: 'Full name' }).fill('Alice Example');
+  await page.getByRole('checkbox', { name: 'I agree' }).check();
+  await expectAccessible(page, 'form fields');
+  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save signed PDF' }).filter({ visible: true }).click()]);
+  const [name, agree] = readFields(await PdfDoc.open(readFileSync(await download.path())));
+  expect(name.value).toBe('Alice Example');
+  expect(agree.value).toBe(true);
 });
 
 test('the pen draws and text starts as a date that can be edited', async ({ page }) => {

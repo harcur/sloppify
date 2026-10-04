@@ -8,6 +8,7 @@ import { PdfDoc, PdfError, Lexer, Name, Ref, Str, Op, latin1, bytes, viewport, m
 import { signPdf, imagePdf, ser, placement } from '../../tools/sign-document/write.js';
 import { parseCMap, glyphChar, winAnsi } from '../../tools/sign-document/fonts.js';
 import { Gfx } from '../../tools/sign-document/render.js';
+import { readFields, text as pdfText } from '../../tools/sign-document/forms.js';
 import { trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, INKS, formatDate, todayIso, isIsoDate, copyToPage } from '../../tools/sign-document/sig.js';
 
 // Builds a PDF with a classic cross-reference table from [num, body] pairs.
@@ -269,4 +270,47 @@ test('an item copied to another page keeps its relative spot and scales with the
   assert.deepEqual(copyToPage(item, { w: 600, h: 800 }, { w: 300, h: 400 }), { ...item, x: 50, y: 350, w: 75, h: 25 });
   const off = copyToPage({ ...item, x: 550 }, { w: 600, h: 800 }, { w: 600, h: 400 });
   assert.ok(off.x < 600 && off.y + off.h > 0);
+});
+
+// A one-page form: a text field (field and widget in one) and a checkbox with on and off appearances.
+const formPdf = () => classicPdf([
+  [1, '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 5 0 R] /DA (/Helv 0 Tf 0 g) /XFA 9 0 R >> >>'],
+  [2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>'],
+  [3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 600 800] /Annots [4 0 R 5 0 R] >>'],
+  [4, '<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /TU (Full name) /Rect [100 700 300 724] /V (Bob) >>'],
+  [5, '<< /Type /Annot /Subtype /Widget /FT /Btn /T (agree) /Rect [100 650 120 670] /V /Off /AS /Off /AP << /N << /Yes 6 0 R /Off 7 0 R >> >> >>'],
+  [6, '<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 15 >>\nstream\n0 0 20 20 re f\nendstream'],
+  [7, '<< /Type /XObject /Subtype /Form /BBox [0 0 20 20] /Length 0 >>\nstream\n\nendstream'],
+  [9, '<< /Length 0 >>\nstream\n\nendstream'],
+]);
+
+test('form fields are read with their place, kind and value', async () => {
+  const doc = await PdfDoc.open(formPdf());
+  const [name, agree] = readFields(doc);
+  assert.deepEqual({ ...name, field: undefined }, { id: 4, field: undefined, page: 0, type: 'text', name: 'Full name', x: 100, y: 76, w: 200, h: 24, readOnly: false, multiline: false, maxLen: 0, value: 'Bob' });
+  assert.equal(agree.type, 'check');
+  assert.equal(agree.on, 'Yes');
+  assert.equal(agree.value, false);
+});
+
+test('filled-in fields are saved with values and appearances', async () => {
+  const doc = await PdfDoc.open(formPdf());
+  const again = await PdfDoc.open(await signPdf(doc, [], { 4: 'Alice (A)', 5: true }));
+  const [name, agree] = readFields(again);
+  assert.equal(name.value, 'Alice (A)');
+  assert.equal(agree.value, true);
+  assert.equal(again.get(new Ref(5, 0)).AS.n, 'Yes');
+  const ap = again.get(again.get(new Ref(4, 0)).AP.N);
+  assert.match(latin1(ap.data), /\(Alice \\\(A\\\)\) Tj/);
+  const form = again.get(again.trailer.Root).AcroForm;
+  assert.equal(form.NeedAppearances, true);
+  assert.equal(form.XFA, undefined);
+});
+
+test('text outside Latin-1 is stored as UTF-16 and left for the viewer to draw', async () => {
+  const doc = await PdfDoc.open(formPdf());
+  const again = await PdfDoc.open(await signPdf(doc, [], { 4: '\u00C5sa \u4E2D' }));
+  const w = again.get(new Ref(4, 0));
+  assert.equal(pdfText(w.V), '\u00C5sa \u4E2D');
+  assert.equal(w.AP, undefined);
 });
