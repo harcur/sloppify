@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   randomInt, shuffle, pickMany, splitTeams, cleanNames, clampInt, range,
-  mod, spinTo, segmentAt, wheelTarget, clockHour, strawFan, MAX_PLAYERS, MAX_NAME,
+  mod, spinTo, segmentAt, wheelTarget, clockHour, strawFan, nearestStraw, MAX_PLAYERS, MAX_NAME,
 } from '../../tools/pick-a-person/pick.js';
 
 // Deterministic 32-bit numbers for repeatable tests.
@@ -141,4 +141,26 @@ test('strawFan: the fan and its cup stay inside the area, thicker when fewer', (
     }
   }
   assert.ok(strawFan(4, 343, 360).thick > strawFan(30, 343, 360).thick);
+});
+
+test('nearestStraw: picks the closest open straw, within a finger of its edge', () => {
+  const fan = strawFan(30, 343, 360);
+  const rad = (d) => (d * Math.PI) / 180;
+  const at = (i, along, side = 0) => {
+    const a = rad(fan.straws[i].angle);
+    return [fan.pivot.x + along * Math.sin(a) + side * Math.cos(a), fan.pivot.y - along * Math.cos(a) + side * Math.sin(a)];
+  };
+  const all = [...Array(30).keys()];
+  for (const i of [0, 7, 15, 29]) assert.equal(nearestStraw(fan, ...at(i, fan.length - 20), all, 24), i);
+  // Just past the tip, and just beside the outer straws, still count.
+  assert.equal(nearestStraw(fan, ...at(15, fan.length + 15), all, 24), 15);
+  assert.equal(nearestStraw(fan, ...at(29, fan.length - 30, fan.thick / 2 + 20), all, 24), 29);
+  assert.equal(nearestStraw(fan, ...at(0, fan.length - 30, -(fan.thick / 2 + 20)), all, 24), 0);
+  // Further than a finger away, nothing.
+  assert.equal(nearestStraw(fan, ...at(29, fan.length - 30, fan.thick / 2 + 30), all, 24), -1);
+  assert.equal(nearestStraw(fan, ...at(15, fan.length + 40), all, 24), -1);
+  assert.equal(nearestStraw(fan, fan.pivot.x, 0, all, 24), -1);
+  // Drawn straws are skipped: the tap goes to the next nearest.
+  const open = all.filter((i) => i !== 15);
+  assert.ok([14, 16].includes(nearestStraw(fan, ...at(15, fan.length - 20), open, 24)));
 });

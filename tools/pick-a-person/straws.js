@@ -8,10 +8,11 @@
 
 import { h } from '../../shared/dom.js';
 import { t } from '../../shared/i18n.js';
-import { randomInt, strawFan } from './pick.js';
+import { randomInt, strawFan, nearestStraw } from './pick.js';
 import { colour, confetti, reduced } from './fx.js';
 
 const PASS_MS = 900; // after a long straw, a moment to pass the phone on
+const FINGER = 24; // a tap this far beyond a straw's edge still picks it (px, about a fingertip)
 
 export function createStraws(ctx) {
   let count = 0;
@@ -26,6 +27,17 @@ export function createStraws(ctx) {
   const area = h('div', { class: 'pp-straws' }, row, cup);
   const stage = h('div', { class: 'pp-straws-stage' }, turn, area);
   let laid = '';
+  let fan = null;
+  // Taps and clicks go to the nearest straw rather than the exact one under
+  // the finger: with many players each straw is only a few pixels wide.
+  // The buttons stay for keyboards and screen readers.
+  area.addEventListener('click', (e) => {
+    if (e.target.closest('.pp-straw')) return; // a key press on a straw button
+    const i = nearestAt(e);
+    if (i >= 0) draw(i);
+  });
+  area.addEventListener('pointermove', (e) => { if (e.pointerType === 'mouse') near(nearestAt(e)); });
+  area.addEventListener('pointerleave', () => near(-1));
   new ResizeObserver(() => { if (`${area.clientWidth}x${area.clientHeight}` !== laid) layout(); }).observe(area);
   const mainBtn = h('button', { type: 'button', class: 'btn pp-go', onclick: () => newRound(true) }, t('pick-a-person.straws.again'));
   // Draws a random straw for whoever holds the phone: the same as tapping
@@ -56,7 +68,7 @@ export function createStraws(ctx) {
     const hgt = area.clientHeight;
     laid = `${w}x${hgt}`;
     if (!w || !hgt || !count) return; // hidden: the observer lays out once it shows
-    const fan = strawFan(count, w, hgt);
+    fan = strawFan(count, w, hgt);
     const px = (v) => `${v}px`;
     area.style.setProperty('--px', px(fan.pivot.x));
     area.style.setProperty('--py', px(fan.pivot.y));
@@ -73,6 +85,19 @@ export function createStraws(ctx) {
     });
   }
 
+  function nearestAt(e) {
+    if (!fan || over || lock) return -1;
+    const r = area.getBoundingClientRect();
+    const open = [...Array(count).keys()].filter((i) => !drawn.includes(i));
+    return nearestStraw(fan, e.clientX - r.left, e.clientY - r.top, open, FINGER);
+  }
+
+  // With a mouse, the straw a click would draw lifts a little.
+  function near(i) {
+    [...row.children].forEach((b, j) => b.classList.toggle('is-near', j === i));
+    area.classList.toggle('is-aiming', i >= 0);
+  }
+
   function render() {
     const left = count - drawn.length;
     turn.textContent = over ? '' : lock ? t('pick-a-person.straws.pass') : t('pick-a-person.straws.turn', { n: left });
@@ -86,6 +111,7 @@ export function createStraws(ctx) {
         : t(i === short ? 'pick-a-person.straws.label.short' : 'pick-a-person.straws.label.long', { n: i + 1 }));
     });
     pickBtn.disabled = over || !!lock;
+    if (over || lock) near(-1);
     stage.classList.toggle('is-over', over);
   }
 

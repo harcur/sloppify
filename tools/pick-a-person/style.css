@@ -273,8 +273,11 @@
    in the cup (--px, --py), --a degrees from upright. The button covers only
    the part above the rim; the straw itself carries on down to that point. */
 .pp-straw-row { position: absolute; inset: 0; }
+/* Pointer taps are handled on the whole area (nearest straw, straws.js);
+   the buttons only take keyboard and screen reader input. */
+.pp-straws.is-aiming { cursor: pointer; }
 .pp-straw {
-  position: absolute;
+  position: absolute; pointer-events: none;
   left: calc(var(--px, 50%) - var(--hit, 24px) / 2);
   top: calc(var(--py, 90%) - var(--len, 200px));
   width: var(--hit, 24px); height: calc(var(--len, 200px) - var(--sink, 80px));
@@ -293,17 +296,17 @@
   transition: translate 650ms cubic-bezier(0.2, 0.9, 0.3, 1.25), height 0ms;
   animation: pp-sprout 420ms cubic-bezier(0.2, 0.9, 0.3, 1.4) var(--d, 0ms) backwards;
 }
-@media (hover: hover) { .pp-straw:not(:disabled):hover .pp-straw-body { translate: 0 -8px; } }
+.pp-straw.is-near .pp-straw-body, .pp-straw:not(:disabled):focus-visible .pp-straw-body { translate: 0 -8px; }
 .pp-straw.is-drawn .pp-straw-body, .pp-straw.is-revealed .pp-straw-body { translate: 0 calc(-1 * var(--pull, 90px)); }
 .pp-straw.is-drawn { z-index: 3; }
 .pp-straw.is-short { z-index: 4; }
 .pp-straw.is-short .pp-straw-body { height: calc(var(--len, 200px) * 0.42); animation: pp-shake 500ms ease-in-out 400ms; outline: 3px solid #FFFFFF; }
 .pp-straw.is-revealed .pp-straw-body { opacity: 0.6; }
-.pp-straw:disabled { cursor: default; }
 /* A paper cup cut to fit the fan: striped, shaded at the sides, narrowing
-   to its base, with a rolled rim. */
+   to its base, with a rolled rim. It stays in front of every straw, so one
+   being drawn slides out from behind the rim instead of across it. */
 .pp-cup {
-  position: absolute; z-index: 2; bottom: 0;
+  position: absolute; z-index: 5; bottom: 0;
   left: calc(var(--px, 50%) - var(--cup-w, 200px) / 2); top: var(--rim, 66%);
   width: var(--cup-w, 200px);
   pointer-events: none;
