@@ -102,10 +102,21 @@ test('keyboard moves, resizes, removes and undo brings back', async ({ page }) =
   await expect(items(page)).toHaveCount(1);
 });
 
+test('a signature can be put on every page', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  await typeSignature(page);
+  await page.getByRole('button', { name: 'Put on every page' }).click();
+  await expect(page.getByRole('status')).toHaveText('Copied to the other page');
+  await expect(page.getByRole('button', { name: /^Signature 1, page 2/ })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(items(page)).toHaveCount(1);
+});
+
 test('the pen draws and text starts as a date that can be edited', async ({ page }) => {
   await openPdf(page);
   await waitForPages(page);
-  await page.getByRole('button', { name: 'Pen' }).click();
+  await page.getByRole('button', { name: 'Pen', exact: true }).click();
   const box = await page.locator('.sd-page').first().boundingBox();
   await page.mouse.move(box.x + 40, box.y + 60);
   await page.mouse.down();

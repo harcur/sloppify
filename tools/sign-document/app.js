@@ -10,7 +10,7 @@ import { confirmDialog, messageDialog } from '../../shared/dialog.js';
 import { toast } from '../../shared/toast.js';
 import { optionsSheet } from '../../shared/sheet.js';
 import { strings } from './strings.js';
-import { INKS, trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, DATE_FORMATS, isIsoDate, todayIso, formatDate } from './sig.js';
+import { INKS, trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, DATE_FORMATS, isIsoDate, todayIso, formatDate, copyToPage } from './sig.js';
 
 extendStrings(strings);
 
@@ -135,12 +135,14 @@ const fmtSelect = h('select', { id: 'sd-fmt', class: 'sd-input', onchange: () =>
 const dateFields = h('div', { class: 'sd-date-fields' },
   h('div', { class: 'sd-field' }, h('label', { for: 'sd-date' }, k('item.dateLabel')), dateInput),
   h('div', { class: 'sd-field' }, h('label', { for: 'sd-fmt' }, k('item.formatLabel')), fmtSelect));
+const allPagesBtn = h('button', { type: 'button', class: 'btn', onclick: () => copyToAllPages() }, k('item.allPages'));
 const itemPanel = h('section', { class: 'sd-sel', 'aria-label': k('item.panel'), hidden: true },
   itemLabel, textField, dateFields,
   h('div', { class: 'sd-row' },
     h('button', { type: 'button', class: 'btn', onclick: () => scaleSelected(1 / 1.15) }, k('item.smaller')),
     h('button', { type: 'button', class: 'btn', onclick: () => scaleSelected(1.15) }, k('item.larger')),
     h('button', { type: 'button', class: 'btn', onclick: () => removeSelected() }, icon('trash'), k('item.delete')),
+    allPagesBtn,
     h('button', { type: 'button', class: 'btn btn-link', onclick: () => select(null, null) }, k('item.done')),
   ),
   h('p', { class: 'sd-hint sd-desk', id: 'sd-keys' }, k('item.keys')),
@@ -415,6 +417,7 @@ function updateItemPanel() {
   if (!selected) return;
   const { p, item } = selected;
   itemLabel.textContent = itemName(p, item);
+  allPagesBtn.hidden = pages.length < 2;
   textField.hidden = item.type !== 'text' || !!item.date;
   dateFields.hidden = !item.date;
   if (item.date) {
@@ -448,6 +451,19 @@ function removeSelected() {
   updateItemPanel();
   toast(k('removed'));
   p.el.focus?.();
+}
+
+// Initials on every page: the selected item copied to the same spot on each other page.
+function copyToAllPages() {
+  if (!selected || pages.length < 2) return;
+  const { p, item } = selected;
+  snapshot();
+  for (const other of pages) {
+    if (other === p) continue;
+    other.items.push({ ...copyToPage(item, p, other), id: nextId++ });
+    drawOverlay(other);
+  }
+  toast(k(pages.length === 2 ? 'copied1' : 'copied', { n: pages.length - 1 }));
 }
 
 function scaleSelected(f) {
