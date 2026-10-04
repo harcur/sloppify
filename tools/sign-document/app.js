@@ -8,6 +8,7 @@ import { icon } from '../../shared/icons.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog, messageDialog } from '../../shared/dialog.js';
 import { toast } from '../../shared/toast.js';
+import { optionsSheet } from '../../shared/sheet.js';
 import { strings } from './strings.js';
 import { INKS, trimBox, inkFromPhoto, smoothPath, pointsBox, itemsBox, keepOnPage, resize, isSignatureList, DATE_FORMATS, isIsoDate, todayIso, formatDate } from './sig.js';
 
@@ -16,7 +17,8 @@ extendStrings(strings);
 const TOOL_ID = 'sign-document';
 const name = t(`${TOOL_ID}.name`);
 const k = (key, vars) => t(`${TOOL_ID}.${key}`, vars);
-const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: 'tools/sign-document/' });
+const SOURCE_PATH = 'tools/sign-document/';
+const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sourcePath: SOURCE_PATH, app: true });
 
 // Saved: signatures (small PNGs), the ink colour and the date format. Documents are never stored.
 const store = openStore(TOOL_ID, { version: 1 });
@@ -29,7 +31,7 @@ const SANS = 'Helvetica, Arial, sans-serif';
 const SCRIPT = '"Segoe Script", "Bradley Hand", "Apple Chancery", "URW Chancery L", cursive';
 const NS = 'http://www.w3.org/2000/svg';
 const MAX_SIGS = 6;
-const narrow = matchMedia('(max-width: 899px)');
+const narrow = matchMedia('(max-width: 719px)');
 const rgb = (c) => `rgb(${c.join(',')})`;
 const svgEl = (tag, attrs = {}) => {
   const el = document.createElementNS(NS, tag);
@@ -88,11 +90,12 @@ const docName = h('h2', { class: 'sd-doc-name' });
 const docMeta = h('p', { class: 'sd-doc-meta' });
 const docNote = h('p', { class: 'sd-doc-note', hidden: true }, k('missing'));
 const saveBtn = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => save() }, icon('download'), k('save'));
-const savePdfBtn = h('button', { type: 'button', class: 'btn', onclick: () => save(true) }, k('savePdf'));
-const closeBtn = h('button', { type: 'button', class: 'btn', onclick: () => closeDoc() }, k('close'));
+const savePdfBtn = h('button', { type: 'button', class: 'btn', onclick: () => { options.close(); save(true); } }, k('savePdf'));
+const closeBtn = h('button', { type: 'button', class: 'btn', onclick: () => { options.close(); closeDoc(); } }, k('close'));
 const docBar = h('section', { class: 'sd-doc', 'aria-label': k('document') },
   docName, docMeta, docNote,
-  h('div', { class: 'sd-row' }, saveBtn, savePdfBtn, closeBtn),
+  h('div', { class: 'sd-row' }, saveBtn, savePdfBtn,
+    h('button', { type: 'button', class: 'btn', onclick: () => { options.close(); fileInput.click(); } }, k('openOther')), closeBtn),
 );
 
 // Text and Date add to the page that's tapped. From the keyboard (no click position),
@@ -105,14 +108,21 @@ const undoBtn = h('button', { type: 'button', class: 'sd-tool', disabled: true, 
 const sigsToggle = h('button', {
   type: 'button', class: 'sd-tool sd-mob', 'aria-expanded': 'false', 'aria-controls': 'sd-sigs', onclick: () => showSheet(!sigsPanel.classList.contains('sd-open-sheet')),
 }, k('signTool'));
-const barSave = h('button', { type: 'button', class: 'sd-tool sd-tool-save sd-mob', onclick: () => save() }, k('saveShort'));
+// Phones: the main action as a full-width button at the bottom, the options sheet for the rest.
+const barOpen = h('button', { type: 'button', class: 'btn btn-primary sd-bar-main sd-no-doc', onclick: () => fileInput.click() }, icon('upload'), k('open'));
+const barSave = h('button', { type: 'button', class: 'btn btn-primary sd-bar-main sd-doc-only', onclick: () => save() }, icon('download'), k('save'));
+const optionsBtn = h('button', { type: 'button', class: 'sd-tool sd-opt sd-mob', 'aria-haspopup': 'dialog', onclick: () => options.open() }, k('options'));
+const options = optionsSheet({ title: k('options'), sourcePath: SOURCE_PATH, returnFocus: optionsBtn });
+options.body.append(h('p', { class: 'sd-hint sd-sheet-note' }, k('privacy')));
+document.body.append(options.sheet);
 const inkBtns = Object.keys(INKS).map((c) => h('button', {
   type: 'button', class: 'seg-btn', 'data-ink': c, 'aria-pressed': String(c === ink), onclick: () => setInk(c),
 }, h('span', { class: `sd-swatch sd-swatch-${c}`, 'aria-hidden': 'true' }), k(`ink.${c}`)));
 const inkGroup = () => h('div', { class: 'sd-ink' }, h('span', { class: 'sd-label', 'aria-hidden': 'true' }, k('ink')),
   h('div', { class: 'seg sd-seg', role: 'group', 'aria-label': k('ink') }, inkBtns));
 const toolBar = h('section', { class: 'sd-tools', 'aria-label': k('tools') },
-  h('div', { class: 'sd-modes', role: 'group', 'aria-label': k('tools') }, sigsToggle, modeBtns, undoBtn, barSave),
+  barOpen, barSave,
+  h('div', { class: 'sd-modes', role: 'group', 'aria-label': k('tools') }, sigsToggle, modeBtns, undoBtn, optionsBtn),
   h('p', { class: 'sd-mode-hint', 'aria-live': 'polite' }),
 );
 const modeHint = toolBar.querySelector('.sd-mode-hint');
@@ -173,8 +183,27 @@ const pagesEl = h('div', { class: 'sd-pages', role: 'region', 'aria-label': k('p
 const side = h('div', { class: 'sd-side' }, docBar, toolBar, itemPanel, sigsPanel);
 const layout = h('div', { class: 'sd-layout' }, side, pagesEl);
 
-main.append(h('h1', { class: 'tool-title' }, name), openPanel, layout, fileInput);
+const stateLine = h('p', { class: 'sd-state' }, name);
+const bodyEl = h('div', { class: 'sd-body' }, openPanel, layout);
+main.append(h('h1', { class: 'tool-title' }, name), stateLine, bodyEl, fileInput);
 main.classList.add('sd-main');
+
+// Phones: the tool bar sits at the bottom of the screen and the document's details go in
+// the options sheet; on wider screens both sit in the side panel.
+function arrange() {
+  if (narrow.matches) {
+    options.body.prepend(docBar);
+    main.insertBefore(toolBar, fileInput);
+  } else {
+    options.close();
+    side.prepend(docBar, toolBar);
+  }
+  updateUi();
+}
+narrow.addEventListener('change', arrange);
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--sd-bar-h', `${narrow.matches ? toolBar.offsetHeight : 0}px`);
+}).observe(toolBar);
 
 // Opening and closing ----------------------------------------------
 
@@ -213,7 +242,7 @@ async function openFile(file) {
   docName.textContent = fileName;
   docMeta.textContent = k(kind === 'image' ? 'meta.image' : pages.length === 1 ? 'meta.pdf1' : 'meta.pdf', { n: pages.length });
   savePdfBtn.hidden = kind === 'pdf';
-  saveBtn.lastChild.textContent = k(kind === 'pdf' ? 'save' : 'saveImage');
+  saveBtn.lastChild.textContent = barSave.lastChild.textContent = k(kind === 'pdf' ? 'save' : 'saveImage');
   main.classList.add('sd-has-doc');
   setMode('move');
   updateUi();
@@ -831,10 +860,12 @@ async function removeSignature(s) {
 
 function updateUi() {
   openPanel.hidden = !!kind;
-  docBar.hidden = toolBar.hidden = !kind;
+  docBar.hidden = !kind;
+  toolBar.hidden = !kind && !narrow.matches;
+  stateLine.textContent = kind ? `${fileName} \u00B7 ${docMeta.textContent}` : name;
   if (!kind) itemPanel.hidden = true;
   renderSigs();
 }
 
-updateUi();
+arrange();
 setMode('move');

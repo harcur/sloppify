@@ -49,6 +49,12 @@ async function showSignatures(page) {
   if (await toggle.isVisible() && (await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
 }
 
+// On narrow screens the document's other actions are in the options sheet.
+async function inOptions(page) {
+  const more = page.getByRole('button', { name: 'Options' });
+  if (await more.isVisible()) await more.click();
+}
+
 async function typeSignature(page, name = 'Alice Example') {
   await showSignatures(page);
   await page.getByRole('button', { name: 'New signature' }).click();
@@ -175,13 +181,14 @@ test('a drawn signature is remembered and can be removed', async ({ page }) => {
 test('signs a picture and saves it as a picture or a PDF', async ({ page }) => {
   await typeSignature(page);
   await page.locator('#sd-file').setInputFiles({ name: 'scan.png', mimeType: 'image/png', buffer: PNG });
-  await expect(page.getByText('Picture', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('.sd-doc-name, .sd-state').filter({ hasText: 'scan.png', visible: true })).toHaveCount(1);
   await showSignatures(page);
   await page.getByRole('button', { name: 'Place signature 1' }).click();
   await expect(items(page)).toHaveCount(1);
   const [png] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: /^Save( signed picture)?$/ }).first().click()]);
   expect(png.suggestedFilename()).toBe('scan-signed.png');
   expect(readFileSync(await png.path()).subarray(1, 4).toString()).toBe('PNG');
+  await inOptions(page);
   const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Save as PDF' }).click()]);
   expect(pdf.suggestedFilename()).toBe('scan-signed.pdf');
   expect((await PdfDoc.open(readFileSync(await pdf.path()))).pages).toHaveLength(1);

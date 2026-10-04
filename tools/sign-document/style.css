@@ -2,7 +2,7 @@
    SPDX-License-Identifier: MIT */
 
 /* Documents and signatures always sit on white paper, in light and dark themes alike. */
-.sd-main { --paper: #FFFFFF; --bar-h: calc(57px + env(safe-area-inset-bottom, 0px)); }
+.sd-main { --paper: #FFFFFF; }
 .sd-main .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .sd-main .btn .icon { width: 18px; height: 18px; }
 .sd-main [hidden] { display: none !important; }
@@ -88,8 +88,11 @@
 .sd-item:focus-visible .sd-outline { stroke-width: 3; stroke-dasharray: none; }
 .sd-handle { fill: #FFFFFF; stroke: #2F5D8A; stroke-width: 2; vector-effect: non-scaling-stroke; cursor: nwse-resize; touch-action: none; }
 
-@media (min-width: 900px) {
-  .sd-mob { display: none !important; }
+.sd-state { display: none; }
+.sd-sheet-note { margin-top: 16px; }
+
+@media (min-width: 720px) {
+  .sd-mob, .sd-bar-main { display: none !important; }
   .sd-has-doc .sd-layout { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
   .sd-has-doc .sd-side {
     position: sticky; top: calc(var(--header-h) + 16px);
@@ -97,23 +100,48 @@
   }
 }
 
-/* Narrow screens with a document: tools pinned to the bottom within thumb reach,
-   signatures and the selected item open above them. */
-@media (max-width: 899px) {
-  .sd-has-doc .sd-desk { display: none; }
-  .sd-has-doc { padding-bottom: calc(var(--bar-h) + 24px); }
-  .sd-has-doc .sd-tools {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 15;
-    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
+/* Phones: an app screen. The state on top, the document (or the open prompt and
+   signatures) scrolling in the middle, the main action and tools at the bottom.
+   Signatures and the selected item open above the tools. */
+@media (max-width: 719px) {
+  .sd-main {
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    padding: env(safe-area-inset-top, 0px) 0 0;
+  }
+  .sd-state {
+    display: block; flex: none; margin: 0;
+    min-height: 44px; padding: 12px 56px 10px max(16px, env(safe-area-inset-left, 0px));
+    font-family: var(--mono); font-size: 14px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    border-bottom: 1px solid var(--line);
+  }
+  .sd-body {
+    flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain;
+    padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px));
+  }
+  .sd-layout { margin-top: 16px; }
+  .sd-has-doc .sd-layout { margin-top: 0; }
+  .sd-drop { padding: 20px 16px; }
+  .sd-drop .btn { display: none; }
+  .sd-desk { display: none; }
+
+  .sd-main .sd-tools {
+    flex: none; display: grid; gap: 6px;
+    padding: 8px max(8px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(8px, env(safe-area-inset-left, 0px));
     background: var(--bg); border: 0; border-top: 1px solid var(--line);
   }
-  .sd-has-doc .sd-modes { background: var(--surface); }
-  .sd-has-doc .sd-tool { font-size: 13px; padding: 0 2px; }
-  .sd-has-doc .sd-mode-hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .sd-bar-main { width: 100%; }
+  .sd-main:not(.sd-has-doc) .sd-doc-only, .sd-has-doc .sd-no-doc { display: none; }
+  .sd-modes { background: var(--surface); }
+  .sd-main:not(.sd-has-doc) .sd-modes > :not(.sd-opt) { display: none; }
+  .sd-tool { font-size: 13px; padding: 0 2px; }
+  .sd-mode-hint { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
   .sd-has-doc .sd-sigs:not(.sd-open-sheet) { display: none; }
   .sd-has-doc .sd-sigs, .sd-has-doc .sd-sel {
-    position: fixed; left: 0; right: 0; bottom: var(--bar-h); z-index: 16;
-    max-height: calc(100dvh - var(--bar-h) - 16px); overflow: auto;
+    position: fixed; left: 0; right: 0; bottom: var(--sd-bar-h, 108px); z-index: 16;
+    max-height: calc(100dvh - var(--sd-bar-h, 108px) - 56px); overflow: auto;
     border: 0; border-top: 1px solid var(--text);
     padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
@@ -122,8 +150,13 @@
   .sd-has-doc .sd-date-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .sd-has-doc .sd-date-fields .sd-field { margin-top: 8px; }
   .sd-has-doc .sd-sig-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  body:has(.sd-has-doc) .toast { bottom: calc(69px + env(safe-area-inset-bottom, 0px)); }
+  .sheet .sd-doc { padding: 0; border: 0; }
+  .sheet .sd-doc .btn-primary { display: none; }
+  body:has(.sd-main) .toast { bottom: calc(var(--sd-bar-h, 108px) + 12px); }
 }
 @media (max-width: 420px) {
   .sd-has-doc .sd-sig-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 719px) {
+  .sd-main:not(.sd-has-doc) .sd-sheet-head .sd-mob { display: none; }
 }
