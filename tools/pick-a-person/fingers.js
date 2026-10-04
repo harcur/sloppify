@@ -3,8 +3,7 @@
 
 // Everyone puts a finger on the screen. Once they hold still, a short
 // countdown runs and the result shows under the fingers: one person, teams,
-// or an order. Without a touch screen it runs the same way with the players
-// placed in a circle.
+// or an order. It needs a touch screen.
 
 import { h } from '../../shared/dom.js';
 import { t } from '../../shared/i18n.js';
@@ -25,14 +24,11 @@ export function createFingers(ctx) {
   let phase = 'idle'; // idle | waiting | counting | done
   let settle = 0;
   let count = null;
-  let simulated = false;
   let interrupted = false; // the phone cancelled the touches (a system gesture)
 
   const hint = h('p', { class: 'pp-touch-hint' });
   const area = h('div', { class: 'pp-touch' }, hint);
   const coarse = matchMedia('(any-pointer: coarse)');
-
-  const simBtn = h('button', { type: 'button', class: 'btn pp-go', onclick: () => simulate() });
 
   // Options: what to pick, and how many teams.
   const kindBtns = KINDS.map((k) => h('button', {
@@ -54,26 +50,24 @@ export function createFingers(ctx) {
     for (const b of kindBtns) b.setAttribute('aria-pressed', String(b.dataset.k === set.kind));
     teamsSelect.value = String(set.teams);
     teamsRow.hidden = set.kind !== 'teams';
-    const p = ctx.players();
-    simBtn.textContent = t('pick-a-person.fingers.simulate', { n: p.count });
   }
 
   function setHint() {
     const key = interrupted && (phase === 'idle' || phase === 'waiting') ? 'cancelled'
       : phase === 'counting' ? 'hold'
-      : phase === 'done' ? (simulated ? null : touch.size ? 'lift' : 'again')
+      : phase === 'done' ? (touch.size ? 'lift' : 'again')
         : markers.length === 1 ? 'more'
           : coarse.matches ? 'touch' : 'noTouch';
-    hint.textContent = !key || (phase === 'waiting' && markers.length > 1 && key !== 'cancelled') ? '' : t(`pick-a-person.fingers.hint.${key}`);
+    hint.textContent = (phase === 'waiting' && markers.length > 1 && key !== 'cancelled') ? '' : t(`pick-a-person.fingers.hint.${key}`);
     area.dataset.phase = phase;
   }
 
-  function addMarker(x, y, label) {
+  function addMarker(x, y) {
     const used = new Set(markers.map((m) => m.c));
     let c = 0;
     while (used.has(c)) c++;
     const el = h('div', { class: 'pp-finger', 'aria-hidden': 'true' },
-      h('span', { class: 'pp-finger-ring' }), h('span', { class: 'pp-finger-gem' }), h('span', { class: 'pp-finger-tag' }, label ?? String(c + 1)));
+      h('span', { class: 'pp-finger-ring' }), h('span', { class: 'pp-finger-gem' }), h('span', { class: 'pp-finger-tag' }, String(c + 1)));
     el.style.setProperty('--c', colour(c));
     const m = { el, c, x, y };
     place(m, x, y);
@@ -103,9 +97,8 @@ export function createFingers(ctx) {
   function reset() {
     cancel();
     clearAll();
-    simulated = false;
     phase = 'idle';
-    area.classList.remove('is-one', 'is-teams', 'is-order', 'is-crowded');
+    area.classList.remove('is-one', 'is-teams', 'is-order');
     ctx.result(null);
     setHint();
   }
@@ -210,7 +203,7 @@ export function createFingers(ctx) {
       if (!fresh.length || touch.size) return setHint();
       interrupted = false;
       reset();
-    } else if (simulated && fresh.length) reset();
+    }
     for (const [id, [x, y]] of live) {
       if (touch.has(id)) place(touch.get(id), x, y);
       else touch.set(id, addMarker(x, y));
@@ -232,29 +225,13 @@ export function createFingers(ctx) {
   area.addEventListener('gesturestart', (e) => e.preventDefault()); // Safari pinch
   area.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // Without touch: the players stand in a circle and the same countdown runs.
-  function simulate() {
-    reset();
-    simulated = true;
-    const p = ctx.players();
-    const w = area.clientWidth;
-    const hgt = area.clientHeight;
-    const r = Math.min(w, hgt) * 0.36;
-    p.labels.forEach((label, i) => {
-      const a = (i / p.count) * 2 * Math.PI;
-      addMarker(w / 2 + r * Math.sin(a), hgt / 2 - r * Math.cos(a), label);
-    });
-    area.classList.toggle('is-crowded', p.count > 6 || Math.min(w, hgt) < 420);
-    countDown();
-  }
-
   return {
     stage: area,
-    actions: [simBtn],
+    actions: [],
     options,
     enter() { renderOptions(); reset(); },
     leave() { reset(); },
     skip: () => count?.skip(),
-    playersChanged() { renderOptions(); if (simulated) reset(); },
+    playersChanged() {},
   };
 }

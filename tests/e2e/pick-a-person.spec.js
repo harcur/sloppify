@@ -181,18 +181,20 @@ test('fingers: a lift the browser never reported does not leave a finger stuck',
   await expect(page.locator('.pp-touch-hint')).toHaveText('Waiting for more fingers');
 });
 
-test('fingers without touch: teams from the player list', async ({ page }) => {
-  await withNames(page);
+test('fingers: teams under the fingers', async ({ page }) => {
   await page.goto(URL);
+  test.skip(!(await canTouch(page)), 'this browser cannot create touch events');
   await mode(page, 'fingers').click();
   const panel = await openPanel(page);
   await panel.getByRole('group', { name: 'Pick' }).getByRole('button', { name: 'teams' }).click();
-  await panel.getByLabel('Number of teams').selectOption('3');
+  await panel.getByLabel('Number of teams').selectOption('2');
   await closePanel(page);
-  await page.getByRole('button', { name: 'Pick from 6 players' }).click();
-  await expect(page.locator('.pp-finger.is-team')).toHaveCount(6, { timeout: 4000 });
-  await expect(said(page)).toContainText('Team C:');
-  for (const letter of ['A', 'B', 'C']) await expect(page.locator('.pp-finger-tag', { hasText: letter })).toHaveCount(2);
+  await expect(page.getByRole('button', { name: /^Pick from/ })).toHaveCount(0);
+  const area = page.locator('.pp-touch');
+  await touch(area, 'touchstart', FIVE.slice(0, 4));
+  await expect(page.locator('.pp-finger.is-team')).toHaveCount(4, { timeout: 4000 });
+  await expect(said(page)).toContainText('Team B:');
+  for (const letter of ['A', 'B']) await expect(page.locator('.pp-finger-tag', { hasText: letter })).toHaveCount(2);
 });
 
 // Taps the screen where a straw stands. The tap goes to the stage, which
@@ -322,8 +324,7 @@ for (const scheme of ['light', 'dark']) {
     await expect(result(page)).not.toBeEmpty();
     await expectAccessible(page, 'wheel');
     await mode(page, 'fingers').click();
-    await page.getByRole('button', { name: 'Pick from 6 players' }).click();
-    await expect(page.locator('.pp-finger.is-win')).toHaveCount(1, { timeout: 4000 });
+    await expect(page.locator('.pp-touch-hint')).not.toBeEmpty();
     await expectAccessible(page, 'fingers');
     await mode(page, 'straws').click();
     await drawUntilShort(page);
