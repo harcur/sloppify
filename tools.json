@@ -136,6 +136,25 @@
       "path": "tools/sudoku/"
     },
     {
+      "id": "todo-list",
+      "name": {
+        "en": "todo list"
+      },
+      "description": {
+        "en": "Lists of tasks with due dates, steps and notes"
+      },
+      "category": "tool",
+      "tags": [
+        "tasks",
+        "checklist",
+        "to-do",
+        "planner",
+        "productivity"
+      ],
+      "license": "MIT",
+      "path": "tools/todo-list/"
+    },
+    {
       "id": "work-rest-timer",
       "name": {
         "en": "work and rest timer"
