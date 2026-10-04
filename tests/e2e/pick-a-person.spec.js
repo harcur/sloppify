@@ -190,10 +190,14 @@ test('fingers without touch: teams from the player list', async ({ page }) => {
   for (const letter of ['A', 'B', 'C']) await expect(page.locator('.pp-finger-tag', { hasText: letter })).toHaveCount(2);
 });
 
+// Taps the screen where a straw stands. The tap goes to the stage, which
+// picks the nearest straw (the buttons only take keyboard input).
+const tap = (straw) => straw.click({ force: true });
+
 // Taps straws left to right, one per person, until the short one comes out.
 async function drawUntilShort(page) {
   for (let i = 0; i < 30 && !(await page.locator('.pp-straw.is-short').count()); i++) {
-    await page.getByRole('button', { name: /^Straw \d+$/ }).first().click();
+    await tap(page.getByRole('button', { name: /^Straw \d+$/ }).first());
   }
 }
 
@@ -203,7 +207,7 @@ test('straws: each person taps one straw until the short one', async ({ page }) 
   await expect(page.locator('.pp-turn')).toHaveText('Tap a straw. 4 left');
   const straws = page.locator('.pp-straw');
   await expect(straws).toHaveCount(4);
-  await straws.first().click();
+  await tap(straws.first());
   if (!(await page.locator('.pp-straw.is-short').count())) {
     await expect(page.getByRole('button', { name: 'Straw 1: long' })).toBeDisabled();
     await expect(page.locator('.pp-turn')).toHaveText('Tap a straw. 3 left');
@@ -234,11 +238,28 @@ test('straws: thirty straws fan out inside the stage, and Draw for me draws one'
     });
   });
   expect(await inside()).toBe(true);
+  // A tap just past the outermost straw's tip still draws it; one a few
+  // fingers away draws nothing.
+  const tip = await page.locator('.pp-straw-body').last().boundingBox();
+  await page.mouse.click(tip.x + tip.width + 90, tip.y);
+  await expect(page.locator('.pp-straw.is-drawn')).toHaveCount(0);
+  await page.mouse.click(tip.x + tip.width + 10, tip.y + 10);
+  await expect(page.getByRole('button', { name: /^Straw 30: (long|short)$/ })).toHaveCount(1);
+  await expect(page.locator('.pp-straw.is-drawn')).toHaveCount(1);
   const pick = page.getByRole('button', { name: 'Draw for me' });
   for (let i = 0; i < 30 && !(await page.locator('.pp-straw.is-short').count()); i++) await pick.click();
   await expect(result(page)).toHaveText('Short straw');
   await expect(pick).toBeDisabled();
   expect(await inside()).toBe(true); // every straw pulled out, still on screen
+});
+
+test('straws: a straw can be drawn from the keyboard', async ({ page }) => {
+  await page.goto(URL);
+  await mode(page, 'straws').click();
+  await page.getByRole('button', { name: 'Straw 2', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: /^Straw 2: (long|short)$/ })).toHaveCount(1);
+  await expect(page.locator('.pp-straw.is-drawn')).toHaveCount(1);
 });
 
 test('teams: everyone in one team, sizes within one', async ({ page }) => {
