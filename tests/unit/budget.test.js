@@ -12,7 +12,9 @@ const BUDGET = { tool: 60 * KB, data: 200 * KB, shared: 50 * KB, hub: 20 * KB, i
 
 // Tools allowed over budget. Each needs a reason here and an entry in docs/DECISIONS.md.
 // Example: 'chess': { tool: 180 * KB, reason: 'vendored engine' },
-const EXCEPTIONS = {};
+const EXCEPTIONS = {
+  'stream-overlay': { tool: 72 * KB, reason: 'generative renderer: four art styles, five zone effects and a layer compositor' },
+};
 
 const root = new URL('../../', import.meta.url).pathname;
 const IGNORED = new Set(['README.md', 'LICENSE']);
