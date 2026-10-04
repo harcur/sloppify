@@ -39,6 +39,30 @@ const svgEl = (tag, attrs = {}) => {
   return el;
 };
 
+// Tool icons: stroke drawings on a 24px grid, static and trusted.
+const ICONS = {
+  move: '<path d="M6 3l13 7-6 2-2.5 6z"/>',
+  pen: '<path d="M4 20l4-1 11-11-3-3L5 16zM14 6l3 3"/>',
+  text: '<path d="M5 7V4h14v3M12 4v16M9 20h6"/>',
+  date: '<rect x="4" y="5" width="16" height="15"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+  sign: '<path d="M3 16c3-7 5-10 6-9s-2 9 0 9 3-5 5-5 1 4 3 4 2-1 4-2M3 20h18"/>',
+  undo: '<path d="M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  more: '<path d="M5 12h.01M12 12h.01M19 12h.01" stroke-width="3" stroke-linecap="round"/>',
+  minus: '<path d="M5 12h14"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  pages: '<rect x="8" y="8" width="12" height="13"/><path d="M4 16V3h12"/>',
+};
+const ico = (n) => {
+  if (!ICONS[n]) return icon(n);
+  const tpl = document.createElement('template');
+  tpl.innerHTML = `<svg class="icon sd-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICONS[n]}</svg>`;
+  return tpl.content.firstElementChild;
+};
+// A tool button: icon with a short caption under it.
+const toolBtn = (iconName, label, attrs) => h('button', { type: 'button', class: 'sd-tool', ...attrs }, ico(iconName), h('span', { class: 'sd-cap' }, label));
+// A compact icon button for the selected item's toolbar, named for screen readers and hover.
+const ctxBtn = (iconName, label, onclick) => h('button', { type: 'button', class: 'sd-ctx-btn', 'aria-label': label, title: label, onclick }, ico(iconName));
+
 // Document state -----------------------------------------------------
 
 let kind = null; // 'pdf' | 'image'
@@ -100,18 +124,18 @@ const docBar = h('section', { class: 'sd-doc', 'aria-label': k('document') },
 
 // Text and Date add to the page that's tapped. From the keyboard (no click position),
 // pressing them adds to the middle of the page in view instead.
-const modeBtns = ['move', 'pen', 'text', 'date'].map((m) => h('button', {
-  type: 'button', class: 'sd-tool', 'data-mode': m, 'aria-pressed': 'false',
+const modeBtns = ['move', 'pen', 'text', 'date'].map((m) => toolBtn(m, k(`mode.${m}`), {
+  'data-mode': m, 'aria-pressed': 'false',
   onclick: (e) => { setMode(m); if (e.detail === 0 && kind && (m === 'text' || m === 'date')) addText(currentPage(), null, m === 'date'); },
-}, k(`mode.${m}`)));
-const undoBtn = h('button', { type: 'button', class: 'sd-tool', disabled: true, onclick: () => undo() }, k('undo'));
-const sigsToggle = h('button', {
-  type: 'button', class: 'sd-tool sd-mob', 'aria-expanded': 'false', 'aria-controls': 'sd-sigs', onclick: () => showSheet(!sigsPanel.classList.contains('sd-open-sheet')),
-}, k('signTool'));
-// Phones: the main action as a full-width button at the bottom, the options sheet for the rest.
-const barOpen = h('button', { type: 'button', class: 'btn btn-primary sd-bar-main sd-no-doc', onclick: () => fileInput.click() }, icon('upload'), k('open'));
-const barSave = h('button', { type: 'button', class: 'btn btn-primary sd-bar-main sd-doc-only', onclick: () => save() }, icon('download'), k('save'));
-const optionsBtn = h('button', { type: 'button', class: 'sd-tool sd-opt sd-mob', 'aria-haspopup': 'dialog', onclick: () => options.open() }, k('options'));
+}));
+const undoBtn = toolBtn('undo', k('undo'), { disabled: true, onclick: () => undo() });
+const sigsToggle = toolBtn('sign', k('signTool'), {
+  class: 'sd-tool sd-mob', 'aria-expanded': 'false', 'aria-controls': 'sd-sigs', onclick: () => showSheet(!sigsPanel.classList.contains('sd-open-sheet')),
+});
+// Phones: one slim row of tools at the bottom, Save last; Open fills the bar until a document is open.
+const barOpen = h('button', { type: 'button', class: 'btn btn-primary sd-bar-main', onclick: () => fileInput.click() }, icon('upload'), k('open'));
+const barSave = toolBtn('download', k('saveShort'), { class: 'sd-tool sd-tool-save sd-mob', 'aria-label': k('save'), onclick: () => save() });
+const optionsBtn = toolBtn('more', k('more'), { class: 'sd-tool sd-opt sd-mob', 'aria-haspopup': 'dialog', onclick: () => { showSheet(false, false); options.open(); } });
 const options = optionsSheet({ title: k('options'), sourcePath: SOURCE_PATH, returnFocus: optionsBtn });
 options.body.append(h('p', { class: 'sd-hint sd-sheet-note' }, k('privacy')));
 document.body.append(options.sheet);
@@ -121,32 +145,26 @@ const inkBtns = Object.keys(INKS).map((c) => h('button', {
 const inkGroup = () => h('div', { class: 'sd-ink' }, h('span', { class: 'sd-label', 'aria-hidden': 'true' }, k('ink')),
   h('div', { class: 'seg sd-seg', role: 'group', 'aria-label': k('ink') }, inkBtns));
 const toolBar = h('section', { class: 'sd-tools', 'aria-label': k('tools') },
-  barOpen, barSave,
-  h('div', { class: 'sd-modes', role: 'group', 'aria-label': k('tools') }, sigsToggle, modeBtns, undoBtn, optionsBtn),
+  barOpen,
+  h('div', { class: 'sd-modes', role: 'group', 'aria-label': k('tools') }, sigsToggle, modeBtns, undoBtn, optionsBtn, barSave),
   h('p', { class: 'sd-mode-hint', 'aria-live': 'polite' }),
 );
 const modeHint = toolBar.querySelector('.sd-mode-hint');
 
-const itemLabel = h('p', { class: 'sd-item-label' });
-const textInput = h('input', { type: 'text', id: 'sd-text', class: 'sd-input', autocomplete: 'off', oninput: () => editText() });
-const textField = h('div', { class: 'sd-field' }, h('label', { for: 'sd-text' }, k('item.textLabel')), textInput);
-const dateInput = h('input', { type: 'date', id: 'sd-date', class: 'sd-input', required: true, onchange: () => editDate() });
-const fmtSelect = h('select', { id: 'sd-fmt', class: 'sd-input', onchange: () => editDate() });
-const dateFields = h('div', { class: 'sd-date-fields' },
-  h('div', { class: 'sd-field' }, h('label', { for: 'sd-date' }, k('item.dateLabel')), dateInput),
-  h('div', { class: 'sd-field' }, h('label', { for: 'sd-fmt' }, k('item.formatLabel')), fmtSelect));
-const allPagesBtn = h('button', { type: 'button', class: 'btn', onclick: () => copyToAllPages() }, k('item.allPages'));
-const itemPanel = h('section', { class: 'sd-sel', 'aria-label': k('item.panel'), hidden: true },
-  itemLabel, textField, dateFields,
-  h('div', { class: 'sd-row' },
-    h('button', { type: 'button', class: 'btn', onclick: () => scaleSelected(1 / 1.15) }, k('item.smaller')),
-    h('button', { type: 'button', class: 'btn', onclick: () => scaleSelected(1.15) }, k('item.larger')),
-    h('button', { type: 'button', class: 'btn', onclick: () => removeSelected() }, icon('trash'), k('item.delete')),
-    allPagesBtn,
-    h('button', { type: 'button', class: 'btn btn-link', onclick: () => select(null, null) }, k('item.done')),
-  ),
-  h('p', { class: 'sd-hint sd-desk', id: 'sd-keys' }, k('item.keys')),
+// The selected item's toolbar floats next to it on the page, like a design tool's
+// contextual bar: its fields (text, date) and a few compact actions.
+const textInput = h('input', { type: 'text', class: 'sd-ctx-input', 'aria-label': k('item.textLabel'), autocomplete: 'off', oninput: () => editText() });
+const dateInput = h('input', { type: 'date', class: 'sd-ctx-input', 'aria-label': k('item.dateLabel'), required: true, onchange: () => editDate() });
+const fmtSelect = h('select', { class: 'sd-ctx-input', 'aria-label': k('item.formatLabel'), onchange: () => editDate() });
+const allPagesBtn = ctxBtn('pages', k('item.allPages'), () => copyToAllPages());
+const ctxBar = h('div', { class: 'sd-ctx', role: 'toolbar', 'aria-label': k('item.panel') },
+  textInput, dateInput, fmtSelect,
+  ctxBtn('minus', k('item.smaller'), () => scaleSelected(1 / 1.15)),
+  ctxBtn('plus', k('item.larger'), () => scaleSelected(1.15)),
+  allPagesBtn,
+  ctxBtn('trash', k('item.delete'), () => removeSelected()),
 );
+const keysHint = h('p', { class: 'sr-only', id: 'sd-keys' }, k('item.keys'));
 
 // Signatures: saved list plus the editor.
 const sigList = h('ul', { class: 'sd-sig-list' });
@@ -160,7 +178,7 @@ const markSvg = (m) => {
 };
 const markBtns = Object.keys(MARKS).map((m) => h('button', { type: 'button', class: 'btn', onclick: () => placeMark(m) }, markSvg(m), k(`mark.${m}`)));
 const marksRow = h('div', { class: 'sd-marks', role: 'group', 'aria-label': k('mark.title') }, h('span', { class: 'sd-label' }, k('mark.title')), markBtns);
-const newSigBtn = h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false', 'aria-controls': 'sd-editor', onclick: () => openEditor(!editorOpen) }, k('sig.new'));
+const newSigBtn = h('button', { type: 'button', class: 'btn sd-new-sig', 'aria-haspopup': 'dialog', onclick: () => openEditor(true) }, ico('plus'), k('sig.new'));
 const pad = h('canvas', { class: 'sd-pad', width: 900, height: 300, role: 'img', 'aria-label': k('sig.padLabel') });
 const nameInput = h('input', { type: 'text', id: 'sd-name', class: 'sd-input', autocomplete: 'name', oninput: () => drawPad() });
 const pictureInput = h('input', { type: 'file', id: 'sd-picture', hidden: true, accept: 'image/*', onchange: () => loadPicture() });
@@ -171,7 +189,7 @@ const pictureField = h('div', { class: 'sd-field', hidden: true },
   h('button', { type: 'button', class: 'btn', onclick: () => pictureInput.click() }, icon('upload'), k('sig.pickPicture')),
   h('p', { class: 'sd-hint' }, k('sig.pictureHint')), pictureInput);
 const padHint = h('p', { class: 'sd-hint' }, k('sig.hint.draw'));
-const editor = h('div', { class: 'sd-editor', id: 'sd-editor', hidden: true },
+const editor = h('div', { class: 'sd-editor' },
   h('div', { class: 'seg sd-seg sd-sources', role: 'group', 'aria-label': k('sig.source') }, sourceBtns),
   nameField, pictureField,
   h('div', { class: 'sd-pad-wrap' }, pad, h('span', { class: 'sd-pad-line', 'aria-hidden': 'true' })),
@@ -183,15 +201,24 @@ const editor = h('div', { class: 'sd-editor', id: 'sd-editor', hidden: true },
     h('button', { type: 'button', class: 'btn', onclick: () => openEditor(false) }, k('sig.cancel')),
   ),
 );
+// New signatures are made in their own sheet, so the document stays put.
+const editorDialog = h('dialog', { class: 'dialog sheet sd-editor-dialog', 'aria-labelledby': 'sd-editor-title' },
+  h('div', { class: 'sheet-head' }, h('h2', { class: 'dialog-title', id: 'sd-editor-title' }, k('sig.newTitle'))),
+  editor);
+editorDialog.addEventListener('close', () => {
+  editorOpen = false;
+  if ((document.activeElement === document.body || !document.activeElement) && newSigBtn.offsetParent) newSigBtn.focus();
+});
+document.body.append(editorDialog);
+// On phones the signatures are a slim strip above the tools: it takes its own room, so the
+// page above it shrinks instead of being covered.
 const sigsPanel = h('section', { class: 'sd-sigs', id: 'sd-sigs', 'aria-labelledby': 'sd-sigs-title' },
-  h('div', { class: 'sd-sheet-head' },
-    h('h2', { class: 'sd-h2', id: 'sd-sigs-title' }, k('sig.title')),
-    h('button', { type: 'button', class: 'btn btn-link sd-mob', onclick: () => showSheet(false) }, k('sig.hide'))),
-  sigList, sigEmpty, newSigBtn, marksRow, editor,
+  h('h2', { class: 'sd-h2', id: 'sd-sigs-title' }, k('sig.title')),
+  h('div', { class: 'sd-sig-row' }, newSigBtn, sigList, marksRow), sigEmpty,
 );
 
 const pagesEl = h('div', { class: 'sd-pages', role: 'region', 'aria-label': k('pages') });
-const side = h('div', { class: 'sd-side' }, docBar, toolBar, itemPanel, sigsPanel);
+const side = h('div', { class: 'sd-side' }, docBar, toolBar, sigsPanel);
 const layout = h('div', { class: 'sd-layout' }, side, pagesEl);
 
 // Zoom: page width as a multiple of the fitted width. Pages scroll sideways when wider.
@@ -210,7 +237,7 @@ let pageInView = 0;
 
 const stateLine = h('p', { class: 'sd-state' }, name);
 const bodyEl = h('div', { class: 'sd-body' }, openPanel, layout);
-main.append(h('h1', { class: 'tool-title' }, name), stateLine, bodyEl, fileInput);
+main.append(h('h1', { class: 'tool-title' }, name), stateLine, bodyEl, keysHint, fileInput);
 main.classList.add('sd-main');
 
 // Phones: the tool bar sits at the bottom of the screen and the document's details go in
@@ -218,18 +245,24 @@ main.classList.add('sd-main');
 function arrange() {
   if (narrow.matches) {
     options.body.prepend(docBar, pageRow, zoomRow);
-    main.insertBefore(toolBar, fileInput);
+    main.insertBefore(sigsPanel, keysHint);
+    main.insertBefore(toolBar, keysHint);
   } else {
     options.close();
     side.prepend(docBar, toolBar);
+    side.append(sigsPanel);
     toolBar.append(pageRow, zoomRow);
   }
   updateUi();
 }
 narrow.addEventListener('change', arrange);
-new ResizeObserver(() => {
-  document.documentElement.style.setProperty('--sd-bar-h', `${narrow.matches ? toolBar.offsetHeight : 0}px`);
-}).observe(toolBar);
+// Toasts sit above whatever is open at the bottom: the tools and the signature strip.
+const barObserver = new ResizeObserver(() => {
+  const open = sigsPanel.classList.contains('sd-open-sheet') ? sigsPanel.offsetHeight : 0;
+  document.documentElement.style.setProperty('--sd-bar-h', `${narrow.matches ? toolBar.offsetHeight + open : 0}px`);
+});
+barObserver.observe(toolBar);
+barObserver.observe(sigsPanel);
 
 // Opening and closing ----------------------------------------------
 
@@ -272,7 +305,8 @@ async function openFile(file) {
   const nFields = pages.reduce((n, p) => n + p.fields.length, 0);
   if (nFields) docMeta.textContent += ` \u00B7 ${k('meta.fields', { n: nFields })}`;
   savePdfBtn.hidden = kind === 'pdf';
-  saveBtn.lastChild.textContent = barSave.lastChild.textContent = k(kind === 'pdf' ? 'save' : 'saveImage');
+  saveBtn.lastChild.textContent = k(kind === 'pdf' ? 'save' : 'saveImage');
+  barSave.setAttribute('aria-label', saveBtn.lastChild.textContent);
   main.classList.add('sd-has-doc');
   setMode('move');
   updateUi();
@@ -473,6 +507,39 @@ function drawOverlay(p) {
     p.svg.append(svgEl('rect', { class: 'sd-handle', x: it.x + it.w - s * 0.2, y: it.y + it.h - s * 0.2, width: s, height: s, 'aria-hidden': 'true' }));
   }
   if (focusedId && p.svg.contains(document.activeElement) === false) p.svg.querySelector(`[data-id="${focusedId}"]`)?.focus();
+  if (selected?.p === p) placeCtx();
+}
+
+// The item's toolbar sits above it, or below when there's no room, kept inside the page.
+function placeCtx() {
+  if (!selected) { ctxBar.remove(); return; }
+  const { p, item } = selected;
+  if (ctxBar.parentNode !== p.el) p.svg.after(ctxBar);
+  const W = p.el.clientWidth, H = p.el.clientHeight;
+  const sx = W / p.w, sy = H / p.h;
+  const bw = ctxBar.offsetWidth, bh = ctxBar.offsetHeight;
+  const left = Math.min(Math.max((item.x + item.w / 2) * sx - bw / 2, 4), Math.max(4, W - bw - 4));
+  const above = item.y * sy - bh - 10;
+  ctxBar.style.left = `${left}px`;
+  ctxBar.style.top = `${above >= 0 ? above : (item.y + item.h) * sy + 20}px`;
+}
+
+// Scrolls the document so the selected item and its toolbar are in view, clear of the tools.
+function revealSelected() {
+  if (!selected) return;
+  requestAnimationFrame(() => {
+    const g = selected?.p.svg.querySelector(`[data-id="${selected.item.id}"]`);
+    if (!g) return;
+    const a = g.getBoundingClientRect(), b = ctxBar.getBoundingClientRect();
+    const top = Math.min(a.top, b.top), bottom = Math.max(a.bottom, b.bottom);
+    const view = narrow.matches ? bodyEl.getBoundingClientRect() : { top: (document.querySelector('.site-header')?.offsetHeight || 0), bottom: innerHeight };
+    let dy = 0;
+    if (bottom > view.bottom - 12) dy = bottom - view.bottom + 24;
+    if (top + dy < view.top + 12) dy = top - view.top - 24;
+    if (!dy) return;
+    if (narrow.matches) bodyEl.scrollTop += dy;
+    else scrollBy(0, dy);
+  });
 }
 const drawOverlays = () => pages.forEach(drawOverlay);
 
@@ -491,27 +558,28 @@ function undo() {
   undoBtn.disabled = !history.length;
   dirty = true;
   drawOverlays();
-  updateItemPanel();
+  placeCtx();
   toast(k('undone'));
 }
 
-function select(p, item, focus = true) {
+// reveal: scroll the item into view (not while it's being dragged).
+function select(p, item, focus = true, reveal = focus) {
   const before = selected?.p;
   selected = item ? { p, item } : null;
+  if (item) updateCtx();
   if (before && before !== p) drawOverlay(before);
   if (p) drawOverlay(p);
-  updateItemPanel();
+  placeCtx();
   if (focus && item) p.svg.querySelector(`[data-id="${item.id}"]`)?.focus();
+  if (reveal && item) revealSelected();
 }
 
-function updateItemPanel() {
-  itemPanel.hidden = !selected;
+function updateCtx() {
   if (!selected) return;
-  const { p, item } = selected;
-  itemLabel.textContent = itemName(p, item);
+  const { item } = selected;
   allPagesBtn.hidden = pages.length < 2;
-  textField.hidden = item.type !== 'text' || !!item.date;
-  dateFields.hidden = !item.date;
+  textInput.hidden = item.type !== 'text' || !!item.date;
+  dateInput.hidden = fmtSelect.hidden = !item.date;
   if (item.date) {
     dateInput.value = item.date;
     // Some locales write two styles the same way; list each wording once.
@@ -540,7 +608,7 @@ function removeSelected() {
   p.items = p.items.filter((it) => it !== item);
   selected = null;
   drawOverlay(p);
-  updateItemPanel();
+  placeCtx();
   toast(k('removed'));
   p.el.focus?.();
 }
@@ -589,7 +657,6 @@ function setText(p, item, text) {
   item.w0 = textWidth(text, item.fs);
   item.w = item.w0 * f;
   drawOverlay(p);
-  itemLabel.textContent = itemName(p, item);
 }
 
 function editDate() {
@@ -600,7 +667,7 @@ function editDate() {
   item.fmt = dateFormat = DATE_FORMATS.includes(fmtSelect.value) ? fmtSelect.value : dateFormat;
   if (saving) store.set('dateFormat', dateFormat);
   setText(p, item, formatDate(item.date, item.fmt));
-  updateItemPanel();
+  updateCtx();
 }
 
 // Text starts as a placeholder to type over; a date starts as today in the browser's own locale.
@@ -628,6 +695,7 @@ function onPointer(e, p) {
   const [x, y] = pagePoint(e, p);
   if (e.type === 'pointerdown') {
     if (e.button > 0) return;
+    if (sigsPanel.classList.contains('sd-open-sheet')) showSheet(false, false);
     const handle = e.target.closest('.sd-handle');
     const g = e.target.closest('.sd-item');
     const item = g && p.items.find((it) => it.id === +g.dataset.id);
@@ -637,7 +705,7 @@ function onPointer(e, p) {
     } else if (handle && selected) {
       drag = { kind: 'resize', item: selected.item, x, y, w: selected.item.w, h: selected.item.h, before: false };
     } else if (item) {
-      select(p, item);
+      select(p, item, true, false);
       drag = { kind: 'move', item, x, y, ix: item.x, iy: item.y, before: false };
     } else if (mode === 'text' || mode === 'date') {
       e.preventDefault();
@@ -708,6 +776,7 @@ function setMode(m) {
   for (const b of modeBtns) b.setAttribute('aria-pressed', String(b.dataset.mode === m));
   main.dataset.mode = m;
   modeHint.textContent = k(`modeHint.${m}`);
+  if (narrow.matches) showSheet(false, false);
 }
 
 function setInk(c) {
@@ -759,6 +828,7 @@ function showSheet(open, focus = true) {
   sigsToggle.setAttribute('aria-expanded', String(open));
   if (open && focus) sigsPanel.querySelector('button')?.focus();
   else if (!open && focus && narrow.matches && kind) sigsToggle.focus();
+  revealSelected();
 }
 
 // Saving ---------------------------------------------------------------
@@ -859,9 +929,10 @@ const padCtx = pad.getContext('2d', { willReadFrequently: true });
 
 function openEditor(open) {
   editorOpen = open;
-  editor.hidden = !open;
-  newSigBtn.setAttribute('aria-expanded', String(open));
-  if (open) { clearPad(); setSource(source); } else newSigBtn.focus();
+  if (!open) { editorDialog.close(); return; }
+  clearPad();
+  editorDialog.showModal();
+  setSource(source);
 }
 
 function setSource(s) {
@@ -964,6 +1035,7 @@ function renderSigs() {
     h('button', { type: 'button', class: 'icon-btn sd-sig-remove', 'aria-label': k('sig.remove', { n: i + 1 }), onclick: () => removeSignature(s) }, icon('trash')),
   )));
   sigEmpty.textContent = k(signatures.length ? (kind ? 'sig.tap' : 'sig.openFirst') : 'sig.none');
+  sigEmpty.classList.toggle('sd-has-sigs', signatures.length > 0);
   for (const b of markBtns) b.disabled = !kind;
 }
 
@@ -983,7 +1055,7 @@ function updateUi() {
   toolBar.hidden = !kind && !narrow.matches;
   const where = pages.length > 1 ? k('page', { n: pageInView + 1, total: pages.length }) : docMeta.textContent;
   stateLine.textContent = kind ? `${fileName} \u00B7 ${where}` : name;
-  if (!kind) itemPanel.hidden = true;
+  if (!kind) { selected = null; placeCtx(); }
   renderSigs();
 }
 

@@ -71,13 +71,13 @@ async function showSignatures(page) {
 
 // On narrow screens the document's other actions are in the options sheet.
 async function inOptions(page) {
-  const more = page.getByRole('button', { name: 'Options' });
+  const more = page.getByRole('button', { name: 'More', exact: true });
   if (await more.isVisible()) await more.click();
 }
 
 async function typeSignature(page, name = 'Alice Example') {
   await showSignatures(page);
-  await page.getByRole('button', { name: 'New signature' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.getByRole('button', { name: 'Typing' }).click();
   await page.getByLabel('Your name').fill(name);
   await page.getByRole('button', { name: 'Save signature' }).click();
@@ -182,6 +182,29 @@ test('the PDF\u2019s own form fields can be filled in and are saved', async ({ p
   expect(agree.value).toBe(true);
 });
 
+test('an item added at the bottom of a page stays in view with its toolbar', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  const first = page.locator('.sd-page').first();
+  const box = await first.boundingBox();
+  await first.click({ position: { x: box.width / 2, y: box.height - 12 } });
+  await expect(page.getByRole('toolbar', { name: 'Selected item' })).toBeInViewport();
+  await expect(page.getByRole('button', { name: /^Text 1, page 1/ })).toBeInViewport();
+});
+
+test('the signature strip closes when another tool is chosen', async ({ page }) => {
+  await openPdf(page);
+  await waitForPages(page);
+  const sign = page.getByRole('button', { name: 'Sign', exact: true });
+  test.skip(!(await sign.isVisible()), 'phones only: wide screens show signatures in the side panel');
+  await sign.click();
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Pen', exact: true }).click();
+  await expect(sign).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.getByRole('button', { name: 'New', exact: true })).toBeHidden();
+});
+
 test('the pen draws and text starts as a date that can be edited', async ({ page }) => {
   await openPdf(page);
   await waitForPages(page);
@@ -239,7 +262,7 @@ test.describe('in a German browser', () => {
 });
 
 test('a drawn signature is remembered and can be removed', async ({ page }) => {
-  await page.getByRole('button', { name: 'New signature' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.getByRole('button', { name: 'Save signature' }).click();
   await expect(page.getByRole('status')).toHaveText('The signature is empty.');
   const pad = await page.locator('.sd-pad').boundingBox();
@@ -286,7 +309,7 @@ test('accessible in light and dark, empty and with a document', async ({ page })
     await page.emulateMedia({ colorScheme: scheme });
     await expectAccessible(page, `start ${scheme}`);
   }
-  await page.getByRole('button', { name: 'New signature' }).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
   await expectAccessible(page, 'editor');
   await page.getByRole('button', { name: 'Cancel' }).click();
   await openPdf(page);
