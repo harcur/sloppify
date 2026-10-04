@@ -82,6 +82,7 @@
   background: var(--paper); border: 1px solid var(--line);
 }
 .sd-pages.sd-zoomed { align-items: flex-start; overflow-x: auto; }
+.sd-page-row { margin-top: 12px; }
 .sd-zoom { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .sd-zoom .sd-label { margin-right: auto; font-size: 14px; }
 .sd-zoom-btn { width: 44px; padding: 0; font-size: 20px; }

@@ -203,6 +203,11 @@ const zoomLevel = h('span', { class: 'sd-zoom-level', 'aria-live': 'polite' }, '
 const zoomRow = h('div', { class: 'sd-zoom', role: 'group', 'aria-label': k('zoom.title') },
   h('span', { class: 'sd-label', 'aria-hidden': 'true' }, k('zoom.title')), zoomOut, zoomLevel, zoomIn);
 
+// Long documents: jump to a page; the state line on phones follows the page in view.
+const pageSelect = h('select', { id: 'sd-page', class: 'sd-input', onchange: () => goToPage(+pageSelect.value) });
+const pageRow = h('div', { class: 'sd-field sd-page-row' }, h('label', { for: 'sd-page' }, k('goTo')), pageSelect);
+let pageInView = 0;
+
 const stateLine = h('p', { class: 'sd-state' }, name);
 const bodyEl = h('div', { class: 'sd-body' }, openPanel, layout);
 main.append(h('h1', { class: 'tool-title' }, name), stateLine, bodyEl, fileInput);
@@ -212,12 +217,12 @@ main.classList.add('sd-main');
 // the options sheet; on wider screens both sit in the side panel.
 function arrange() {
   if (narrow.matches) {
-    options.body.prepend(docBar, zoomRow);
+    options.body.prepend(docBar, pageRow, zoomRow);
     main.insertBefore(toolBar, fileInput);
   } else {
     options.close();
     side.prepend(docBar, toolBar);
-    toolBar.append(zoomRow);
+    toolBar.append(pageRow, zoomRow);
   }
   updateUi();
 }
@@ -260,6 +265,8 @@ async function openFile(file) {
   fileName = file.name;
   pages = list.map((p) => ({ ...p, items: [], scale: 0 }));
   buildPages();
+  pageInView = 0;
+  pageSelect.replaceChildren(...pages.map((_, i) => h('option', { value: i + 1 }, k('page', { n: i + 1, total: pages.length }))));
   docName.textContent = fileName;
   docMeta.textContent = k(kind === 'image' ? 'meta.image' : pages.length === 1 ? 'meta.pdf1' : 'meta.pdf', { n: pages.length });
   savePdfBtn.hidden = kind === 'pdf';
@@ -366,6 +373,29 @@ function refreshPages() {
   drawOverlays();
 }
 new ResizeObserver(refreshPages).observe(pagesEl);
+
+function goToPage(n) {
+  const p = pages[n - 1];
+  if (!p) return;
+  options.close();
+  p.el.scrollIntoView({ block: 'start' });
+  if (!narrow.matches) p.el.focus({ preventScroll: true });
+}
+
+let trackFrame = 0;
+function trackPage() {
+  if (trackFrame || pages.length < 2) return;
+  trackFrame = requestAnimationFrame(() => {
+    trackFrame = 0;
+    const i = pages.indexOf(currentPage());
+    if (i < 0 || i === pageInView) return;
+    pageInView = i;
+    pageSelect.value = String(i + 1);
+    updateUi();
+  });
+}
+addEventListener('scroll', trackPage, { passive: true });
+bodyEl.addEventListener('scroll', trackPage, { passive: true });
 
 function setZoom(i) {
   i = Math.max(0, Math.min(ZOOMS.length - 1, i));
@@ -924,8 +954,10 @@ async function removeSignature(s) {
 function updateUi() {
   openPanel.hidden = !!kind;
   docBar.hidden = zoomRow.hidden = !kind;
+  pageRow.hidden = pages.length < 2;
   toolBar.hidden = !kind && !narrow.matches;
-  stateLine.textContent = kind ? `${fileName} \u00B7 ${docMeta.textContent}` : name;
+  const where = pages.length > 1 ? k('page', { n: pageInView + 1, total: pages.length }) : docMeta.textContent;
+  stateLine.textContent = kind ? `${fileName} \u00B7 ${where}` : name;
   if (!kind) itemPanel.hidden = true;
   renderSigs();
 }
