@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   randomInt, shuffle, pickMany, splitTeams, cleanNames, clampInt, range,
-  mod, spinTo, segmentAt, wheelTarget, clockHour, strawLayout, STRAW_MIN, MAX_PLAYERS, MAX_NAME,
+  mod, spinTo, segmentAt, wheelTarget, clockHour, strawFan, MAX_PLAYERS, MAX_NAME,
 } from '../../tools/pick-a-person/pick.js';
 
 // Deterministic 32-bit numbers for repeatable tests.
@@ -112,23 +112,33 @@ test('clock hours', () => {
   assert.equal(clockHour(350), 12);
 });
 
-test('strawLayout: straws stay inside the row and wide enough to tap', () => {
-  for (const width of [200, 294, 650]) {
+test('strawFan: the fan and its cup stay inside the area, thicker when fewer', () => {
+  const rad = (d) => (d * Math.PI) / 180;
+  for (const [width, height] of [[300, 330], [343, 360], [800, 480]]) {
+    let last = Infinity;
     for (let n = 2; n <= MAX_PLAYERS; n++) {
-      const spots = strawLayout(n, width);
-      assert.equal(spots.length, n);
-      for (const { x, w, r, rows } of spots) {
-        assert.ok(x - w / 2 >= -1e-9 && x + w / 2 <= 100 + 1e-9, `n=${n} width=${width}`);
-        assert.ok(r >= 0 && r < rows && rows <= 3);
+      const fan = strawFan(n, width, height);
+      assert.equal(fan.straws.length, n);
+      assert.ok(fan.thick <= last && fan.thick >= 10 && fan.thick <= 26);
+      last = fan.thick;
+      assert.ok(fan.cupW <= width && fan.pivot.x - fan.cupW / 2 >= 0);
+      for (const { angle, sink, pull } of fan.straws) {
+        const s = Math.sin(rad(angle));
+        const c = Math.cos(rad(angle));
+        // The tip at rest, and after it slides out, stays inside the area.
+        const tipX = fan.pivot.x + fan.length * s;
+        assert.ok(tipX - fan.thick >= 0 && tipX + fan.thick <= width, `n=${n} ${width}x${height}`);
+        assert.ok(fan.pivot.y - (fan.length + pull) * c >= 0);
+        const outX = fan.pivot.x + (fan.length + pull) * s;
+        assert.ok(outX - fan.thick >= 0 && outX + fan.thick <= width, `drawn n=${n} ${width}x${height}`);
+        // Where it crosses the rim is inside the cup, and once drawn it clears the rim.
+        assert.ok(Math.abs(sink * s) + fan.thick / 2 <= fan.cupW / 2);
+        assert.ok(fan.pivot.y - pull * c < fan.rim);
       }
-      const px = (spots[0].w / 100) * width;
-      if (spots[0].rows < 3) assert.ok(px >= STRAW_MIN, `n=${n} width=${width}`);
-      assert.ok(px <= 44 + 1e-9);
+      const angles = fan.straws.map((x) => x.angle);
+      assert.ok(angles.every((a, i) => i === 0 || a > angles[i - 1]), 'fanned left to right');
+      assert.ok(Math.abs(angles[0] + angles.at(-1)) < 1e-9, 'symmetric');
     }
   }
-  assert.equal(strawLayout(4, 294)[0].rows, 1);
-  assert.equal(strawLayout(30, 294)[0].rows, 3);
-  assert.ok(strawLayout(30, 294).every((s) => (s.w / 100) * 294 >= STRAW_MIN));
-  assert.deepEqual(strawLayout(4, 294).map((s) => s.r), [0, 0, 0, 0]);
-  assert.deepEqual(strawLayout(4, 60).map((s) => s.r), [0, 0, 1, 1]); // never an empty front row
+  assert.ok(strawFan(4, 343, 360).thick > strawFan(30, 343, 360).thick);
 });

@@ -222,7 +222,7 @@ test('straws: each person taps one straw until the short one', async ({ page }) 
   await expect(page.getByRole('button', { name: /^Straw \d+$/ })).toHaveCount(4);
 });
 
-test('straws: thirty straws bunch up inside the cup, each wide enough to tap', async ({ page }) => {
+test('straws: thirty straws fan out inside the stage, and Draw for me draws one', async ({ page }) => {
   await page.addInitScript(() => {
     if (localStorage.getItem('sloppify:pick-a-person:__schema')) return;
     localStorage.setItem('sloppify:pick-a-person:__schema', '1');
@@ -231,19 +231,19 @@ test('straws: thirty straws bunch up inside the cup, each wide enough to tap', a
   await page.goto(URL);
   await mode(page, 'straws').click();
   await expect(page.locator('.pp-straw')).toHaveCount(30);
-  const box = await page.evaluate(() => {
-    const cup = document.querySelector('.pp-cup').getBoundingClientRect();
-    const straws = [...document.querySelectorAll('.pp-straw')].map((b) => b.getBoundingClientRect());
-    const bodies = [...document.querySelectorAll('.pp-straw-body')].map((b) => b.getBoundingClientRect());
-    return {
-      inside: bodies.every((r) => r.left >= cup.left + cup.width * 0.07 && r.right <= cup.right - cup.width * 0.07),
-      minWidth: Math.min(...straws.map((r) => r.width)),
-      minHeight: Math.min(...straws.map((r) => r.height)),
-    };
+  const inside = () => page.evaluate(() => {
+    const area = document.querySelector('.pp-straws').getBoundingClientRect();
+    return [...document.querySelectorAll('.pp-straw-body')].every((b) => {
+      const r = b.getBoundingClientRect();
+      return r.left >= area.left - 1 && r.right <= area.right + 1 && r.top >= area.top - 1;
+    });
   });
-  expect(box.inside).toBe(true);
-  expect(box.minWidth).toBeGreaterThanOrEqual(24);
-  expect(box.minHeight).toBeGreaterThanOrEqual(24);
+  expect(await inside()).toBe(true);
+  const pick = page.getByRole('button', { name: 'Draw for me' });
+  for (let i = 0; i < 30 && !(await page.locator('.pp-straw.is-short').count()); i++) await pick.click();
+  await expect(result(page)).toHaveText('Short straw');
+  await expect(pick).toBeDisabled();
+  expect(await inside()).toBe(true); // every straw pulled out, still on screen
 });
 
 test('teams: everyone in one team, sizes within one', async ({ page }) => {
