@@ -108,32 +108,33 @@ export function clockHour(angle) {
   return h === 0 ? 12 : h;
 }
 
-export const STRAW_MIN = 28; // narrowest straw a finger can still hit (px), above the 24px target size
-const STRAW_MAX = 44;
-const STRAW_ROWS = 3;
-
-// Bunch `n` straws into the fewest staggered rows (up to three) where each
-// one is at least STRAW_MIN wide, so they stand inside the cup instead of
-// spilling out of it.
-// Returns, per straw, its row and its centre and width as a percentage of
-// the row's width. Row 0 is the back row.
-export function strawLayout(n, width) {
-  let rows = 1;
-  let cols = n;
-  let cell = width / n;
-  while (rows < STRAW_ROWS && cell < STRAW_MIN) {
-    rows++;
-    cols = Math.ceil(n / rows);
-    cell = width / (cols + 0.5); // rows are offset by half a straw
-  }
-  rows = Math.ceil(n / cols);
-  cell = Math.min(cell, STRAW_MAX);
-  const w = (cell / width) * 100;
-  return Array.from({ length: n }, (_, i) => {
-    const r = Math.floor(i / cols);
-    const inRow = Math.min(cols, n - r * cols);
-    const shift = rows > 1 ? (r % 2 ? 0.25 : -0.25) * w : 0;
-    const x = 50 + (i - r * cols - (inRow - 1) / 2) * w + shift;
-    return { r, rows, x, w };
+// Fan the straws out from one point low in the cup, like a hand of cards.
+// The fewer the straws, the thicker they are and the wider apart they stand;
+// the fan stays inside `width`, and the cup is cut to fit it. Returns sizes
+// in px within a `width` × `height` area, and each straw's angle (degrees,
+// 0 is upright), how far it sits below the rim along its own line (`sink`)
+// and how far it slides out to clear the rim when drawn (`pull`).
+export function strawFan(n, width, height) {
+  const thick = Math.round(Math.min(26, Math.max(10, 28 - n * 0.7)));
+  const cupH = height * 0.34;
+  const rim = height - cupH;
+  const pivot = { x: width / 2, y: height - cupH * 0.3 };
+  const deep = pivot.y - rim; // how deep the straws stand, straight down
+  const length = pivot.y - deep - 20; // room above to pull the middle one out
+  const room = Math.max(0, width / 2 - thick - 8); // half the width a tip may use
+  const rad = (d) => (d * Math.PI) / 180;
+  // Wide enough to tell the straws apart, but even an outer straw, pulled
+  // all the way out, must stay inside.
+  const reach = (d) => (length + deep / Math.cos(rad(d)) + 12) * Math.sin(rad(d));
+  let half = Math.min(((n - 1) * 12) / 2, 40);
+  while (half > 0 && reach(half) > room) half = Math.max(0, half - 0.5);
+  const step = n > 1 ? (2 * half) / (n - 1) : 0;
+  const hit = Math.min(56, Math.max(thick, length * rad(step)));
+  const cupW = Math.min(width, Math.max(96, 2 * (deep * Math.tan(rad(half)) + thick / (2 * Math.cos(rad(half))) + 14)));
+  const straws = Array.from({ length: n }, (_, i) => {
+    const angle = n > 1 ? -half + i * step : 0;
+    const sink = deep / Math.cos(rad(angle));
+    return { angle, sink, pull: sink + 12 };
   });
+  return { thick, length, hit, pivot, rim, cupW, cupH, straws };
 }

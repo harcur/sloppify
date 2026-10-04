@@ -77,6 +77,7 @@ export const strings = {
     'straws.turn': 'Tap a straw. {n} left',
     'straws.pass': 'Long. Pass the phone on',
     'straws.again': 'New draw',
+    'straws.pick': 'Draw for me',
     'straws.ready': '{n} straws. One is short.',
     'straws.label': 'Straw {n}',
     'straws.label.long': 'Straw {n}: long',
