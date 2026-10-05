@@ -90,7 +90,7 @@ Designed so advanced search (filters, fuzzy matching, sorting) can be added late
 
 ## Hub page
 
-- **Card grid with simple text search** for now (matches name, description, tags).
+- **Card grid with simple text search** for now (matches name, description, category, tags). Every word must match. Case and accents are ignored, and a word of 4+ letters may have one typo (a wrong, missing or extra letter, or two letters swapped) against the start of a word. Exact matches are listed before typo matches.
 - Search placeholder: "Find a tool or game".
 - More advanced search will be added as the number of tools grows.
 - **Favourites and recents only change the order of the cards.** One grid, split by thin labeled separators (a mono label followed by a 1px line): `favourites` (ordered by most recent use), `recent` (last 4 used that aren't favourites), `everything else` (alphabetical). Separators only appear when there's more than one group; a first-time visitor sees one plain grid.
