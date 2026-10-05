@@ -6,7 +6,7 @@ The result is two transparent layers: **back** goes under all sources, **front**
 
 - `design.js`: the design, presets, limits and link encoding (no DOM, unit tested)
 - `field.js`: noise, zone shapes (signed distance) and the shared height and flow field (no DOM, unit tested)
-- `art.js`: draws the art styles and zone effects, and composites the two layers (`compose` is unit tested)
+- `art.js`: draws the art styles (draped lines, flow lines, contours, wireframe mesh, halftone dots, stippling, tile mosaic, brush dashes, pen hatching) and zone effects, and composites the two layers (`compose` is unit tested)
 - `worker.js`, `renderer.js`: draws in a worker on OffscreenCanvas, or on the page where that isn't supported
 - `view.html`, `view.js`, `view.css`: one layer full size on a transparent page, for browser sources
 - `app.js`: the editor

@@ -137,7 +137,7 @@ test('links made before new options were added still mean the same thing', () =>
   // Links store list indexes, so the original entries must keep their places.
   assert.deepEqual(KINDS.slice(0, 7), ['camera', 'chat', 'game', 'alerts', 'info', 'buttons', 'other']);
   assert.deepEqual(EFFECTS.slice(0, 6), ['lift', 'sink', 'orbit', 'splash', 'pile', 'none']);
-  assert.deepEqual(STYLES.slice(0, 5), ['sheet', 'flow', 'contour', 'dots', 'none']);
+  assert.deepEqual(STYLES.slice(0, 6), ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch']);
   assert.deepEqual([...EFFECT_ORDER].sort(), [...EFFECTS].sort());
   assert.deepEqual([...STYLE_ORDER].sort(), [...STYLES].sort());
   // [version, size, seed, style, palette, density, reach, fill, zones]: a camera with "sink" in contours.
