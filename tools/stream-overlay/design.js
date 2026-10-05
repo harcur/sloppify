@@ -12,8 +12,8 @@ export const EFFECTS = ['lift', 'sink', 'orbit', 'splash', 'pile', 'none', 'tape
 export const EFFECT_ORDER = ['lift', 'sink', 'orbit', 'splash', 'pile', 'tape', 'brush', 'sketch', 'watercolor', 'vines', 'glitch', 'none'];
 // over: the content sits on top of the art. under: the art's edges cover the content.
 export const PLACES = ['over', 'under'];
-export const STYLES = ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch'];
-export const STYLE_ORDER = ['sheet', 'flow', 'contour', 'dots', 'hatch', 'none'];
+export const STYLES = ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch', 'mesh', 'stipple', 'mosaic', 'dashes'];
+export const STYLE_ORDER = ['sheet', 'flow', 'contour', 'mesh', 'dots', 'stipple', 'mosaic', 'dashes', 'hatch', 'none'];
 export const MAX_ZONES = 12;
 export const MIN_SIDE = 40;
 
