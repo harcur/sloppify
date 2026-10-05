@@ -30,7 +30,12 @@ const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 const saved = saving ? store.get('design') : null;
 let design = saved ? normalize(saved) : preset('gameplay', '1920x1080', newSeed());
+// The selection: `sel` is the zone the toolbar and editor read from, `picked` every
+// selected zone (sel among them). Edits apply to all picked zones at once.
 let sel = design.zones[0]?.id ?? 0;
+let picked = new Set([sel]);
+// Select several: plain clicks and taps add zones to the selection or take them out.
+let several = false;
 // edit or preview; in preview, which layers show. Peek is preview while Space is held.
 let mode = 'edit';
 let show = 'scene';
@@ -41,6 +46,8 @@ let phoneTab = 'zones';
 
 function newSeed() { return Math.floor(Math.random() * 2 ** 31); }
 const byId = (id) => design.zones.find((z) => z.id === id);
+const pickedZones = () => design.zones.filter((z) => picked.has(z.id));
+const pickOnly = (id) => { sel = id; picked = new Set([id]); };
 const zoneName = (z) => {
   const same = design.zones.filter((o) => o.kind === z.kind);
   const kind = T(`kind.${z.kind}`);
@@ -91,7 +98,8 @@ function slider(key, label, format, oninput) {
   input.addEventListener('change', () => oninput(+input.value, true));
   const wrap = control(label, input);
   wrap.firstChild.append(' ', out);
-  return { wrap, set(v) { input.value = v; out.textContent = format(v); }, input };
+  // Mixed: the selected zones differ, so the value shown is the first zone's.
+  return { wrap, set(v, mixed = false) { input.value = v; out.textContent = mixed ? T('mixed') : format(v); }, input };
 }
 const px = (n) => T('px', { n });
 const plain = (n) => String(n);
@@ -113,14 +121,16 @@ const mocks = h('div', { class: 'so-mocks', 'aria-hidden': 'true' });
 const handles = h('div', { class: 'so-handles' });
 
 // The selected zone's toolbar: next to the zone on wide screens, docked under the stage on phones.
+// With several zones selected it acts on all of them; a mixed effect shows as "mixed".
 const ctxEffect = dropdown(EFFECT_ORDER.map((k) => [k, T(`effect.${k}`)]), (v) => setZone('effect', v), { 'aria-label': T('effect.short'), title: T('effect') });
 ctxEffect.classList.add('so-ctx-input');
+ctxEffect.prepend(h('option', { value: '', disabled: true, hidden: true }, T('mixed')));
 const ctxPlace = h('button', { type: 'button', class: 'so-ctx-place', 'aria-pressed': 'false', 'aria-label': T('place.toggleLabel'), title: T('place.toggleLabel'),
-  onclick: () => setZone('place', byId(sel)?.place === 'under' ? 'over' : 'under') }, T('place.toggle'));
+  onclick: () => setZone('place', ctxPlace.getAttribute('aria-pressed') === 'true' ? 'over' : 'under') }, T('place.toggle'));
+const ctxDup = iconBtn('copy', T('zone.duplicate'), () => duplicateZones([...picked], 'stage'));
+const ctxDel = iconBtn('trash', T('zone.remove'), () => removeZones([...picked], 'stage'), 'so-del');
 const ctx = h('div', { class: 'so-ctx', role: 'toolbar' },
-  ctxEffect, ctxPlace, h('span', { class: 'so-ctx-sep', 'aria-hidden': 'true' }),
-  iconBtn('copy', T('zone.duplicate'), () => duplicateZone(sel, 'stage')),
-  iconBtn('trash', T('zone.remove'), () => removeZone(sel, 'stage'), 'so-del'));
+  ctxEffect, ctxPlace, h('span', { class: 'so-ctx-sep', 'aria-hidden': 'true' }), ctxDup, ctxDel);
 
 const stage = h('div', { class: 'so-stage', role: 'group', 'aria-describedby': 'so-stage-help' }, backCv, mocks, frontCv, handles, ctx);
 const busy = h('span', { class: 'so-busy', hidden: true }, T('drawing'));
@@ -159,15 +169,20 @@ KINDS.map((k) => h('button', { type: 'button', 'data-kind': k, onclick: () => ad
 const addBtn = h('button', { type: 'button', class: 'btn', 'aria-expanded': 'false', 'aria-controls': 'so-add-menu',
   onclick: () => (addMenu.hidden ? openAddMenu() : closeAddMenu(false)) }, T('zone.add'));
 const maxNote = h('p', { class: 'so-note', hidden: true }, T('zone.max'));
+const allBtn = h('button', { type: 'button', class: 'btn', onclick: () => (picked.size === design.zones.length ? select(sel) : pickAll()) }, T('zone.selectAll'));
+const severalBtn = h('button', { type: 'button', class: 'btn', 'aria-pressed': 'false', onclick: () => setSeveral(!several) }, T('zone.several'));
+const pickRow = h('div', { class: 'so-pick', role: 'group', 'aria-label': T('zone.selection') }, allBtn, severalBtn);
 const noZones = h('p', { class: 'so-note' }, T('zone.none'));
 
 const zf = {};
 const setZone = (key, value, commit = true) => {
-  const z = byId(sel);
-  if (!z) return;
-  Object.assign(z, fitZone({ ...z, [key]: value }, design));
+  const zs = pickedZones();
+  if (!zs.length) return;
+  for (const z of zs) {
+    Object.assign(z, fitZone({ ...z, [key]: value }, design));
+    placeZone(z);
+  }
   syncZoneInputs();
-  placeZone(z);
   if (key === 'kind' || key === 'effect' || key === 'place') renderZones();
   if (commit) changed(); else queueRender(true);
 };
@@ -182,6 +197,10 @@ zf.r = slider('r', T('r'), px, (v, c) => setZone('r', v, c));
 zf.frame = slider('frame', T('frame'), px, (v, c) => setZone('frame', v, c));
 zf.fuzz = slider('fuzz', T('fuzz'), px, (v, c) => setZone('fuzz', v, c));
 zf.power = slider('power', T('power'), plain, (v, c) => setZone('power', v, c));
+// Position and kind belong to one zone, so they're left out while several are selected.
+zf.position = h('details', { class: 'so-more' }, h('summary', {}, T('zone.position')),
+  h('div', { class: 'so-grid' }, ['x', 'y', 'w', 'h'].map((k) => control(T(k), zf[k]))),
+  control(T('kind'), zf.kind));
 
 const zoneEditor = h('div', { class: 'so-editor' },
   h('div', { class: 'so-editor-head' }, zf.title, zf.size),
@@ -189,9 +208,7 @@ const zoneEditor = h('div', { class: 'so-editor' },
   zf.place.group,
   zf.power.wrap,
   h('details', { class: 'so-more' }, h('summary', {}, T('zone.shape')), zf.r.wrap, zf.frame.wrap, zf.fuzz.wrap),
-  h('details', { class: 'so-more' }, h('summary', {}, T('zone.position')),
-    h('div', { class: 'so-grid' }, ['x', 'y', 'w', 'h'].map((k) => control(T(k), zf[k]))),
-    control(T('kind'), zf.kind)),
+  zf.position,
 );
 
 // Art tab ---------------------------------------------------------------
@@ -235,7 +252,7 @@ const stepFront = h('li', {}, T('step.front'));
 // Canvas size and starting layouts: last in Use it on wide screens, in the options sheet on phones.
 const sizeSelect = dropdown(Object.entries(SIZES).map(([k, [w, hh]]) => [k, T(hh > w ? 'size.tall' : 'size.wide', { w, h: hh })]), (v) => {
   design = resize(design, v);
-  sel = design.zones[0]?.id ?? 0;
+  pickOnly(design.zones[0]?.id ?? 0);
   rebuild();
   changed();
 });
@@ -256,7 +273,7 @@ async function usePreset() {
     if (!ok) return;
   }
   design = preset(key, design.size, design.seed);
-  sel = design.zones[0]?.id ?? 0;
+  pickOnly(design.zones[0]?.id ?? 0);
   options.close();
   rebuild();
   changed();
@@ -266,7 +283,7 @@ async function usePreset() {
 
 const TABS = ['zones', 'art', 'use'];
 const panels = {
-  zones: h('div', {}, zoneList, h('div', { class: 'so-add' }, addBtn, addMenu), maxNote, noZones, zoneEditor,
+  zones: h('div', {}, zoneList, h('div', { class: 'so-zactions' }, h('div', { class: 'so-add' }, addBtn, addMenu), pickRow), maxNote, noZones, zoneEditor,
     h('p', { class: 'so-hint so-keys' }, T('keys'))),
   art: h('div', {}, af.style.group, af.palette.group, af.density.wrap, af.reach.wrap,
     h('label', { class: 'so-check', for: 'so-fill' }, af.fill, T('fill')),
@@ -335,7 +352,7 @@ function placeZone(z) {
   const radius = `${(Math.min(z.r, z.w / 2, z.h / 2) / design.w) * 100}cqw`;
   btn.style.borderRadius = mock.style.borderRadius = radius;
   btn.setAttribute('aria-label', describe(z));
-  if (z.id === sel) placeCtx();
+  if (picked.has(z.id)) placeCtx();
 }
 
 function renderZones() {
@@ -344,15 +361,15 @@ function renderZones() {
   zoneList.replaceChildren();
   for (const z of design.zones) {
     const label = zoneName(z);
-    handles.append(h('button', { type: 'button', class: 'so-zone', 'data-id': z.id, 'aria-pressed': String(z.id === sel) },
+    handles.append(h('button', { type: 'button', class: 'so-zone', 'data-id': z.id, 'aria-pressed': String(picked.has(z.id)) },
       h('span', { class: 'so-zone-name', 'aria-hidden': 'true' }, label),
       h('span', { class: 'so-grip', 'aria-hidden': 'true' })));
     mocks.append(h('div', { class: 'so-mock', 'data-id': z.id, 'data-name': label }));
     zoneList.append(h('li', { class: 'so-zitem', 'data-id': z.id },
-      h('button', { type: 'button', class: 'so-zrow', 'data-id': z.id, 'aria-pressed': String(z.id === sel), onclick: () => select(z.id) },
+      h('button', { type: 'button', class: 'so-zrow', 'data-id': z.id, 'aria-pressed': String(picked.has(z.id)), onclick: (e) => clickZone(z.id, e) },
         h('span', { class: 'so-zname' }, label),
         h('span', { class: 'so-zmeta' }, `${T(`effect.${z.effect}`)} · ${T(`place.short.${z.place}`)}`)),
-      iconBtn('x', T('zone.removeNamed', { name: label }), () => removeZone(z.id, 'list'), 'so-del')));
+      iconBtn('x', T('zone.removeNamed', { name: label }), () => removeZones([z.id], 'list'), 'so-del')));
     placeZone(z);
   }
   const full = design.zones.length >= MAX_ZONES;
@@ -360,15 +377,63 @@ function renderZones() {
   if (full) closeAddMenu(false);
   maxNote.hidden = !full;
   zoneList.hidden = !design.zones.length;
+  pickRow.hidden = design.zones.length < 2;
   const n = design.zones.length;
   stateLine.textContent = `${name} · ${n === 1 ? T('state.one') : T('state.many', { n })}`;
 }
 
 function select(id) {
-  sel = id;
-  for (const el of document.querySelectorAll('.so-zone, .so-zrow')) el.setAttribute('aria-pressed', String(+el.dataset.id === sel));
+  pickOnly(id);
+  syncPicked();
+}
+
+function syncPicked() {
+  for (const el of document.querySelectorAll('.so-zone, .so-zrow')) el.setAttribute('aria-pressed', String(picked.has(+el.dataset.id)));
+  const all = picked.size === design.zones.length;
+  allBtn.textContent = T(all ? 'zone.selectOne' : 'zone.selectAll');
+  severalBtn.setAttribute('aria-pressed', String(several));
   syncZoneInputs();
   placeCtx();
+}
+
+// A click on a zone, on the stage or in the list: with Shift, Ctrl or Cmd held,
+// or Select several on, it goes into the selection or comes out of it.
+function clickZone(id, e) {
+  if (several || e.shiftKey || e.ctrlKey || e.metaKey) togglePick(id);
+  else select(id);
+}
+
+function togglePick(id) {
+  if (picked.has(id)) {
+    if (picked.size === 1) return;
+    picked.delete(id);
+    if (sel === id) sel = [...picked].at(-1);
+  } else {
+    picked.add(id);
+    sel = id;
+  }
+  syncPicked();
+  say(T('say.picked', { n: picked.size }));
+}
+
+function pickAll() {
+  if (!design.zones.length) return;
+  if (!byId(sel)) sel = design.zones[0].id;
+  picked = new Set(design.zones.map((z) => z.id));
+  syncPicked();
+  say(T('say.picked', { n: picked.size }));
+}
+
+function setSeveral(on) {
+  several = on;
+  syncPicked();
+}
+
+// After undo or redo, drop zones that no longer exist from the selection.
+function prune() {
+  if (!byId(sel)) sel = design.zones[0]?.id ?? 0;
+  picked = new Set([...picked].filter((id) => byId(id)));
+  picked.add(sel);
 }
 
 function syncZoneInputs() {
@@ -376,38 +441,52 @@ function syncZoneInputs() {
   zoneEditor.hidden = !z;
   noZones.hidden = !!design.zones.length;
   if (!z) return;
-  zf.title.textContent = zoneName(z);
-  zf.size.textContent = T('zone.size', { w: z.w, h: z.h });
-  zf.effect.set(z.effect);
-  zf.hint.textContent = T(`hint.${z.effect}`);
-  zf.place.set(z.place);
+  const zs = pickedZones();
+  const n = zs.length;
+  const group = n > 1;
+  // A setting shared by every selected zone shows as set; one they differ on shows as mixed.
+  const same = (k) => zs.every((o) => o[k] === z[k]);
+  const title = n === design.zones.length ? T('zone.all', { n }) : T('zone.picked', { n });
+  zf.title.textContent = group ? title : zoneName(z);
+  zf.size.textContent = group ? '' : T('zone.size', { w: z.w, h: z.h });
+  zf.effect.set(same('effect') ? z.effect : null);
+  zf.hint.textContent = same('effect') ? T(`hint.${z.effect}`) : T('hint.mixed');
+  zf.place.set(same('place') ? z.place : null);
+  zf.position.hidden = group;
   zf.kind.value = z.kind;
   for (const k of ['x', 'y', 'w', 'h']) {
     zf[k].value = z[k];
     zf[k].min = 0;
     zf[k].max = k === 'x' || k === 'w' ? design.w : design.h;
   }
-  for (const k of ['r', 'frame', 'fuzz', 'power']) zf[k].set(z[k]);
-  ctxEffect.value = z.effect;
-  ctxPlace.setAttribute('aria-pressed', String(z.place === 'under'));
-  ctx.setAttribute('aria-label', T('zone.toolbar', { name: zoneName(z) }));
+  for (const k of ['r', 'frame', 'fuzz', 'power']) zf[k].set(z[k], !same(k));
+  ctxEffect.value = same('effect') ? z.effect : '';
+  ctxPlace.setAttribute('aria-pressed', same('place') ? String(z.place === 'under') : 'mixed');
+  ctx.setAttribute('aria-label', group ? T('zone.toolbarMany', { n }) : T('zone.toolbar', { name: zoneName(z) }));
+  for (const [btn, one, many] of [[ctxDup, 'zone.duplicate', 'zone.duplicateMany'], [ctxDel, 'zone.remove', 'zone.removeMany']]) {
+    btn.setAttribute('aria-label', T(group ? many : one));
+    btn.title = T(group ? many : one);
+  }
 }
 
-// The toolbar sits above the zone, or below it when there's no room, kept inside the stage.
+// The toolbar sits above the zone (the last one picked, when several are), or below
+// it when there's no room, kept inside the stage.
 function placeCtx() {
   const z = byId(sel);
   ctx.hidden = !z || previewing();
   if (ctx.hidden || narrow.matches) return;
+  const { x, y } = z;
+  const bottom = z.y + z.h;
   const k = stage.clientWidth / design.w;
   const sw = stage.clientWidth;
   const sh = stage.clientHeight;
   const bw = ctx.offsetWidth;
   const bh = ctx.offsetHeight;
-  let top = z.y * k - bh - 6;
-  if (top < 4) top = (z.y + z.h) * k + 6;
-  if (top + bh > sh - 4) top = Math.max(4, z.y * k + 4);
+  let top = y * k - bh - 6;
+  if (top < 4) top = bottom * k + 6;
+  if (top + bh > sh - 4) top = Math.max(4, y * k + 4);
   ctx.style.top = `${top}px`;
-  ctx.style.left = `${Math.max(4, Math.min(z.x * k, sw - bw - 4))}px`;
+  ctx.style.left = `${Math.max(4, Math.min(x * k, sw - bw - 4))}px`;
 }
 
 function syncArt() {
@@ -480,8 +559,9 @@ function arrange() {
 narrow.addEventListener('change', arrange);
 
 function rebuild() {
+  prune();
   renderZones();
-  select(sel);
+  syncPicked();
   syncArt();
   syncOutput();
   syncMode();
@@ -509,7 +589,6 @@ function step(from, to, msg) {
   to.push(committed);
   committed = from.pop();
   design = JSON.parse(committed);
-  if (!byId(sel)) sel = design.zones[0]?.id ?? 0;
   rebuild();
   saveSoon();
   say(msg);
@@ -595,42 +674,49 @@ function closeAddMenu(focus) {
 document.addEventListener('click', (e) => { if (!addMenu.hidden && !e.target.closest('.so-add')) closeAddMenu(false); });
 
 const nextId = () => Math.max(0, ...design.zones.map((o) => o.id)) + 1;
-function insert(z, from) {
-  z.id = nextId();
-  design.zones.push(z);
-  sel = z.id;
+// Adds zones and selects them.
+function insert(zs, from) {
+  for (const z of zs) {
+    z.id = nextId();
+    design.zones.push(z);
+  }
+  const last = zs.at(-1);
+  sel = last.id;
+  picked = new Set(zs.map((z) => z.id));
   renderZones();
-  select(z.id);
+  syncPicked();
   changed();
-  say(T('say.added', { name: zoneName(z) }));
-  (from === 'list' && narrow.matches ? zoneList.querySelector(`.so-zrow[data-id="${z.id}"]`) : handles.querySelector(`[data-id="${z.id}"]`))?.focus();
+  say(zs.length > 1 ? T('say.addedMany', { n: zs.length }) : T('say.added', { name: zoneName(last) }));
+  (from === 'list' && narrow.matches ? zoneList.querySelector(`.so-zrow[data-id="${last.id}"]`) : handles.querySelector(`[data-id="${last.id}"]`))?.focus();
 }
 
 function addZone(kind) {
   closeAddMenu(false);
   if (design.zones.length >= MAX_ZONES) return;
   if (mode === 'preview') setMode('edit');
-  insert(newZone(kind, design), 'list');
+  insert([newZone(kind, design)], 'list');
 }
 
-function duplicateZone(id, from) {
-  const z = byId(id);
-  if (!z || design.zones.length >= MAX_ZONES) return;
-  insert(fitZone({ ...z, x: z.x + 20, y: z.y + 20 }, design), from);
+// Copies as many of the zones as there's room for, each a little down and to the right.
+function duplicateZones(ids, from) {
+  const room = MAX_ZONES - design.zones.length;
+  const zs = design.zones.filter((z) => ids.includes(z.id)).slice(0, room);
+  if (!zs.length) return;
+  insert(zs.map((z) => fitZone({ ...z, x: z.x + 20, y: z.y + 20 }, design)), from);
 }
 
 // One step, no confirmation: the toast offers undo, as does Ctrl+Z.
-function removeZone(id, from) {
-  const z = byId(id);
-  if (!z) return;
-  const label = zoneName(z);
-  const i = design.zones.indexOf(z);
-  design.zones.splice(i, 1);
-  sel = design.zones[Math.min(i, design.zones.length - 1)]?.id ?? 0;
+function removeZones(ids, from) {
+  const zs = design.zones.filter((z) => ids.includes(z.id));
+  if (!zs.length) return;
+  const label = zs.length > 1 ? T('say.removedMany', { n: zs.length }) : T('say.removed', { name: zoneName(zs[0]) });
+  const i = design.zones.indexOf(zs[0]);
+  design.zones = design.zones.filter((z) => !ids.includes(z.id));
+  pickOnly(design.zones[Math.min(i, design.zones.length - 1)]?.id ?? 0);
   renderZones();
-  select(sel);
+  syncPicked();
   changed();
-  toast(T('say.removed', { name: label }), 6000, { label: T('undo'), onClick: () => undo() });
+  toast(label, 6000, { label: T('undo'), onClick: () => undo() });
   const next = from === 'list' || narrow.matches
     ? zoneList.querySelector(`.so-zrow[data-id="${sel}"]`)
     : handles.querySelector(`[data-id="${sel}"]`);
@@ -642,8 +728,22 @@ function newPattern() {
   changed();
 }
 
-// Drag a zone to move it, or its corner to resize it. Snaps to 5 px.
+// Moves zones together by the same amount, kept on the canvas without changing their layout.
+function moveZones(zs, from, dx, dy) {
+  const clamp = (d, k, s) => Math.min(Math.max(d, ...from.map((f) => -f[k])), ...from.map((f) => design[s] - f[k] - f[s]));
+  dx = clamp(dx, 'x', 'w');
+  dy = clamp(dy, 'y', 'h');
+  zs.forEach((z, i) => {
+    Object.assign(z, fitZone({ ...from[i], x: from[i].x + dx, y: from[i].y + dy }, design));
+    placeZone(z);
+  });
+}
+
+// Drag a zone to move it, or its corner to resize it. Snaps to 5 px. Dragging
+// one of several selected zones moves them all; a click without moving selects
+// just that zone, or with Shift, Ctrl or Cmd (or Select several) adds it or takes it out.
 let drag = null;
+let dragged = false;
 const snap = (v) => Math.round(v / 5) * 5;
 handles.addEventListener('pointerdown', (e) => {
   const btn = e.target.closest('.so-zone');
@@ -651,9 +751,12 @@ handles.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   btn.focus();
   const z = byId(+btn.dataset.id);
-  select(z.id);
   if (!narrow.matches) { tab = 'zones'; syncTabs(); }
-  drag = { z, btn, size: !!e.target.closest('.so-grip'), x: e.clientX, y: e.clientY, from: { ...z }, k: design.w / stage.clientWidth, moved: false };
+  if (e.shiftKey || e.ctrlKey || e.metaKey || (several && !picked.has(z.id))) return;
+  const size = !!e.target.closest('.so-grip');
+  if (!picked.has(z.id)) select(z.id);
+  const group = size ? [z] : pickedZones();
+  drag = { z, btn, size, group, x: e.clientX, y: e.clientY, from: group.map((o) => ({ ...o })), k: design.w / stage.clientWidth, moved: false };
   btn.setPointerCapture(e.pointerId);
 });
 handles.addEventListener('pointermove', (e) => {
@@ -663,14 +766,18 @@ handles.addEventListener('pointermove', (e) => {
   if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4 * drag.k) return;
   drag.moved = true;
   stage.classList.add('so-dragging');
-  const f = drag.from;
-  const next = drag.size ? { ...f, w: snap(f.w + dx), h: snap(f.h + dy) } : { ...f, x: snap(f.x + dx), y: snap(f.y + dy) };
-  Object.assign(drag.z, fitZone(next, design));
-  placeZone(drag.z);
+  const f = drag.from[drag.group.indexOf(drag.z)];
+  if (drag.size) {
+    Object.assign(drag.z, fitZone({ ...f, w: snap(f.w + dx), h: snap(f.h + dy) }, design));
+    placeZone(drag.z);
+  } else {
+    moveZones(drag.group, drag.from, snap(f.x + dx) - f.x, snap(f.y + dy) - f.y);
+  }
   syncZoneInputs();
   queueRender(true);
 });
 const endDrag = () => {
+  dragged = !!drag?.moved;
   if (drag?.moved) { changed(); say(describe(drag.z)); }
   stage.classList.remove('so-dragging');
   drag = null;
@@ -680,34 +787,44 @@ handles.addEventListener('pointerup', endDrag);
 handles.addEventListener('pointercancel', endDrag);
 handles.addEventListener('click', (e) => {
   const btn = e.target.closest('.so-zone');
-  if (btn) select(+btn.dataset.id);
+  if (!btn) return;
+  if (dragged) { dragged = false; return; }
+  clickZone(+btn.dataset.id, e);
 });
 
 // On a zone: arrow keys move it by 10 px (1 px with Alt), Shift and arrow keys
-// resize it, Delete removes it, D duplicates it.
+// resize it, Delete removes it, D duplicates it. On one of several selected
+// zones, they act on all of them.
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 handles.addEventListener('keydown', (e) => {
   const btn = e.target.closest('.so-zone');
   if (!btn || e.ctrlKey || e.metaKey) return;
   const z = byId(+btn.dataset.id);
+  const ids = picked.has(z.id) ? [...picked] : [z.id];
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
-    removeZone(z.id, 'stage');
+    removeZones(ids, 'stage');
     return;
   }
   if (e.key === 'd' || e.key === 'D') {
     e.preventDefault();
-    duplicateZone(z.id, 'stage');
+    duplicateZones(ids, 'stage');
     return;
   }
   const dir = ARROWS[e.key];
   if (!dir) return;
   e.preventDefault();
-  select(z.id);
+  if (!picked.has(z.id)) select(z.id);
   const [dx, dy] = dir.map((v) => v * (e.altKey ? 1 : 10));
-  const next = e.shiftKey ? { ...z, w: z.w + dx, h: z.h + dy } : { ...z, x: z.x + dx, y: z.y + dy };
-  Object.assign(z, fitZone(next, design));
-  placeZone(z);
+  const zs = pickedZones();
+  if (e.shiftKey) {
+    for (const o of zs) {
+      Object.assign(o, fitZone({ ...o, w: o.w + dx, h: o.h + dy }, design));
+      placeZone(o);
+    }
+  } else {
+    moveZones(zs, zs.map((o) => ({ ...o })), dx, dy);
+  }
   syncZoneInputs();
   changed();
   say(describe(z));
@@ -725,6 +842,16 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === 'Escape' && wrap.classList.contains('so-fakefs')) { exitFullscreen(); return; }
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && k === 'a' && mode === 'edit' && !e.target.matches?.('input, select, textarea')) {
+    e.preventDefault();
+    pickAll();
+    return;
+  }
+  if (e.key === 'Escape' && (picked.size > 1 || several) && !e.target.matches?.('input, select, textarea')) {
+    several = false;
+    select(sel);
+    return;
+  }
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.matches?.('input, select, textarea')) return;
   if (k === 'p') setMode(mode === 'preview' ? 'edit' : 'preview');
   else if (k === 'f') (fullscreen ? exitFullscreen() : enterFullscreen());

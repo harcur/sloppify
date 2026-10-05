@@ -124,6 +124,7 @@ select { font: inherit; color: inherit; }
 .so-dragging .so-ctx { visibility: hidden; }
 .so-ctx-input { height: 36px; min-width: 0; padding: 0 6px; border: 1px solid var(--muted); border-radius: 0; background: var(--surface); font-size: 14px; }
 .so-ctx-place { height: 36px; padding: 0 10px; border: 1px solid var(--muted); background: var(--surface); font-size: 14px; white-space: nowrap; }
+.so-ctx-place[aria-pressed="mixed"] { border-style: dashed; border-color: var(--text); }
 .so-ctx-place[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface); }
 .so-ctx-sep { width: 1px; align-self: stretch; margin: 0 2px; background: var(--line); }
 
@@ -195,6 +196,10 @@ select { font: inherit; color: inherit; }
 .so-zitem .so-ibtn:hover { background: transparent; }
 .so-zitem button:focus-visible { outline-offset: -3px; outline-color: currentColor; }
 
+.so-zactions { display: flex; flex-wrap: wrap; gap: 8px; }
+.so-pick { display: flex; flex-wrap: wrap; gap: 8px; }
+.so-pick[hidden] { display: none; }
+.so-pick .btn[aria-pressed="true"] { background: var(--text); color: var(--surface); }
 .so-add { position: relative; }
 .so-add-menu {
   position: absolute; z-index: 4; left: 0; top: calc(100% + 4px);

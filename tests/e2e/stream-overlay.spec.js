@@ -127,6 +127,77 @@ test('the zone toolbar removes and duplicates, and undo brings a zone back', asy
   await expect(zone(page, 'info panel')).toHaveCount(0);
 });
 
+test('several zones are edited, moved and removed together', async ({ page }) => {
+  await open(page);
+  await openTab(page, 'Zones');
+  const list = page.getByRole('list', { name: 'Zones' });
+  const row = (n) => list.getByRole('button', { name: new RegExp(`^${n}`) });
+  // Select all, then give every zone the same effect.
+  await page.getByRole('button', { name: 'Select all' }).click();
+  for (const n of ['camera', 'chat']) await expect(row(n)).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('heading', { name: /^All \d+ zones$/ })).toBeVisible();
+  await expect(page.getByText('The selected zones have different effects')).toBeVisible();
+  await effects(page).getByRole('button', { name: 'vines' }).click();
+  await expect(effects(page).getByRole('button', { name: 'vines' })).toHaveAttribute('aria-pressed', 'true');
+  await row('camera').click();
+  await expect(effects(page).getByRole('button', { name: 'vines' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(row('chat')).toHaveAttribute('aria-pressed', 'false');
+  // Select several picks zones one tap at a time.
+  await page.getByRole('button', { name: 'Select several' }).click();
+  await row('chat').click();
+  await expect(page.getByRole('heading', { name: '2 zones selected' })).toBeVisible();
+  await expect(page.locator('details', { hasText: 'Position, size and kind' })).toBeHidden();
+  // Arrow keys move both by the same amount.
+  const cam = zone(page, 'camera');
+  const chat = zone(page, 'chat');
+  const before = [await cam.getAttribute('aria-label'), await chat.getAttribute('aria-label')];
+  await cam.focus();
+  await page.keyboard.press('ArrowUp');
+  const top = (s) => s.match(/top (\d+)/)[1];
+  await expect(cam).toHaveAccessibleName(before[0].replace(/top \d+/, `top ${+top(before[0]) - 10}`));
+  await expect(chat).toHaveAccessibleName(before[1].replace(/top \d+/, `top ${+top(before[1]) - 10}`));
+  // Delete removes both; undo brings both back.
+  await page.keyboard.press('Delete');
+  await expect(cam).toHaveCount(0);
+  await expect(chat).toHaveCount(0);
+  await expect(page.getByRole('status').filter({ hasText: '2 zones removed' })).toBeVisible();
+  await page.keyboard.press('Control+z');
+  await expect(cam).toBeVisible();
+  await expect(chat).toBeVisible();
+});
+
+test('Shift and Ctrl click add zones to the selection on the stage', async ({ page }) => {
+  test.skip(phone(page), 'no modifier keys on phones');
+  await open(page);
+  await zone(page, 'camera').click();
+  await zone(page, 'chat').click({ modifiers: ['Shift'] });
+  const bar = page.getByRole('toolbar', { name: '2 selected zones' });
+  await expect(bar).toBeVisible();
+  await expectAccessible(page, 'stream overlay several zones');
+  // Dragging one of them moves both.
+  const before = await zone(page, 'chat').boundingBox();
+  const box = await zone(page, 'camera').boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 30, box.y + box.height / 2 - 30, { steps: 4 });
+  await page.mouse.up();
+  const after = await zone(page, 'chat').boundingBox();
+  expect(after.y).toBeLessThan(before.y - 10);
+  await expect(bar).toBeVisible();
+  await bar.getByLabel('Effect').selectOption('glitch');
+  await bar.getByRole('button', { name: 'Content under the art’s edges' }).click();
+  await expect(bar.getByRole('button', { name: 'Content under the art’s edges' })).toHaveAttribute('aria-pressed', 'true');
+  await zone(page, 'camera').click({ modifiers: ['Control'] });
+  await expect(page.getByRole('toolbar', { name: 'chat zone' })).toBeVisible();
+  await expect(effects(page).getByRole('button', { name: 'glitch' })).toHaveAttribute('aria-pressed', 'true');
+  // Ctrl+A selects every zone; Escape goes back to one.
+  await zone(page, 'chat').focus();
+  await page.keyboard.press('Control+a');
+  await expect(page.getByRole('toolbar', { name: /selected zones$/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('toolbar', { name: 'chat zone' })).toBeVisible();
+});
+
 test('the toolbar puts a zone\'s content under the art, which fills the front layer', async ({ page }) => {
   await open(page);
   await zone(page, 'camera').click();
