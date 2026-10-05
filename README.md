@@ -2,7 +2,7 @@
 
 Small tools and games that run entirely in your browser.
 
-Not hand-coded at all, just generated with AI by a dev with no greed behind it. No ads, no tracking, and no server. Everything is stored locally in your browser, and you can export, import or reset all of it from the menu on any page.
+Not hand-coded at all, just generated with AI by a dev with no greed behind it. No ads, no tracking, and no server. Everything is stored locally in your browser, and you can export, import or reset all of it from the menu on any page, or reset a single tool's data from the menu on its page.
 
 ## How it works
 
@@ -48,7 +48,7 @@ Unit tests use Node's built-in test runner. Browser tests use Playwright on mobi
 
 - Replace the generic source icon in `shared/icons.js` with GitHub's `mark-github` from Octicons (MIT).
 - Add PNG app icons (192 and 512 px, plus an `apple-touch-icon`) for install on iOS and older Android.
-- In the repo settings, enable Pages with either source: "GitHub Actions", or "Deploy from a branch" with `gh-pages` and `/ (root)`. CI publishes for both after tests pass on `main`.
+- In the repo settings, enable Pages with either source: "GitHub Actions", or "Deploy from a branch" with `gh-pages` and `/ (root)`. CI publishes for both on every push to `main`, without waiting for tests.
 
 ## License
 

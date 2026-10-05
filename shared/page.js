@@ -8,7 +8,7 @@ import { config, sourceUrl } from './config.js';
 import { t, lang } from './i18n.js';
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { openStore, importAll, resetAll, validateBackup, storageAvailable } from './storage.js';
+import { openStore, importAll, resetAll, resetTool, freeze, validateBackup, storageAvailable } from './storage.js';
 import { downloadBackup } from './backup.js';
 import { confirmDialog, messageDialog, customDialog } from './dialog.js';
 import { toast } from './toast.js';
@@ -59,7 +59,7 @@ function showFlash() {
  * Call once per page.
  *   hub:  initPage({ sourcePath: '' })
  *   tool: initPage({ toolId: 'sudoku', toolName: 'sudoku', license: 'MIT', sourcePath: 'tools/sudoku/' })
- *   app:  true for games that fill the screen on narrow viewports. The header
+ *   app:  true for tools and games that fill the screen on narrow viewports. The header
  *         shrinks to a floating menu button and the footer is hidden, so the
  *         page must show the footer's text and source link itself there.
  * Returns { main, slot }: slot is an empty area in the header (the hub puts search there).
@@ -161,6 +161,7 @@ function buildMenu({ toolId, toolName }) {
     h('p', { class: 'menu-label' }, t('menu.data')),
     item('download', t('data.export'), () => { close(true); downloadBackup(); toast(t('toast.exported')); }),
     item('upload', t('data.import'), () => { close(true); fileInput.click(); }),
+    toolId && item('trash', t('data.resetTool', { tool: toolName }), () => { close(true); resetToolFlow(toolId, toolName); }, 'danger'),
     item('trash', t('data.reset'), () => { close(true); resetFlow(); }, 'danger'),
     fileInput,
   );
@@ -209,6 +210,7 @@ async function importFlow(file) {
   if (!ok) return;
   try {
     importAll(data);
+    freeze();
     flash(t('toast.imported'));
     location.reload();
   } catch {
@@ -226,7 +228,23 @@ async function resetFlow() {
   });
   if (!ok) return;
   resetAll();
+  freeze();
   flash(t('toast.reset'));
+  location.reload();
+}
+
+async function resetToolFlow(toolId, toolName) {
+  const ok = await confirmDialog({
+    title: t('resetTool.title', { tool: toolName }),
+    body: t('resetTool.body', { tool: toolName }),
+    confirmLabel: t('data.resetTool', { tool: toolName }),
+    danger: true,
+    offerExport: true,
+  });
+  if (!ok) return;
+  resetTool(toolId);
+  freeze();
+  flash(t('toast.resetTool', { tool: toolName }));
   location.reload();
 }
 

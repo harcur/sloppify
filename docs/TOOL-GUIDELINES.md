@@ -63,13 +63,15 @@ Sizes are uncompressed bytes on disk. `README.md` and `LICENSE` files don't coun
 
 | What | Budget | Now |
 |---|---|---|
-| A tool's own files (everything in `tools/<id>/` except `data/`) | 60 KB | about 3 KB |
+| A tool's own files (everything in `tools/<id>/` except `data/`) | 1 MB | largest about 126 KB (sign document) |
 | A tool's `data/` folder (word lists, opening books, etc.) | 200 KB | none yet |
 | Shared files (`shared/`) | 50 KB | about 33 KB |
 | Hub (`index.html`, `hub*.js`, `hub.css`, `tools.json`) | 20 KB | about 11 KB |
 | Any single image | 20 KB | none yet |
 
-A tool that genuinely needs more (for example a vendored chess engine) adds an exception to the test with a one-line reason and records it in `docs/DECISIONS.md`.
+**The 1 MB tool budget is a ceiling, not a target. Don't waste it.** It's there so a tool that genuinely needs real code (a PDF reader, a chess engine) doesn't need an exception, not so ordinary tools can grow. Every byte still costs every visitor download time, parsing on slow phones and hosting. Most tools should stay well under 100 KB. Before adding weight, check whether the feature earns it, whether the code can be smaller, and whether the heavy part can load only when it's used (a worker, `data/`, a module imported on demand). Mention the tool's size in its pull request when it passes 100 KB.
+
+A tool that genuinely needs more than 1 MB adds an exception to the test with a one-line reason and records it in `docs/DECISIONS.md`.
 
 ### 2.2 Staying inside them
 
@@ -104,8 +106,8 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 ### 3.2 The page shell
 
 - `index.html` is copied from the template: the CSP meta tag, `referrer` and `color-scheme` meta tags, `shared/base.css`, the tool's `style.css`, `shared/theme-boot.js` (applies the saved theme before first paint), the module `app.js`, a `<noscript>` line, and an empty `<main id="main">`.
-- `app.js` calls `initPage({ toolId, toolName, license, sourcePath })` from `shared/page.js` once. That adds the shared header, menu, footer, first-visit notice, theme, recents, favourites and offline caching, and returns `{ main }` to render into. Tools never build their own header, menu or footer.
-- Use the shared helpers instead of writing new ones: `h()` from `shared/dom.js` for elements, `confirmDialog`, `messageDialog` and `customDialog` from `shared/dialog.js` for modals, `toast()` from `shared/toast.js` for short status messages, and `icon()` from `shared/icons.js`.
+- `app.js` calls `initPage({ toolId, toolName, license, sourcePath, app: true })` from `shared/page.js` once. That adds the shared header, menu, footer, first-visit notice, theme, recents, favourites and offline caching, and returns `{ main }` to render into. Tools never build their own header, menu or footer.
+- Use the shared helpers instead of writing new ones: `h()` from `shared/dom.js` for elements, `confirmDialog`, `messageDialog` and `customDialog` from `shared/dialog.js` for modals, `toast()` from `shared/toast.js` for short status messages, `optionsSheet()` from `shared/sheet.js` for the phone options sheet, and `icon()` from `shared/icons.js`.
 - All paths are relative (`../../shared/...`), so the site works under `/sloppify/` and on any other path or domain.
 
 ### 3.3 No requests, ever
@@ -125,7 +127,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 
 - All storage goes through `openStore(id, { version, migrate })` from `shared/storage.js`. Never use `localStorage`, `sessionStorage` or IndexedDB directly. Keys become `sloppify:<tool-id>:<key>`; nothing ever touches keys without the `sloppify:` prefix.
 - The store's API: `get(key, fallback)`, `set(key, value)` (returns `false` when storage is full or blocked), `remove(key)`, `keys()`, `getAll()` and `clear()`. Values are anything JSON can hold.
-- Whatever a tool saves is automatically included in the site-wide export, import and reset. A tool doesn't add its own.
+- Whatever a tool saves is automatically included in the site-wide export, import and reset, and in the "Reset <tool> data" item the menu adds on the tool's page. A tool doesn't add its own.
 - **Migrations, not breaking changes.** Each store has a schema `version`. When the shape of saved data changes, bump the version and handle the old shape in `migrate(data, fromVersion, toVersion)`. It runs on the tool's own page, so an imported old backup is upgraded the next time the tool opens.
 - After opening a store, call `await guardStore(store, name)` from `shared/page.js`. If the data can't be migrated, or comes from a newer version, it's left untouched and the visitor is offered an export and a reset of that tool. This is the only update notice anyone ever sees; updates are otherwise silent.
 - Tools must still work when storage is unavailable (private browsing, blocked storage): they just don't remember anything.
@@ -144,6 +146,12 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 ### 4.1 Layouts
 
 - Every tool has a **designed mobile layout and a designed desktop layout**, not a stacked fallback. Think about thumb reach and on-screen keyboards on mobile, and use the width on desktop (side panels, larger boards) without stretching text lines.
+- **On phones every tool and game feels like an app**, not a web page. Pass `app: true` to `initPage`: on narrow screens (under 720px) the site header shrinks to a floating menu button and the footer is hidden. The page then fills the viewport (`100dvh`, safe-area padding, no page scroll) with a fixed structure:
+  - **top:** the current state in one or two short lines (phase, counters, score), with room on the right for the menu button;
+  - **middle:** the main thing (board, result, timer), sized to the space that's left;
+  - **bottom, within thumb reach:** the primary action as a full-width button, with secondary actions in one row under it, and an options button last.
+  - Everything else (settings, help, records) goes in the **options sheet** from `shared/sheet.js` (`optionsSheet({ title, sourcePath, returnFocus })`). It slides up from the bottom and ends with the footer's AI note and source link, which the page hides on phones. On desktop the same content sits next to the main area instead; move it between the two with a `matchMedia('(max-width: 719px)')` listener.
+  - Content that genuinely needs room (a long text, a big board) scrolls inside its own area, never the page.
 - Content sits in `.wrap` (centred, max width 1100px, safe-area padding). The shared header is pinned at the top.
 - Smooth and responsive on both; see 2.3.
 
@@ -158,7 +166,7 @@ A tool that genuinely needs more (for example a vendored chess engine) adds an e
 
 ### 4.4 Colour
 
-Use the tokens from `shared/base.css`, never raw colours for chrome or text: `--bg`, `--surface`, `--text`, `--muted`, `--line`, `--tool`, `--game`, `--danger`. They switch automatically between light and dark.
+Use the tokens from `shared/base.css`, never raw colours for chrome or text: `--bg`, `--surface`, `--text`, `--muted`, `--line`, `--tool`, `--game`, `--party`, `--danger`. They switch automatically between light and dark.
 
 | Token | Light | Dark |
 |---|---|---|
@@ -169,6 +177,7 @@ Use the tokens from `shared/base.css`, never raw colours for chrome or text: `--
 | `--line` | `#CFCFCB` | `#343434` |
 | `--tool` | `#2F5D8A` | `#82AEDB` |
 | `--game` | `#B34A24` | `#EE8A62` |
+| `--party` | `#8E3A9E` | `#DDA2EC` |
 | `--danger` | `#A32D2D` | `#F09595` |
 
 Colour by zone:
@@ -176,6 +185,7 @@ Colour by zone:
 - **Shared chrome** (header, menu, footer): neutral greys only, identical on every page.
 - **Tools:** monochrome. Colour only carries meaning: focus, errors, chart series, the main result.
 - **Games:** colourful and good-looking, not utilitarian. Inside the play area a game has its own palette, textures and character; the chrome around it (header, menu, footer) stays neutral. See 4.6.
+- **Party:** made for a group around one screen. Everything games may do, turned up a little for people watching from across a table. See 4.7.
 - Colour is never the only signal. Pair it with text, shape or pattern.
 
 ### 4.5 Theme
@@ -184,14 +194,26 @@ Colour by zone:
 
 ### 4.6 Games
 
+How-to notes from the existing games (board accessibility, sizing, the narrow-screen layout, palette checks, animation, saving, tests) are in `.claude/skills/game-development/SKILL.md`.
+
 Games should be fun to look at and satisfying to play. Tools stay calm; games get to show off.
 
 - **Colour:** a bold palette of the game's own, in both light and dark. Not the site's greys, and not a copy of a known product's look (see 1.4).
 - **Texture and character:** pieces, tiles and boards can use gradients, patterns, highlights and playful vector shapes. The site's sharp corners and 1px lines still apply to the page around the game, and should feel at home inside it too.
 - **Motion that rewards play:** pieces that pop in, ripple outwards, settle or shake; a celebration on a win. Animations follow the action, last well under a second (a win celebration can run a little longer), and never block input.
-- **Full screen on phones:** pass `app: true` to `initPage`. On narrow screens the site header shrinks to a floating menu button and the footer is hidden, so the game fills the screen like an app. The game then lays itself out to fill the viewport (counters at the top, the board in the middle, main buttons at the bottom within thumb reach) and puts everything else, including the footer's AI note and source link, in its own options sheet. Boards that can't fit at a 32px cell size scroll inside their area rather than shrinking below the touch target size.
+- **Full screen on phones:** like every page (4.1): counters at the top, the board in the middle, main buttons at the bottom, everything else in the options sheet. Boards that can't fit at a 32px cell size scroll inside their area rather than shrinking below the touch target size.
 - **Vectors only:** CSS and inline SVG, within the size budget (Part 2). No images, video or animation libraries.
 - **Still accessible:** contrast rules apply to the game's own colours too (4.5:1 for text such as numbers, 3:1 between states that need telling apart and for pieces against their background), colour is never the only signal, and everything decorative is hidden from screen readers. Under `prefers-reduced-motion` the game is fully playable with all animation off.
+
+### 4.7 Party
+
+The `party` category is for things a group uses together on one screen: picking who goes first, splitting teams. It follows every rule in 4.6, plus:
+
+- **Readable from across a table:** the result in very large type, and one big main button within thumb reach.
+- **Suspense is the point:** a reveal (a spin, a countdown) may run a few seconds, but it's decided before it starts, never blocks the rest of the page, and can be skipped. Under `prefers-reduced-motion` the result shows at once.
+- **Extras stay optional:** vibration where the browser supports it, and nothing that makes sound unless the visitor turns it on.
+
+The base doesn't change: neutral chrome, sharp corners, 1px lines, system fonts, the tokens and the accessibility rules all still apply. Tools never take on this style; they stay utilitarian.
 
 ---
 
@@ -210,10 +232,11 @@ WCAG 2.2 AA on every page, checked automatically and by hand.
 
 ## Part 6: Tests
 
-Every tool comes with tests and must pass CI before it's deployed. Test tooling is dev-only and never deployed.
+Every tool comes with tests. Publishing doesn't wait for them (see `docs/DECISIONS.md`), so run them locally before merging, and fix any failure CI reports on `main` straight away. Test tooling is dev-only and never deployed.
 
 - **Unit tests** (`tests/unit/<id>.test.js`, Node's built-in `node:test`) for the tool's logic: calculations, solvers, generators, rules and migrations. Keep that logic in plain modules without DOM access so it can be tested directly.
-- **Browser tests** (`tests/e2e/<id>.spec.js`, Playwright) for the main flows, on mobile and desktop in Chromium, Firefox and WebKit. Use the helpers in `tests/e2e/helpers.js`: track external requests (must stay empty), skip the first-visit notice, and run `expectAccessible` with axe-core in both light and dark mode, including any dialogs and game states.
+- **Browser tests** (`tests/e2e/<id>.spec.js`, Playwright) for the main flows, on mobile and desktop in Chromium, Firefox and WebKit. Use the helpers in `tests/e2e/helpers.js`: track external requests (must stay empty), skip the first-visit notice, and run `expectAccessible` with axe-core in both light and dark mode, including any dialogs and game states. The accessibility checks run in Chromium only (desktop and mobile); the other browsers run the same tests without them.
+- **The spec's file name ties it to its tool.** `npm run test:changed` runs only the browser tests for the folders a change touches (`scripts/affected-tests.mjs`): a change in `tools/<id>/` runs `tests/e2e/<id>.spec.js`, hub files run `hub.spec.js`, and anything shared (`shared/`, `sw.js`, test helpers, config, CI) runs everything. So a tool's browser tests go in `tests/e2e/<id>.spec.js` and test only that tool. CI runs every browser test on `main`, alongside the deploy.
 - **Size budgets** are checked automatically (2.1).
 - **Licences** are checked by REUSE lint.
 
@@ -234,12 +257,12 @@ Answer these in the pull request or issue before building:
 ### Before merging
 
 - [ ] Fits Part 1: self-contained, a common use, low stakes, no trademarks or copies
-- [ ] Within its size budget; heavy work in a Worker
+- [ ] Within its size budget and no bigger than it needs to be (size noted in the PR if over 100 KB); heavy work in a Worker
 - [ ] Started from the template, `tool.json` filled in, `npm run tools` run, uses `initPage` and the shared helpers
 - [ ] No external requests; CSP untouched; no inline scripts or styles; all paths relative
 - [ ] Every visible string in `strings.js`
 - [ ] Storage only through `openStore`, with `migrate` and `guardStore`
-- [ ] Designed mobile and desktop layouts; tokens only; colour by zone; light and dark
+- [ ] Designed mobile and desktop layouts; on phones an app layout (`app: true`, state on top, main thing in the middle, actions at the bottom, the rest in the options sheet); tokens only; colour by zone; light and dark
 - [ ] WCAG 2.2 AA: keyboard, screen reader, contrast, reduced motion
 - [ ] SPDX headers on every file; licence set correctly
-- [ ] Unit and browser tests, passing in CI
+- [ ] Unit and browser tests, passing locally (`npm run test:unit`, `npm run test:changed`)

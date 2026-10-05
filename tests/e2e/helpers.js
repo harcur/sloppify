@@ -23,7 +23,12 @@ export async function markNoticeSeen(page) {
   });
 }
 
+// Accessibility checks run in Chromium only (desktop and mobile). What axe
+// checks (contrast, names, roles, structure) comes from the page, not the
+// engine, and it's the slowest part of the suite. Other browsers still run
+// every step around it.
 export async function expectAccessible(page, label) {
+  if (page.context().browser()?.browserType().name() !== 'chromium') return;
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
     .analyze();
