@@ -107,7 +107,7 @@ A tool that genuinely needs more than 1 MB adds an exception to the test with a 
 
 - `index.html` is copied from the template: the CSP meta tag, `referrer` and `color-scheme` meta tags, `shared/base.css`, the tool's `style.css`, `shared/theme-boot.js` (applies the saved theme before first paint), the module `app.js`, a `<noscript>` line, and an empty `<main id="main">`.
 - `app.js` calls `initPage({ toolId, toolName, license, sourcePath, app: true })` from `shared/page.js` once. That adds the shared header, menu, footer, first-visit notice, theme, recents, favourites and offline caching, and returns `{ main }` to render into. Tools never build their own header, menu or footer.
-- Use the shared helpers instead of writing new ones: `h()` from `shared/dom.js` for elements, `confirmDialog`, `messageDialog` and `customDialog` from `shared/dialog.js` for modals, `toast()` from `shared/toast.js` for short status messages, `optionsSheet()` from `shared/sheet.js` for the phone options sheet, and `icon()` from `shared/icons.js`.
+- Use the shared helpers instead of writing new ones: `h()` from `shared/dom.js` for elements, `confirmDialog`, `messageDialog` and `customDialog` from `shared/dialog.js` for modals, `toast()` from `shared/toast.js` for short status messages (with an optional action button, such as Undo: prefer undo to a confirmation for anything that can be undone), `optionsSheet()` from `shared/sheet.js` for the phone options sheet, and `icon()` from `shared/icons.js`.
 - All paths are relative (`../../shared/...`), so the site works under `/sloppify/` and on any other path or domain.
 
 ### 3.3 No requests, ever

@@ -15,7 +15,29 @@ const open = async (page) => {
   await page.goto('./tools/stream-overlay/');
   await expect(page.locator('.so-stage[data-drawn="true"]')).toBeAttached();
 };
+const phone = (page) => page.viewportSize().width < 720;
+// Opens a settings tab: a tab on wide screens, a tool at the bottom on phones.
+const openTab = async (page, name) => {
+  if (!phone(page)) { await page.getByRole('tab', { name }).click(); return; }
+  const tool = page.getByRole('navigation', { name: 'Tools' }).getByRole('button', { name, exact: true });
+  if (await tool.getAttribute('aria-pressed') !== 'true') await tool.click();
+};
+// Canvas size and starting layouts: in Use it on wide screens, in the options sheet on phones.
+const openLayouts = async (page) => {
+  if (phone(page)) await page.getByRole('button', { name: 'More' }).click();
+  else await openTab(page, 'Use it');
+};
+const useLayout = async (page, value) => {
+  await openLayouts(page);
+  await page.getByLabel('Starting layout').selectOption(value);
+  await page.getByRole('button', { name: 'Use layout' }).click();
+};
 const zone = (page, name) => page.getByRole('button', { name: new RegExp(`^${name}: left`) });
+const effects = (page) => page.getByRole('group', { name: 'Effect on the art' });
+const position = async (page) => {
+  const more = page.locator('details', { hasText: 'Position, size and kind' });
+  if (!(await more.evaluate((d) => d.open))) await more.locator('summary').click();
+};
 // Share of a canvas's pixels that aren't transparent.
 const coverage = (locator) => locator.evaluate((c) => {
   const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -44,9 +66,11 @@ test('keyboard: arrows move the zone, Shift resizes it, and it is saved', async 
   await expect(cam).toHaveAccessibleName('camera: left 50, top 690, 480 by 340');
   await page.keyboard.press('Shift+ArrowLeft');
   await expect(page.getByLabel('Width', { exact: true })).toHaveValue('470');
+  await page.keyboard.press('Alt+ArrowDown');
+  await expect(cam).toHaveAccessibleName('camera: left 50, top 691, 470 by 340');
   await page.waitForTimeout(400);
   await page.reload();
-  await expect(zone(page, 'camera')).toHaveAccessibleName('camera: left 50, top 690, 470 by 340');
+  await expect(zone(page, 'camera')).toHaveAccessibleName('camera: left 50, top 691, 470 by 340');
 });
 
 test('dragging a zone moves it, dragging its corner resizes it', async ({ page }) => {
@@ -66,48 +90,107 @@ test('dragging a zone moves it, dragging its corner resizes it', async ({ page }
   expect(+(await page.getByLabel('Width', { exact: true }).inputValue())).toBeLessThan(380);
 });
 
-test('zones can be added, edited and removed', async ({ page }) => {
+test('zones can be added, edited and removed from the list', async ({ page }) => {
   await open(page);
-  await page.getByLabel('Kind of zone to add').selectOption('buttons');
   await page.getByRole('button', { name: 'Add zone' }).click();
-  await expect(zone(page, 'buttons')).toBeFocused();
-  await expect(page.getByLabel('Effect on the art')).toHaveValue('pile');
-  await page.getByLabel('Effect on the art').selectOption('splash');
+  await page.locator('#so-add-menu').getByRole('button', { name: 'buttons' }).click();
+  await expect(page.getByRole('list', { name: 'Zones' }).getByRole('button', { name: /^buttons/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(effects(page).getByRole('button', { name: 'gravity' })).toHaveAttribute('aria-pressed', 'true');
+  await effects(page).getByRole('button', { name: 'paint splash' }).click();
   await expect(page.getByText('Paint splats around the edges')).toBeVisible();
+  await position(page);
   await page.getByLabel('Top', { exact: true }).fill('5000');
   await page.getByLabel('Top', { exact: true }).press('Enter');
   await expect(page.getByLabel('Top', { exact: true })).toHaveValue(String(1080 - 90));
-  await page.getByRole('button', { name: 'Remove zone' }).click();
+  await page.getByRole('button', { name: 'Remove buttons' }).click();
   await expect(zone(page, 'buttons')).toHaveCount(0);
-  await expect(page.locator('[aria-live]').filter({ hasText: 'buttons removed' })).toBeAttached();
+  await expect(page.getByRole('status').filter({ hasText: 'buttons removed' })).toBeVisible();
+});
+
+test('the zone toolbar removes and duplicates, and undo brings a zone back', async ({ page }) => {
+  await open(page);
+  await zone(page, 'chat').click();
+  await page.getByRole('toolbar', { name: 'chat zone' }).getByRole('button', { name: 'Duplicate zone' }).click();
+  await expect(zone(page, 'chat 2')).toBeVisible();
+  // The copy is selected, so the toolbar now acts on it.
+  await page.getByRole('toolbar', { name: 'chat 2 zone' }).getByRole('button', { name: 'Remove zone' }).click();
+  await expect(zone(page, 'chat 2')).toHaveCount(0);
+  await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+  await expect(zone(page, 'chat 2')).toBeVisible();
+  // Delete removes the focused zone; Ctrl+Z brings it back, Ctrl+Shift+Z removes it again.
+  await zone(page, 'info panel').focus();
+  await page.keyboard.press('Delete');
+  await expect(zone(page, 'info panel')).toHaveCount(0);
+  await page.keyboard.press('Control+z');
+  await expect(zone(page, 'info panel')).toBeVisible();
+  await page.keyboard.press('Control+Shift+z');
+  await expect(zone(page, 'info panel')).toHaveCount(0);
+});
+
+test('the toolbar puts a zone\'s content under the art, which fills the front layer', async ({ page }) => {
+  await open(page);
+  await zone(page, 'camera').click();
+  const under = page.getByRole('toolbar', { name: 'camera zone' }).getByRole('button', { name: 'Content under the art’s edges' });
+  await expect(under).toHaveAttribute('aria-pressed', 'true');
+  await under.click();
+  await expect(under).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(() => coverage(page.locator('canvas.so-layer').last())).toBe(0);
+});
+
+test('preview hides the zones and shows one layer at a time', async ({ page }) => {
+  await open(page);
+  if (phone(page)) await page.getByRole('navigation', { name: 'Tools' }).getByRole('button', { name: 'Preview' }).click();
+  else await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  await expect(zone(page, 'camera')).toBeHidden();
+  await expect(page.getByRole('toolbar', { name: 'camera zone' })).toBeHidden();
+  const layers = page.getByRole('group', { name: 'Show layers' }).first();
+  await layers.getByRole('button', { name: 'Back' }).click();
+  await expect(page.locator('canvas.so-layer').last()).toBeHidden();
+  await layers.getByRole('button', { name: 'Front' }).click();
+  await expect(page.locator('canvas.so-layer').first()).toBeHidden();
+  await page.keyboard.press('p');
+  await expect(zone(page, 'camera')).toBeVisible();
+});
+
+test('full screen previews the overlay and returns to editing', async ({ page }) => {
+  await open(page);
+  await page.getByRole('button', { name: 'Full screen preview' }).click();
+  const exit = page.getByRole('button', { name: 'Exit full screen' });
+  await expect(exit).toBeVisible();
+  await expect(exit).toBeFocused();
+  await expect(zone(page, 'camera')).toBeHidden();
+  await exit.click();
+  await expect(exit).toBeHidden();
+  await expect(zone(page, 'camera')).toBeVisible();
 });
 
 test('a starting layout replaces the zones after confirming', async ({ page }) => {
   await open(page);
-  await page.getByLabel('Starting layout').selectOption('intermission');
-  await page.getByRole('button', { name: 'Use layout' }).click();
+  await useLayout(page, 'intermission');
   const dialog = page.getByRole('dialog', { name: 'replace this layout?' });
   await dialog.getByRole('button', { name: 'Cancel' }).click();
-  await expect(zone(page, 'camera')).toBeVisible();
+  await expect(zone(page, 'camera')).toBeAttached();
   await page.getByRole('button', { name: 'Use layout' }).click();
   await dialog.getByRole('button', { name: 'Replace' }).click();
   await expect(zone(page, 'camera')).toHaveCount(0);
   await expect(zone(page, 'info panel')).toBeVisible();
   // No zone has content under the art, so there's no front layer to add.
+  await openTab(page, 'Use it');
   await expect(page.getByRole('button', { name: 'Download front layer' })).toBeDisabled();
   await expect(page.getByText('the front layer is empty')).toBeVisible();
 });
 
 test('the art stream layout uses a taped canvas, hatching and the art effects', async ({ page }) => {
   await open(page);
-  await page.getByLabel('Starting layout').selectOption('art');
-  await page.getByRole('button', { name: 'Use layout' }).click();
+  await useLayout(page, 'art');
   await page.getByRole('dialog', { name: 'replace this layout?' }).getByRole('button', { name: 'Replace' }).click();
-  await expect(page.getByLabel('Style')).toHaveValue('hatch');
+  await openTab(page, 'Art');
+  await expect(page.getByRole('group', { name: 'Style' }).getByRole('button', { name: 'pen hatching' })).toHaveAttribute('aria-pressed', 'true');
+  await openTab(page, 'Zones');
   await zone(page, 'canvas').click();
-  await expect(page.getByLabel('Effect on the art')).toHaveValue('tape');
+  await expect(effects(page).getByRole('button', { name: 'tape' })).toHaveAttribute('aria-pressed', 'true');
   for (const [name, hint] of [['vines', 'Vines grow out'], ['glitch', 'Colour slices tear off']]) {
-    await page.getByLabel('Effect on the art').selectOption(name);
+    await effects(page).getByRole('button', { name }).click();
     await expect(page.getByText(hint)).toBeVisible();
   }
   await expect(page.locator('.so-stage[data-drawn="true"]')).toBeAttached();
@@ -116,6 +199,7 @@ test('the art stream layout uses a taped canvas, hatching and the art effects', 
 
 test('downloads a full size layer as a PNG', async ({ page }) => {
   await open(page);
+  await openTab(page, 'Use it');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: 'Download back layer' }).click(),
@@ -125,6 +209,7 @@ test('downloads a full size layer as a PNG', async ({ page }) => {
 
 test('the browser source link draws the layer on a transparent page', async ({ page }) => {
   await open(page);
+  await openTab(page, 'Use it');
   const link = await page.getByLabel('Front layer link', { exact: true }).inputValue();
   expect(link).toMatch(/view\.html#front\./);
   await page.goto(link);
@@ -143,8 +228,10 @@ for (const scheme of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: scheme });
     await open(page);
     await expectAccessible(page, `stream overlay ${scheme}`);
-    await page.getByLabel('Show zones').uncheck();
-    await page.getByRole('button', { name: 'Use layout' }).click();
+    await page.keyboard.press('p');
+    await openTab(page, 'Art');
+    await expectAccessible(page, `stream overlay art ${scheme}`);
+    await useLayout(page, 'art');
     await expectAccessible(page, `stream overlay dialog ${scheme}`);
   });
 }
