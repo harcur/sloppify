@@ -219,6 +219,14 @@ select { font: inherit; color: inherit; }
 .so-swatches .so-chip[aria-pressed="true"] { background: var(--surface); color: var(--text); outline: 2px solid var(--text); outline-offset: -3px; }
 .so-dots { display: flex; height: 14px; }
 .so-dots > i { flex: 1; }
+.so-custom { padding: 14px; border: 1px solid var(--line); }
+.so-colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.so-color { display: block; width: 100%; height: 40px; padding: 2px; border: 1px solid var(--line); border-radius: 0; background: var(--surface); cursor: pointer; }
+.so-color::-webkit-color-swatch-wrapper { padding: 0; }
+.so-color::-webkit-color-swatch { border: 0; border-radius: 0; }
+.so-color::-moz-color-swatch { border: 0; border-radius: 0; }
+.so-profiles { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); }
+.so-profile .so-dots { flex: none; width: 56px; }
 .so-more { border-top: 1px solid var(--line); padding-top: 4px; }
 .so-more > summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; font-size: 14px; }
 .so-more[open] { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding-bottom: 4px; }
