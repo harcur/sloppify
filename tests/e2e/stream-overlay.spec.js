@@ -197,6 +197,39 @@ test('the art stream layout uses a taped canvas, hatching and the art effects', 
   expect(await coverage(page.locator('canvas.so-layer').first())).toBeGreaterThan(0.15);
 });
 
+test('custom colours start from the current palette and save as a profile', async ({ page }) => {
+  await open(page);
+  await openTab(page, 'Art');
+  const colours = page.getByRole('group', { name: 'Colours' });
+  const custom = colours.getByRole('button', { name: 'custom', exact: true });
+  await custom.click();
+  await expect(custom).toHaveAttribute('aria-pressed', 'true');
+  const bg = page.getByLabel('Background', { exact: true });
+  await expect(bg).toHaveValue('#0d0b1f', { ignoreCase: true });
+  await bg.fill('#336699');
+  await page.getByLabel('Profile name').fill('studio');
+  await page.getByRole('button', { name: 'Save profile' }).click();
+  await expect(page.getByText('studio saved')).toBeVisible();
+  const profile = page.getByRole('list', { name: 'your colour profiles' }).getByRole('button', { name: 'studio', exact: true });
+  await expect(profile).toHaveAttribute('aria-pressed', 'true');
+
+  await page.reload();
+  await expect(page.locator('.so-stage[data-drawn="true"]')).toBeAttached();
+  await openTab(page, 'Art');
+  await expect(bg).toHaveValue('#336699');
+  await colours.getByRole('button', { name: 'ember' }).click();
+  await expect(bg).toBeHidden();
+  await expect(profile).toHaveAttribute('aria-pressed', 'false');
+  await profile.click();
+  await expect(custom).toHaveAttribute('aria-pressed', 'true');
+  await expect(bg).toHaveValue('#336699');
+
+  await page.getByRole('button', { name: 'Remove studio' }).click();
+  await expect(profile).toBeHidden();
+  await page.getByRole('status').getByRole('button', { name: 'Undo' }).click();
+  await expect(profile).toBeVisible();
+});
+
 test('downloads a full size layer as a PNG', async ({ page }) => {
   await open(page);
   await openTab(page, 'Use it');
@@ -230,6 +263,8 @@ for (const scheme of ['light', 'dark']) {
     await expectAccessible(page, `stream overlay ${scheme}`);
     await page.keyboard.press('p');
     await openTab(page, 'Art');
+    await page.getByRole('group', { name: 'Colours' }).getByRole('button', { name: 'custom', exact: true }).click();
+    await page.getByRole('button', { name: 'Save profile' }).click();
     await expectAccessible(page, `stream overlay art ${scheme}`);
     await useLayout(page, 'art');
     await expectAccessible(page, `stream overlay dialog ${scheme}`);

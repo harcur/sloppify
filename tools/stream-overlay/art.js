@@ -6,7 +6,7 @@
 // canvas API, so it runs in a worker on OffscreenCanvas or on the page.
 
 import { field, noise, rng, sdBox, smooth } from './field.js';
-import { PALETTES } from './design.js';
+import { paletteOf } from './design.js';
 
 const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255);
 const gapOf = (d) => 34 - d.density * 2.6;
@@ -17,7 +17,7 @@ export function render(design, scale, makeCanvas) {
   const W = Math.max(1, Math.round(design.w * scale));
   const H = Math.max(1, Math.round(design.h * scale));
   const s = W / design.w;
-  const pal = PALETTES[design.palette];
+  const pal = paletteOf(design);
   const F = field(design);
   const art = makeCanvas(W, H);
   const fx = makeCanvas(W, H);
@@ -766,7 +766,7 @@ export { STYLES, EFFECTS };
  * under the art also go to the front layer.
  */
 export function compose(design, s, art, fx, W, H) {
-  const pal = PALETTES[design.palette];
+  const pal = paletteOf(design);
   const bg = rgb(pal.bg);
   const fr = rgb(pal.frame);
   const grain = noise(design.seed ^ 0x5BD1E995);

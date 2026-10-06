@@ -4,7 +4,7 @@ Generative art overlays for streaming. Mark zones for the camera, chat, alerts, 
 
 The result is two transparent layers: **back** goes under all sources, **front** goes over them and only holds art over the edges of zones placed under the art. Both download as PNGs, or load as browser sources from a link that holds the whole design after the `#`, so nothing is stored or sent anywhere.
 
-- `design.js`: the design, presets, limits and link encoding (no DOM, unit tested)
+- `design.js`: the design, presets, palettes and custom colours, saved colour profiles, limits and link encoding (no DOM, unit tested)
 - `field.js`: noise, zone shapes (signed distance) and the shared height and flow field (no DOM, unit tested)
 - `art.js`: draws the art styles (draped lines, flow lines, contours, wireframe mesh, halftone dots, stippling, tile mosaic, brush dashes, pen hatching) and zone effects, and composites the two layers (`compose` is unit tested)
 - `worker.js`, `renderer.js`: draws in a worker on OffscreenCanvas, or on the page where that isn't supported

@@ -11,7 +11,8 @@ import { optionsSheet } from '../../shared/sheet.js';
 import { strings } from './strings.js';
 import {
   SIZES, KINDS, EFFECT_ORDER, STYLE_ORDER, PALETTES, RANGES, MAX_ZONES, PRESET_NAMES,
-  newZone, fitZone, normalize, resize, preset, usesFront, encode,
+  CUSTOM_KEYS, MAX_PROFILES, PROFILE_NAME_MAX,
+  newZone, fitZone, normalize, resize, preset, usesFront, encode, colorsOf, normalizeProfiles,
 } from './design.js';
 import { renderLayers } from './renderer.js';
 
@@ -25,10 +26,11 @@ const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sou
 main.classList.add('so-main');
 const narrow = matchMedia('(max-width: 719px)');
 
-// Saved: the design.
+// Saved: the design, and colour profiles (custom palettes kept for any design).
 const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 const saved = saving ? store.get('design') : null;
+let profiles = saving ? normalizeProfiles(store.get('profiles')) : [];
 let design = saved ? normalize(saved) : preset('gameplay', '1920x1080', newSeed());
 let sel = design.zones[0]?.id ?? 0;
 // edit or preview; in preview, which layers show. Peek is preview while Space is held.
@@ -197,23 +199,116 @@ const zoneEditor = h('div', { class: 'so-editor' },
 // Art tab ---------------------------------------------------------------
 
 const setArt = (key, value, commit = true) => { design[key] = value; syncArt(); if (commit) changed(); else queueRender(true); };
-const swatch = (k) => {
-  const dots = h('span', { class: 'so-dots', 'aria-hidden': 'true' });
-  const p = PALETTES[k];
-  for (const c of [p.bg, ...p.colors.slice(0, 3)]) {
+// A strip of a palette's colours: background, then the first three art colours.
+const dotsOf = (colors, dots = h('span', { class: 'so-dots', 'aria-hidden': 'true' })) => {
+  dots.replaceChildren();
+  for (const c of [colors[0], ...colors.slice(2, 5)]) {
     const dot = h('i');
     dot.style.background = c;
     dots.append(dot);
   }
-  return [dots, T(`palette.${k}`)];
+  return dots;
+};
+const customDots = h('span', { class: 'so-dots', 'aria-hidden': 'true' });
+const swatch = (k) => {
+  if (k === 'custom') return [customDots, T('palette.custom')];
+  const p = PALETTES[k];
+  return [dotsOf([p.bg, p.frame, ...p.colors]), T(`palette.${k}`)];
+};
+// Custom starts from the colours on screen, so a palette can be tweaked rather than built from nothing.
+const pickPalette = (k) => {
+  if (k === 'custom' && design.palette !== 'custom') design.custom = colorsOf(design);
+  setArt('palette', k);
 };
 const af = {
   style: choices(T('style'), STYLE_ORDER, (k) => T(`style.${k}`), (k) => setArt('style', k)),
-  palette: choices(T('palette'), Object.keys(PALETTES), swatch, (k) => setArt('palette', k), 'so-swatches'),
+  palette: choices(T('palette'), [...Object.keys(PALETTES), 'custom'], swatch, pickPalette, 'so-swatches'),
   density: slider('density', T('density'), plain, (v, c) => setArt('density', v, c)),
   reach: slider('reach', T('reach'), (n) => (n >= 100 ? T('reach.all') : T('percent', { n })), (v, c) => setArt('reach', v, c)),
   fill: h('input', { type: 'checkbox', id: 'so-fill', onchange: (e) => setArt('fill', e.target.checked) }),
 };
+
+// Custom colours: one picker each, then saving them as a profile.
+const setColor = (i, value, commit) => {
+  const custom = [...design.custom];
+  custom[i] = value.toUpperCase();
+  setArt('custom', custom, commit);
+};
+const colorInputs = CUSTOM_KEYS.map((k, i) => {
+  const input = h('input', { type: 'color', class: 'so-color' });
+  input.addEventListener('input', () => setColor(i, input.value, false));
+  input.addEventListener('change', () => setColor(i, input.value, true));
+  return input;
+});
+const profileName = h('input', { type: 'text', class: 'so-input', maxlength: PROFILE_NAME_MAX, autocomplete: 'off',
+  onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); saveProfile(); } } });
+const profileNote = h('p', { class: 'so-note', 'aria-live': 'polite' });
+const customEditor = h('section', { class: 'so-section so-custom', 'aria-labelledby': 'so-h-custom' },
+  h('h3', { class: 'so-h3', id: 'so-h-custom' }, T('custom')),
+  h('div', { class: 'so-colors' }, CUSTOM_KEYS.map((k, i) => control(T(`color.${k}`), colorInputs[i]))),
+  h('div', { class: 'so-row' }, control(T('profile.name'), profileName),
+    h('button', { type: 'button', class: 'btn', onclick: () => saveProfile() }, T('profile.save'))),
+  profileNote);
+
+const profileList = h('ul', { class: 'so-profiles', 'aria-labelledby': 'so-h-profiles' });
+const profileGroup = h('section', { class: 'so-section', 'aria-labelledby': 'so-h-profiles' },
+  h('h3', { class: 'so-h3', id: 'so-h-profiles' }, T('profiles')), profileList);
+
+const sameColors = (a, b) => a.length === b.length && a.every((c, i) => c === b[i]);
+
+function saveProfiles() {
+  if (saving) store.set('profiles', profiles);
+  renderProfiles();
+}
+
+function saveProfile() {
+  const typed = profileName.value.trim().slice(0, PROFILE_NAME_MAX);
+  let n = profiles.length + 1;
+  while (!typed && profiles.some((p) => p.name === T('profile.default', { n }))) n++;
+  const label = typed || T('profile.default', { n });
+  const colors = [...design.custom];
+  const old = profiles.find((p) => p.name === label);
+  if (old) old.colors = colors;
+  else if (profiles.length >= MAX_PROFILES) { profileNote.textContent = T('profile.max'); return; }
+  else profiles.push({ name: label, colors });
+  profileName.value = '';
+  profileNote.textContent = T(old ? 'profile.updated' : 'profile.saved', { name: label });
+  saveProfiles();
+}
+
+function useProfile(p) {
+  design.palette = 'custom';
+  design.custom = [...p.colors];
+  syncArt();
+  changed();
+  say(T('profile.used', { name: p.name }));
+}
+
+function removeProfile(i) {
+  const [p] = profiles.splice(i, 1);
+  saveProfiles();
+  toast(T('profile.removed', { name: p.name }), 6000, { label: T('undo'), onClick: () => {
+    profiles.splice(Math.min(i, profiles.length), 0, p);
+    saveProfiles();
+  } });
+  (profileList.querySelector(`[data-i="${Math.min(i, profiles.length - 1)}"]`) ?? profileName).focus();
+}
+
+function renderProfiles() {
+  profileGroup.hidden = !profiles.length;
+  profileList.replaceChildren(...profiles.map((p, i) => h('li', { class: 'so-zitem' },
+    h('button', { type: 'button', class: 'so-zrow so-profile', 'data-i': i, 'aria-pressed': 'false', onclick: () => useProfile(p) },
+      dotsOf(p.colors), h('span', { class: 'so-zname' }, p.name)),
+    iconBtn('x', T('profile.remove', { name: p.name }), () => removeProfile(i), 'so-del'))));
+  syncProfiles();
+}
+
+function syncProfiles() {
+  const on = design.palette === 'custom';
+  for (const b of profileList.querySelectorAll('.so-profile')) {
+    b.setAttribute('aria-pressed', String(on && sameColors(profiles[+b.dataset.i].colors, design.custom)));
+  }
+}
 
 // Use it tab -------------------------------------------------------------
 
@@ -268,7 +363,7 @@ const TABS = ['zones', 'art', 'use'];
 const panels = {
   zones: h('div', {}, zoneList, h('div', { class: 'so-add' }, addBtn, addMenu), maxNote, noZones, zoneEditor,
     h('p', { class: 'so-hint so-keys' }, T('keys'))),
-  art: h('div', {}, af.style.group, af.palette.group, af.density.wrap, af.reach.wrap,
+  art: h('div', {}, af.style.group, af.palette.group, customEditor, profileGroup, af.density.wrap, af.reach.wrap,
     h('label', { class: 'so-check', for: 'so-fill' }, af.fill, T('fill')),
     h('button', { type: 'button', class: 'btn so-seed-panel', onclick: newPattern }, T('seed'))),
   use: h('div', {},
@@ -413,6 +508,10 @@ function placeCtx() {
 function syncArt() {
   af.style.set(design.style);
   af.palette.set(design.palette);
+  dotsOf(colorsOf({ ...design, palette: 'custom' }), customDots);
+  customEditor.hidden = design.palette !== 'custom';
+  design.custom.forEach((c, i) => { colorInputs[i].value = c.toLowerCase(); });
+  syncProfiles();
   sizeSelect.value = design.size;
   af.density.set(design.density);
   af.reach.set(design.reach);
@@ -518,13 +617,18 @@ const undo = () => step(past, future, T('undone'));
 const redo = () => step(future, past, T('redone'));
 
 let saveTimer = 0;
+function saveNow() {
+  clearTimeout(saveTimer);
+  saveTimer = 0;
+  store.set('design', design);
+  syncOutput();
+}
 function saveSoon() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    store.set('design', design);
-    syncOutput();
-  }, 250);
+  saveTimer = setTimeout(saveNow, 250);
 }
+// Leaving the page doesn't lose the last change.
+addEventListener('pagehide', () => { if (saveTimer) saveNow(); });
 
 function changed() {
   record();
@@ -819,5 +923,6 @@ async function copyLink(input) {
   }
 }
 
+renderProfiles();
 arrange();
 rebuild();
