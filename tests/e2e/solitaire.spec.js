@@ -64,6 +64,16 @@ test('a new deal has seven columns and the stock turns over cards', async ({ pag
   await expect(moves(page)).toHaveText('1');
 });
 
+test('deals on the page itself when the browser has no Worker', async ({ page }) => {
+  await page.addInitScript(() => { delete window.Worker; });
+  await page.goto('./tools/solitaire/');
+  await expect(pile(page, 'Column 7, 6 face down, 1 face up')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Turn over cards, 24 left' }).click();
+  await page.getByRole('button', { name: 'New game' }).click();
+  await page.getByRole('dialog', { name: 'start a new game?' }).getByRole('button', { name: 'New game' }).click();
+  await expect(page.getByRole('button', { name: 'Turn over cards, 24 left' })).toBeVisible();
+});
+
 test('a tap sends a card to the best place and turns up the card under it', async ({ page }) => {
   await load(page, MID);
   await cardBtn(page, 'ace of hearts').click();
@@ -129,6 +139,25 @@ test('the last cards finish on their own, and the win is recorded', async ({ pag
   await expect(page.getByRole('status')).toContainText('Solved in');
 });
 
+test('Hint shows the next move of a winning line', async ({ page }) => {
+  await load(page, NEAR);
+  const status = page.getByRole('status');
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await expect(status).toHaveText('Hint: king of spades to foundation 1.');
+  await expect(cardBtn(page, 'king of spades')).toHaveClass(/is-hint/);
+  await cardBtn(page, 'king of spades').click();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await expect(status).toHaveText('Hint: turn over cards from the stock.');
+  await expect(page.locator('.sol-slot[data-pile="stock"]')).toHaveClass(/is-hint/);
+  await page.getByRole('button', { name: 'Turn over cards, 1 left' }).click();
+  await expect(page.locator('.sol-status')).toBeEmpty(); // cleared by the move (hidden when empty on phones)
+  await cardBtn(page, 'king of clubs').focus();
+  await page.keyboard.press('h');
+  await expect(status).toHaveText('Hint: queen of clubs to foundation 4.');
+  await expect(cardBtn(page, 'queen of clubs')).toHaveClass(/is-hint/);
+  await expectAccessible(page, 'hint shown');
+});
+
 test('a game in progress is kept on reload, and a new game asks first', async ({ page }) => {
   await load(page, MID);
   await cardBtn(page, 'ace of hearts').click();
@@ -145,9 +174,12 @@ test('a game in progress is kept on reload, and a new game asks first', async ({
 
 test('turning over three cards at a time', async ({ page }) => {
   await page.goto('./tools/solitaire/');
+  await expect(page.getByRole('group', { name: 'Card table' })).toBeVisible(); // the first deal is in
   const more = page.getByRole('button', { name: 'Options' });
   if (await more.isVisible()) await more.click();
   await page.getByRole('button', { name: /^three cards/ }).click();
+  // Pressed once the new deal is in (on phones the sheet has closed by then).
+  await expect(page.locator('.sol-draw[data-draw="3"]')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Turn over cards, 24 left' }).click();
   await expect(pile(page, 'Waste, 3 cards')).toHaveCount(1);
@@ -156,6 +188,7 @@ test('turning over three cards at a time', async ({ page }) => {
 test('on narrow screens the game fills the screen like an app', async ({ page }) => {
   test.skip(!isNarrow(page), 'narrow screens only');
   await page.goto('./tools/solitaire/');
+  await expect(page.getByRole('group', { name: 'Card table' })).toBeVisible();
   const view = page.viewportSize();
   await expect(page.locator('.site-footer')).toBeHidden();
   expect(await page.evaluate(() => document.scrollingElement.scrollHeight)).toBeLessThanOrEqual(view.height);

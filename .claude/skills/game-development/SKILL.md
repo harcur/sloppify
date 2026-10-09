@@ -25,7 +25,7 @@ Also: `tool.json` with `"category": "game"`, `npm run tools`, a paragraph per ga
 worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
 ```
 
-The CSP allows it (`worker-src 'self'`) and the service worker caches it on first use. Wrap the constructor in `try` and handle the `error` event (call `e.preventDefault()`) by falling back to calling the same `logic.js` function on the main thread, so older browsers still work. Match replies to requests with an id. Show a "Making a puzzle…" status only after a short delay (200 ms) so it doesn't flash.
+The CSP allows it (`worker-src 'self'`) and the service worker caches it on first use. Wrap the constructor in `try` and handle the `error` event (call `e.preventDefault()`) by falling back to calling the same `logic.js` function on the main thread, so older browsers still work. Match replies to requests with an id. Show a "Making a puzzle…" status only after a short delay (200 ms) so it doesn't flash. Solitaire also finds the *next* deal ahead of time, so New game is instant; a Worker handles one message at a time, so a request for another setting waits behind the one ahead. While a new board is on its way, ignore input on the old one. When the first board comes from the Worker the page builds after an `await`, so browser tests must wait for the board before checking anything else (`isVisible()` doesn't wait).
 
 ## State and saving
 

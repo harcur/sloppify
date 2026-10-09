@@ -8,6 +8,7 @@ export const strings = {
     'solitaire.time': 'time',
     'solitaire.new': 'New game',
     'solitaire.undo': 'Undo',
+    'solitaire.hint': 'Hint',
     'solitaire.options': 'Options',
     'solitaire.table': 'Card table',
 
@@ -57,8 +58,15 @@ export const strings = {
     'solitaire.say.noMove': 'No move for {card}',
     'solitaire.say.cantPlace': '{card} can’t go on {pile}',
     'solitaire.say.undone': 'Move undone',
+    'solitaire.say.thinking': 'Looking for a move…',
+    'solitaire.say.noHint': 'No winning line found from here. Try undoing a few moves.',
+    'solitaire.say.hintDraw': 'Hint: turn over cards from the stock.',
+    'solitaire.say.hintRecycle': 'Hint: turn the waste back over.',
+    'solitaire.say.hintMove': 'Hint: {card} to {pile}.',
+    'solitaire.say.hintRun': 'Hint: {card} and {n} more to {pile}.',
     'solitaire.say.finishing': 'Every card is face up. Finishing.',
 
+    'solitaire.status.dealing': 'Shuffling…',
     'solitaire.status.won': 'Solved in {time} with {moves} moves.',
     'solitaire.status.best': 'Solved in {time} with {moves} moves. New best.',
 
@@ -72,10 +80,11 @@ export const strings = {
     'solitaire.stats.none': 'no games yet',
 
     'solitaire.help.title': 'how to play',
-    'solitaire.help.goal': 'Move every card to the four foundations at the top, one suit on each, from ace to king.',
+    'solitaire.help.goal': 'Move every card to the four foundations at the top, one suit on each, from ace to king. Every deal has been played through to a win by a solver first, so every game can be won.',
     'solitaire.help.columns': 'In the seven columns, build down in alternating colours: a red 6 on a black 7. A run that follows this can move together. Only a king, or a run starting with a king, can fill an empty column.',
     'solitaire.help.stock': 'When you’re stuck, turn over cards from the stock. When it runs out, turn the waste back over and go through it again.',
+    'solitaire.help.hint': 'Stuck? Hint shows the next move of a winning line from where you are.',
     'solitaire.help.touch': 'Tap a card to send it to the best place, or drag it where you want it.',
-    'solitaire.help.keys': 'Keyboard: arrow keys to move between cards, Enter to pick a card up and Enter again to put it down (twice on the same card sends it to the best place), Escape to cancel, U to undo.',
+    'solitaire.help.keys': 'Keyboard: arrow keys to move between cards, Enter to pick a card up and Enter again to put it down (twice on the same card sends it to the best place), Escape to cancel, U to undo, H for a hint.',
   },
 };

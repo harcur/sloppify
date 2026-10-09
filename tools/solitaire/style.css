@@ -156,6 +156,9 @@
 .sol-card.is-selected { box-shadow: inset 0 0 0 3px var(--s-gold); }
 .sol-card.is-selected .sol-inner { background: rgba(242, 181, 68, 0.18); }
 .sol-card.is-target, .sol-slot.is-target { outline: 3px solid var(--s-gold); outline-offset: 2px; }
+/* Hint: the card to move and where it goes, in mint, with a short pulse. */
+.sol-card.is-hint, .sol-slot.is-hint { outline: 3px solid var(--s-mint); outline-offset: 2px; animation: sol-hint 700ms ease-in-out 3; }
+@keyframes sol-hint { 50% { outline-offset: 6px; } }
 .sol-card.is-lifted { cursor: grabbing; }
 .sol-board.is-dragging { cursor: grabbing; }
 
@@ -227,8 +230,8 @@
   .sol-stat-value { font-size: 20px; min-width: 0; }
   .sol-status { margin: 0; min-height: 0; font-size: 14px; padding: 0 4px; }
   .sol-status:empty { display: none; }
-  .sol-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
-  .sol-actions .btn { padding: 0 6px; justify-content: center; font-size: 15px; white-space: nowrap; }
+  .sol-actions { display: grid; grid-template-columns: 1fr 1fr 1.45fr 1fr; gap: 6px; margin: 0; }
+  .sol-actions .btn { padding: 0 4px; justify-content: center; font-size: 14px; white-space: nowrap; overflow: hidden; }
   .sol-more { display: inline-flex; align-items: center; justify-content: center; }
   .sol-board { margin: 6px; }
 }

@@ -9,7 +9,7 @@ import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
 import { strings } from './strings.js';
 import {
-  SUITS, FOUNDATIONS, TABLEAU, suit, rank, tableauIndex, newGame, canTake, canMove, move, drawStock, undo,
+  SUITS, FOUNDATIONS, TABLEAU, suit, rank, tableauIndex, canTake, canMove, move, drawStock, undo,
   bestTarget, canFinish, nextFinishMove, serialize, deserialize,
 } from './logic.js';
 
@@ -27,8 +27,52 @@ const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sou
 const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 
+// Solver -------------------------------------------------------------
+// Every deal is one the solver (solver.js) has won, so no game is hopeless,
+// and Hint asks it for the next move of a winning line. It runs in a Worker,
+// with the next deal found ahead so New game is instant. If the browser can't
+// start a Worker, it runs here instead.
+
+let worker = null;
+let nextId = 0;
+const waiting = new Map();
+const here = (job) => import('./solver.js').then((solver) => (job.type === 'hint' ? solver.hint(job.game) : solver.winnableDeal(job.draw).game));
+try {
+  worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+  worker.addEventListener('message', (e) => {
+    waiting.get(e.data.id)?.resolve(e.data.result);
+    waiting.delete(e.data.id);
+  });
+  worker.addEventListener('error', (e) => {
+    e.preventDefault();
+    worker = null;
+    for (const w of waiting.values()) w.resolve(here(w.job));
+    waiting.clear();
+  });
+} catch { worker = null; }
+
+function ask(job) {
+  if (!worker) return here(job);
+  return new Promise((resolve) => {
+    const id = ++nextId;
+    waiting.set(id, { resolve, job });
+    worker.postMessage({ id, ...job });
+  });
+}
+const findDeal = (draw) => ask({ type: 'deal', draw });
+
+const ahead = new Map(); // draw setting → the next deal, being found or found
+function takeDeal(draw) {
+  const next = ahead.get(draw) ?? findDeal(draw);
+  ahead.delete(draw);
+  return next;
+}
+function dealAhead(draw) {
+  if (!ahead.has(draw)) ahead.set(draw, findDeal(draw));
+}
+
 const savedDraw = saving && store.get('draw') === 3 ? 3 : 1;
-let g = (saving && deserialize(store.get('game'))) || newGame(savedDraw);
+let g = (saving && deserialize(store.get('game'))) || await takeDeal(savedDraw);
 let stats = saving ? store.get('stats', {}) : {};
 if (!stats || typeof stats !== 'object') stats = {};
 let selection = null; // { pile, index } picked up with the keyboard
@@ -86,6 +130,7 @@ for (const p of PILES) {
 const movesValue = h('span', { class: 'sol-stat-value' });
 const timeValue = h('span', { class: 'sol-stat-value' });
 const undoBtn = h('button', { type: 'button', class: 'btn', onclick: () => doUndo() }, t('solitaire.undo'));
+const hintBtn = h('button', { type: 'button', class: 'btn', onclick: () => doHint() }, t('solitaire.hint'));
 const newBtn = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => startNew(g.draw) }, t('solitaire.new'));
 const moreBtn = h('button', { type: 'button', class: 'btn sol-more', 'aria-haspopup': 'dialog', onclick: () => openSheet() }, t('solitaire.options'));
 const status = h('p', { class: 'sol-status', role: 'status' });
@@ -108,7 +153,7 @@ const side = h('div', { class: 'sol-side' },
   ),
   h('section', { class: 'sol-section sol-help', 'aria-labelledby': 'sol-help-label' },
     h('h2', { class: 'sol-h2', id: 'sol-help-label' }, t('solitaire.help.title')),
-    ['goal', 'columns', 'stock', 'touch', 'keys'].map((k) => h('p', {}, t(`solitaire.help.${k}`))),
+    ['goal', 'columns', 'stock', 'hint', 'touch', 'keys'].map((k) => h('p', {}, t(`solitaire.help.${k}`))),
   ),
 );
 const play = h('div', { class: 'sol-play' },
@@ -118,7 +163,7 @@ const play = h('div', { class: 'sol-play' },
   ),
   status,
   scroller,
-  h('div', { class: 'sol-actions' }, undoBtn, newBtn, moreBtn),
+  h('div', { class: 'sol-actions' }, undoBtn, hintBtn, newBtn, moreBtn),
 );
 const layout = h('div', { class: 'sol-layout' }, play, side);
 
@@ -339,7 +384,12 @@ function moveFocus(key) {
 }
 
 function markSelection() {
-  for (const el of board.querySelectorAll('.is-selected, .is-target')) el.classList.remove('is-selected', 'is-target');
+  for (const el of board.querySelectorAll('.is-selected, .is-target, .is-hint')) el.classList.remove('is-selected', 'is-target', 'is-hint');
+  if (shown?.kind === 'draw') slotEls.stock.classList.add('is-hint');
+  else if (shown) {
+    for (const c of g[shown.from].slice(shown.index)) cardEls[c].classList.add('is-hint');
+    (g[shown.to].length ? cardEls[g[shown.to].at(-1)] : slotEls[shown.to]).classList.add('is-hint');
+  }
   if (!selection) return;
   const { pile, index } = selection;
   for (const c of g[pile].slice(index)) cardEls[c].classList.add('is-selected');
@@ -422,6 +472,38 @@ function doDraw() {
   changed();
 }
 
+// Hint: the next move of a winning line from here, shown on the table and
+// said in the status line. Cleared by the next move.
+let shown = null;
+let hinting = false;
+async function doHint() {
+  if (busy || hinting || g.state === 'won') return;
+  hinting = true;
+  renderBar();
+  const game = g;
+  const asked = g.moves;
+  const slow = setTimeout(() => note(t('solitaire.say.thinking')), 300);
+  const next = await ask({ type: 'hint', game: position() });
+  clearTimeout(slow);
+  hinting = false;
+  renderBar();
+  if (g !== game || g.moves !== asked) return; // the table changed meanwhile
+  if (!next) return note(t('solitaire.say.noHint'));
+  shown = next;
+  markSelection();
+  if (next.kind === 'draw') return note(t(g.stock.length ? 'solitaire.say.hintDraw' : 'solitaire.say.hintRecycle'));
+  const n = g[next.from].length - next.index - 1;
+  note(t(n ? 'solitaire.say.hintRun' : 'solitaire.say.hintMove', { card: cardName(g[next.from][next.index]), n, pile: pileName(next.to) }));
+}
+
+// The position alone, for the solver.
+const position = () => ({ draw: g.draw, state: g.state, ...Object.fromEntries(PILES.map((p) => [p, g[p].slice()])), down: g.down.slice() });
+
+function note(text) {
+  status.textContent = text;
+  delete status.dataset.state;
+}
+
 function doUndo() {
   if (busy || !undo(g)) return;
   selection = null;
@@ -431,6 +513,8 @@ function doUndo() {
 
 let wasReady = g.state === 'ready';
 function changed() {
+  shown = null;
+  if (g.state !== 'won') note('');
   if (wasReady && g.state !== 'ready') {
     wasReady = false;
     const rec = record(g.draw);
@@ -508,16 +592,28 @@ function celebrate() {
 }
 
 // Returns true when a new game started.
+let dealing = false;
 async function startNew(draw) {
+  if (dealing) return false;
   if (g.state === 'playing') {
     const ok = await confirmDialog({ title: t('solitaire.confirm.title'), body: t('solitaire.confirm.body'), confirmLabel: t('solitaire.confirm.ok') });
     if (!ok) return false;
   }
+  dealing = true;
+  busy = true; // the table waits for the new deal
+  newBtn.setAttribute('aria-disabled', 'true');
+  // Usually ready at once; say so only if finding one takes a moment.
+  const slow = setTimeout(() => { status.textContent = t('solitaire.status.dealing'); delete status.dataset.state; }, 200);
+  const next = await takeDeal(draw);
+  clearTimeout(slow);
+  dealing = false;
+  newBtn.removeAttribute('aria-disabled');
   clearInterval(tick);
   runStart = 0;
   busy = false;
   selection = null;
-  g = newGame(draw);
+  g = next;
+  shown = null;
   wasReady = true;
   if (saving) store.set('draw', draw);
   status.textContent = '';
@@ -531,6 +627,7 @@ async function startNew(draw) {
   render(true);
   renderBar();
   save();
+  dealAhead(draw);
   return true;
 }
 
@@ -562,6 +659,7 @@ function renderBar() {
   movesValue.textContent = String(g.moves);
   renderTime();
   undoBtn.setAttribute('aria-disabled', String(busy || g.state === 'won' || !g.history.length));
+  hintBtn.setAttribute('aria-disabled', String(busy || hinting || g.state === 'won'));
   for (const b of drawBtns) b.setAttribute('aria-pressed', String(+b.dataset.draw === g.draw));
 }
 
@@ -633,6 +731,9 @@ board.addEventListener('keydown', (e) => {
     selection = null;
     markSelection();
     say(t('solitaire.say.cancel'));
+  } else if ((e.key === 'h' || e.key === 'H') && !e.ctrlKey) {
+    e.preventDefault();
+    doHint();
   } else if ((e.key === 'u' || e.key === 'U') && !e.ctrlKey) {
     e.preventDefault();
     doUndo();
@@ -730,3 +831,4 @@ renderBar();
 renderStats();
 syncTimer();
 if (canFinish(g)) autoFinish();
+dealAhead(g.draw);
