@@ -1,0 +1,17 @@
+{
+  "name": {
+    "en": "sign document"
+  },
+  "description": {
+    "en": "Add your signature, drawings or text to a PDF or a picture of a document"
+  },
+  "category": "tool",
+  "tags": [
+    "pdf",
+    "signature",
+    "sign",
+    "draw",
+    "document"
+  ],
+  "license": "MIT"
+}

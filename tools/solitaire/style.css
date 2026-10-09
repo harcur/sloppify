@@ -1,0 +1,237 @@
+/* SPDX-FileCopyrightText: 2026 sloppify contributors
+   SPDX-License-Identifier: MIT */
+
+/* Play-area palette: cream cards on a deep teal felt, cobalt backs with a
+   gold lattice. Checked in both themes: suit colours vs card ≥ 4.5:1, card
+   edges and empty slots vs felt ≥ 3:1. */
+:root {
+  --s-felt: #0F5C55; --s-felt-hi: #1C7A70;
+  --s-slot: #8FC1B9;
+  --s-face: #FFFDF6; --s-edge: #8C8676;
+  --s-red: #C02A30; --s-ink: #1B1A2E;
+  --s-court-red: #FBE6DF; --s-court-ink: #E4E5F2;
+  --s-back: #2E4BA8; --s-gold: #F2B544; --s-back-edge: #FFF3D6;
+  --s-mint: #7FE0C8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --s-felt: #0B2F2C; --s-felt-hi: #12443F;
+    --s-slot: #5E9C93;
+    --s-face: #EDE7D9; --s-edge: #6F6A5E;
+    --s-red: #B0242A; --s-ink: #1B1A2E;
+    --s-court-red: #EBCFC6; --s-court-ink: #D3D4E3;
+    --s-back: #2B4499; --s-gold: #E8AC3A; --s-back-edge: #E9DDBF;
+    --s-mint: #5FC9AF;
+  }
+}
+:root[data-theme="dark"] {
+  --s-felt: #0B2F2C; --s-felt-hi: #12443F;
+  --s-slot: #5E9C93;
+  --s-face: #EDE7D9; --s-edge: #6F6A5E;
+  --s-red: #B0242A; --s-ink: #1B1A2E;
+  --s-court-red: #EBCFC6; --s-court-ink: #D3D4E3;
+  --s-back: #2B4499; --s-gold: #E8AC3A; --s-back-edge: #E9DDBF;
+  --s-mint: #5FC9AF;
+}
+
+/* Layout ------------------------------------------------------------- */
+.sol-layout { display: grid; gap: 24px; }
+.sol-play {
+  position: relative; min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "top actions" "status status" "board board";
+  align-items: center;
+  column-gap: 24px;
+}
+@media (min-width: 960px) {
+  .sol-layout { grid-template-columns: minmax(0, 1fr) 260px; align-items: start; gap: 32px; }
+}
+
+.sol-top { grid-area: top; display: flex; gap: 24px; margin-bottom: 12px; }
+.sol-stat { margin: 0; display: flex; flex-direction: column; }
+.sol-stat-label { font-size: 13px; color: var(--muted); }
+.sol-stat-value { font-family: var(--mono); font-size: 22px; line-height: 1.2; font-variant-numeric: tabular-nums; min-width: 4ch; }
+.sol-actions { grid-area: actions; display: flex; gap: 8px; margin-bottom: 12px; }
+.sol-actions .btn[aria-disabled="true"] { cursor: default; color: var(--muted); }
+.sol-more { display: none; }
+.sol-status { grid-area: status; margin: 0 0 12px; min-height: 1.5em; font-family: var(--mono); }
+
+.sol-scroll {
+  grid-area: board;
+  overflow: auto;
+  max-width: 100%;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--s-felt-hi), var(--s-felt) 70%) var(--s-felt);
+  border: 1px solid var(--s-felt);
+}
+
+/* Table -------------------------------------------------------------- */
+.sol-board {
+  --cw: 80px; --ch: 112px;
+  position: relative;
+  margin: 8px;
+  user-select: none; -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sol-slot, .sol-card {
+  position: absolute; left: 0; top: 0;
+  width: var(--cw); height: var(--ch);
+  margin: 0; padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.sol-slot {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--s-slot);
+  background: transparent;
+  color: var(--s-slot);
+}
+.sol-slot[data-empty="false"] { border-color: transparent; }
+.sol-slot-suit { width: 46%; height: 46%; fill: currentColor; opacity: 0.55; }
+.sol-slot-s { border-color: transparent; }
+.sol-slot-s[data-state="recycle"], .sol-slot-s[data-state="none"] { border-color: var(--s-slot); }
+.sol-recycle { display: none; width: 50%; height: 50%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: square; }
+.sol-slot-s[data-state="recycle"] .sol-recycle { display: block; }
+.sol-slot-s[data-state="none"] { cursor: default; }
+
+.sol-card {
+  border: 1px solid var(--s-back-edge);
+  background: var(--s-back);
+  color: var(--s-ink);
+  font-family: var(--mono);
+  line-height: 1;
+}
+.sol-card.is-up { border-color: var(--s-edge); background: var(--s-face); }
+.sol-card.is-live { touch-action: none; cursor: grab; }
+.sol-card:not(.is-live) { cursor: default; }
+.sol-card[data-pile="stock"] { cursor: pointer; }
+.sol-hearts, .sol-diamonds { --suit: var(--s-red); --court: var(--s-court-red); }
+.sol-spades, .sol-clubs { --suit: var(--s-ink); --court: var(--s-court-ink); }
+
+.sol-inner { position: absolute; inset: 0; display: block; }
+.sol-card:not(.is-up) .sol-inner > * { visibility: hidden; }
+/* The back: a gold lattice inside a frame. */
+.sol-card:not(.is-up) .sol-inner {
+  inset: 3px;
+  border: 1px solid var(--s-gold);
+  background:
+    repeating-linear-gradient(45deg, var(--s-gold) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(-45deg, var(--s-gold) 0 1px, transparent 1px 7px);
+  opacity: 0.85;
+}
+
+.sol-idx {
+  position: absolute; top: 3px; left: 3px; right: 3px;
+  display: flex; align-items: center; justify-content: space-between;
+  color: var(--suit);
+  font-weight: 800;
+  font-size: calc(var(--cw) * 0.3);
+  letter-spacing: -0.06em;
+}
+.sol-idx .sol-suit { width: calc(var(--cw) * 0.24); height: calc(var(--cw) * 0.24); }
+.sol-suit { fill: var(--suit); flex: none; }
+.sol-mid {
+  position: absolute; left: 0; right: 0; top: 30%; bottom: 6%;
+  display: flex; align-items: center; justify-content: center;
+}
+.sol-mid > .sol-suit { width: calc(var(--cw) * 0.5); height: calc(var(--cw) * 0.5); }
+.sol-court {
+  left: 14%; right: 14%; bottom: 10%;
+  flex-direction: column; gap: 4%;
+  border: 1px solid var(--suit);
+  background: repeating-linear-gradient(135deg, var(--court) 0 4px, transparent 4px 8px);
+  color: var(--suit);
+}
+.sol-court-letter { font-weight: 800; font-size: calc(var(--cw) * 0.4); }
+.sol-court .sol-suit { width: calc(var(--cw) * 0.22); height: calc(var(--cw) * 0.22); }
+
+/* Focus, picking up, and where a card can go. */
+.sol-card:focus-visible, .sol-slot:focus-visible {
+  z-index: 900 !important;
+  outline: 2px solid #FFFFFF;
+  outline-offset: 1px;
+  box-shadow: inset 0 0 0 2px #161616;
+}
+.sol-card.is-selected { box-shadow: inset 0 0 0 3px var(--s-gold); }
+.sol-card.is-selected .sol-inner { background: rgba(242, 181, 68, 0.18); }
+.sol-card.is-target, .sol-slot.is-target { outline: 3px solid var(--s-gold); outline-offset: 2px; }
+/* Hint: the card to move and where it goes, in mint, with a short pulse. */
+.sol-card.is-hint, .sol-slot.is-hint { outline: 3px solid var(--s-mint); outline-offset: 2px; animation: sol-hint 700ms ease-in-out 3; }
+@keyframes sol-hint { 50% { outline-offset: 6px; } }
+.sol-card.is-lifted { cursor: grabbing; }
+.sol-board.is-dragging { cursor: grabbing; }
+
+@media (hover: hover) {
+  .sol-board:not(.is-dragging) .sol-card.is-live:hover .sol-inner { background-color: rgba(127, 224, 200, 0.16); }
+}
+
+/* Win: the cards on the foundations cheer, and suit-shaped confetti falls. */
+.sol-board.is-won .sol-card .sol-inner { animation: sol-cheer 600ms ease-in-out 2; }
+@keyframes sol-cheer { 40% { transform: scale(1.06); filter: brightness(1.08); } }
+
+.sol-confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 5; }
+.sol-bit {
+  position: absolute; top: -16px;
+  width: 14px; height: 14px;
+  fill: var(--c);
+  opacity: 0;
+  animation: sol-fall var(--t) cubic-bezier(0.3, 0.6, 0.5, 1) var(--delay) forwards;
+}
+@keyframes sol-fall {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sol-board *, .sol-board *::after { animation: none !important; transition: none !important; }
+  .sol-confetti { display: none; }
+}
+
+/* Side panel --------------------------------------------------------- */
+.sol-section + .sol-section { margin-top: 24px; }
+.sol-h2 { margin: 0 0 8px; font-family: var(--mono); font-size: 15px; font-weight: 400; color: var(--muted); }
+.sol-seg.seg { margin: 0; }
+.sol-draw { display: flex; flex-direction: column; justify-content: center; padding: 6px 4px; line-height: 1.3; }
+.sol-draw[aria-pressed="true"] { background: var(--s-felt); color: #FFFFFF; }
+.sol-draw[aria-pressed="true"]:focus-visible { outline-color: #FFFFFF; }
+.sol-draw-detail { font-size: 12px; }
+.sol-record { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 15px; }
+.sol-record dt { font-family: var(--mono); }
+.sol-record dd { margin: 0; color: var(--muted); }
+.sol-help p { margin: 0 0 8px; max-width: 60ch; font-size: 15px; color: var(--muted); }
+
+@media (max-width: 959px) {
+  .sol-side { display: grid; gap: 24px; }
+  .sol-section + .sol-section { margin-top: 0; }
+}
+
+/* Narrow screens: the game fills the screen like an app ----------------
+   Counters on top, the table in the middle, buttons at the bottom within
+   thumb reach. Everything else is in the options sheet (shared/sheet.js). */
+@media (max-width: 719px) {
+  .sol-layout { display: block; }
+  .sol-play {
+    height: 100vh; height: 100dvh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "top" "status" "board" "actions";
+    align-items: stretch;
+    gap: 8px;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 6px)
+      calc(env(safe-area-inset-right, 0px) + 8px)
+      calc(env(safe-area-inset-bottom, 0px) + 12px)
+      calc(env(safe-area-inset-left, 0px) + 8px);
+  }
+  .sol-top { margin: 0; padding: 0 52px 0 4px; min-height: 44px; align-items: center; } /* room for the menu button */
+  .sol-stat { flex-direction: row; align-items: baseline; gap: 8px; }
+  .sol-stat-value { font-size: 20px; min-width: 0; }
+  .sol-status { margin: 0; min-height: 0; font-size: 14px; padding: 0 4px; }
+  .sol-status:empty { display: none; }
+  .sol-actions { display: grid; grid-template-columns: 1fr 1fr 1.45fr 1fr; gap: 6px; margin: 0; }
+  .sol-actions .btn { padding: 0 4px; justify-content: center; font-size: 14px; white-space: nowrap; overflow: hidden; }
+  .sol-more { display: inline-flex; align-items: center; justify-content: center; }
+  .sol-board { margin: 6px; }
+}

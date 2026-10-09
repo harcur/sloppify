@@ -1,0 +1,68 @@
+// SPDX-FileCopyrightText: 2026 sloppify contributors
+// SPDX-License-Identifier: MIT
+
+export const strings = {
+  en: {
+    'sudoku.name': 'sudoku',
+    'sudoku.level': 'Difficulty',
+    'sudoku.level.easy': 'easy',
+    'sudoku.level.medium': 'medium',
+    'sudoku.level.hard': 'hard',
+    'sudoku.time': 'time',
+    'sudoku.new': 'New game',
+    'sudoku.notes': 'Notes',
+    'sudoku.undo': 'Undo',
+    'sudoku.erase': 'Erase',
+    'sudoku.hint': 'Hint',
+    'sudoku.options': 'Options',
+    'sudoku.close': 'Close',
+    'sudoku.board': 'Sudoku board, 9 rows by 9 columns',
+    'sudoku.digits': 'Digits',
+    'sudoku.digit.left': '{d}, {left} left',
+    'sudoku.digit.done': '{d}, all placed',
+    'sudoku.making': 'Making a puzzle…',
+
+    'sudoku.cell.label': 'row {row}, column {col}: {state}',
+    'sudoku.cell.empty': 'empty',
+    'sudoku.cell.notes': 'empty, notes {notes}',
+    'sudoku.cell.given': '{d}, given',
+    'sudoku.cell.hinted': '{d}, from a hint',
+    'sudoku.cell.value': '{d}',
+    'sudoku.cell.conflict': '{state}, repeats in its row, column or box',
+
+    'sudoku.say.placed': '{d} placed',
+    'sudoku.say.conflict': '{d} placed. It repeats in its row, column or box',
+    'sudoku.say.note': 'Note {d} added',
+    'sudoku.say.unnote': 'Note {d} removed',
+    'sudoku.say.erased': 'Cell cleared',
+    'sudoku.say.undone': 'Undone',
+    'sudoku.say.nothingToUndo': 'Nothing to undo',
+    'sudoku.say.hint': 'Hint: {d} in row {row}, column {col}',
+    'sudoku.say.fixed': 'This cell is part of the puzzle',
+    'sudoku.say.notesOn': 'Notes on',
+    'sudoku.say.notesOff': 'Notes off',
+    'sudoku.say.row': 'Row {n} complete',
+    'sudoku.say.col': 'Column {n} complete',
+    'sudoku.say.box': 'Box {n} complete',
+
+    'sudoku.status.won': 'Solved in {time}.',
+    'sudoku.status.best': 'Solved in {time}. New best for this difficulty.',
+    'sudoku.status.hintedOne': 'Solved in {time} with 1 hint. Best times only count games without hints.',
+    'sudoku.status.hinted': 'Solved in {time} with {hints} hints. Best times only count games without hints.',
+
+    'sudoku.confirm.title': 'start a new game?',
+    'sudoku.confirm.body': 'The game in progress will be lost.',
+    'sudoku.confirm.ok': 'New game',
+
+    'sudoku.stats': 'your record',
+    'sudoku.stats.won': '{won} solved',
+    'sudoku.stats.best': 'best {time}',
+    'sudoku.stats.none': 'none solved yet',
+
+    'sudoku.help.title': 'how to play',
+    'sudoku.help.goal': 'Fill every empty cell with a digit from 1 to 9 so that each row, each column and each 3 × 3 box holds every digit once. Every puzzle has exactly one solution.',
+    'sudoku.help.touch': 'Pick a cell, then a digit. Turn on notes to pencil in the digits a cell could hold; placing a digit removes it from the notes around it.',
+    'sudoku.help.keys': 'Keyboard: arrow keys to move, 1 to 9 to place, Shift with a digit for a note, N for notes, 0, Delete or Backspace to clear, Ctrl+Z to undo.',
+    'sudoku.help.levels': 'Easy and medium puzzles can be solved by finding cells with only one possible digit. Hard ones need more reasoning.',
+  },
+};

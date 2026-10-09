@@ -1,0 +1,285 @@
+/* SPDX-FileCopyrightText: 2026 sloppify contributors
+   SPDX-License-Identifier: MIT */
+
+/* Tokens ------------------------------------------------------------- */
+:root {
+  --bg: #F6F6F4;
+  --surface: #FFFFFF;
+  --text: #161616;
+  --muted: #5A5A5A;
+  --line: #CFCFCB;
+  --tool: #2F5D8A;
+  --game: #B34A24;
+  --party: #8E3A9E;
+  --danger: #A32D2D;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --header-h: 56px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111111; --surface: #1A1A1A; --text: #ECECEC; --muted: #A3A3A3; --line: #343434;
+    --tool: #82AEDB; --game: #EE8A62; --party: #DDA2EC; --danger: #F09595;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111111; --surface: #1A1A1A; --text: #ECECEC; --muted: #A3A3A3; --line: #343434;
+  --tool: #82AEDB; --game: #EE8A62; --party: #DDA2EC; --danger: #F09595;
+  color-scheme: dark;
+}
+
+/* Base --------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 16px);
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+main { flex: 1 0 auto; }
+main:focus { outline: none; }
+a { color: inherit; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+.wrap {
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+@media (min-width: 720px) {
+  :root { --header-h: 72px; }
+  .wrap { padding-left: max(32px, env(safe-area-inset-left, 0px)); padding-right: max(32px, env(safe-area-inset-right, 0px)); }
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.icon { width: 20px; height: 20px; flex: none; }
+
+.skip {
+  position: absolute; left: 16px; top: -100px; z-index: 100;
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--text);
+}
+.skip:focus { top: calc(8px + env(safe-area-inset-top, 0px)); }
+
+.noscript { padding: 16px; }
+
+/* Header ------------------------------------------------------------- */
+.site-header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.header-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "logo menu" "slot slot";
+  align-items: center;
+  column-gap: 24px;
+  min-height: var(--header-h);
+}
+.logo {
+  grid-area: logo;
+  justify-self: start;
+  padding-block: 10px;
+  font-family: var(--mono);
+  font-size: 18px;
+  text-decoration: none;
+}
+.header-slot { grid-area: slot; padding-bottom: 12px; }
+.header-slot:empty { display: none; }
+@media (min-width: 720px) {
+  .header-inner {
+    grid-template-columns: auto minmax(0, 480px) minmax(0, 1fr) auto;
+    grid-template-areas: "logo slot . menu";
+  }
+  .header-slot { padding-bottom: 0; }
+}
+
+.icon-btn {
+  width: 44px; height: 44px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: transparent;
+}
+.icon-btn .icon { width: 22px; height: 22px; }
+
+/* Menu --------------------------------------------------------------- */
+.menu { grid-area: menu; position: relative; margin-right: -10px; }
+.menu-panel {
+  position: absolute; right: 10px; top: calc(100% + 6px); z-index: 20;
+  width: 264px; max-width: calc(100vw - 24px);
+  padding: 8px 0;
+  background: var(--surface);
+  border: 1px solid var(--text);
+}
+.menu-panel[hidden] { display: none; }
+.menu-label {
+  margin: 0;
+  padding: 10px 16px 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+}
+.menu-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 44px;
+  padding: 0 16px;
+  border: 0; background: transparent;
+  font-size: 15px; text-align: left; text-decoration: none;
+}
+.menu-item .icon { width: 18px; height: 18px; }
+.menu-item:hover { background: var(--bg); }
+.menu-item:focus-visible { outline-offset: -2px; }
+.menu-item.danger { color: var(--danger); }
+.menu-item[data-on="true"] .icon-star { fill: currentColor; }
+.menu-sep { margin: 8px 0; border: 0; border-top: 1px solid var(--line); }
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 16px 8px;
+  border: 1px solid var(--line);
+}
+.seg-btn { min-height: 44px; border: 0; background: transparent; font-size: 14px; }
+.seg-btn + .seg-btn { border-left: 1px solid var(--line); }
+.seg-btn[aria-pressed="true"] { background: var(--text); color: var(--surface); }
+.seg-btn:focus-visible { outline-color: var(--text); outline-offset: -4px; }
+.seg-btn[aria-pressed="true"]:focus-visible { outline-color: var(--surface); }
+
+/* Footer ------------------------------------------------------------- */
+.site-footer { margin-top: 24px; border-top: 1px solid var(--line); }
+.footer-inner {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-top: 16px; padding-bottom: 24px;
+  font-size: 13px; color: var(--muted);
+}
+.footer-inner p { margin: 0; }
+.footer-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.footer-meta a {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 24px;
+  color: var(--text);
+  text-underline-offset: 3px;
+}
+.footer-meta .icon { width: 16px; height: 16px; }
+@media (min-width: 720px) {
+  .footer-inner { flex-direction: row; justify-content: space-between; align-items: center; gap: 24px; }
+  .footer-meta { flex-shrink: 0; }
+}
+
+/* Dialogs ------------------------------------------------------------ */
+.dialog {
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 24px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--text);
+}
+.dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+.dialog-title { margin: 0 0 12px; font-family: var(--mono); font-size: 18px; font-weight: 400; }
+.dialog-body { margin: 0 0 20px; font-size: 15px; line-height: 1.6; }
+.dialog-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.dialog-spacer { flex: 1; }
+.dialog-link { font-size: 14px; text-underline-offset: 3px; }
+
+.btn {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--text);
+  background: transparent;
+  font-size: 15px;
+}
+.btn-primary { background: var(--text); color: var(--surface); }
+.btn-danger { background: var(--danger); border-color: var(--danger); color: var(--surface); }
+.btn-link {
+  padding-inline: 0;
+  border-color: transparent;
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Toast -------------------------------------------------------------- */
+.toast {
+  position: fixed; left: 50%; z-index: 50;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  background: var(--text);
+  color: var(--surface);
+  font-size: 14px;
+}
+.toast:empty { display: none; }
+.toast:has(.toast-action) { display: flex; align-items: center; gap: 16px; padding-block: 6px; }
+.toast-action { min-height: 36px; padding: 0 12px; border: 1px solid var(--surface); background: transparent; color: var(--surface); font-size: 14px; }
+.toast-action:focus-visible { outline-color: var(--surface); }
+
+/* Tool pages --------------------------------------------------------- */
+.tool-main { padding-top: 24px; padding-bottom: 16px; }
+.tool-title { margin: 0 0 12px; font-family: var(--mono); font-size: 24px; font-weight: 400; }
+.tool-placeholder { margin: 0; max-width: 60ch; color: var(--muted); }
+
+/* App pages ----------------------------------------------------------
+   Tools and games that fill the screen on narrow viewports (initPage({ app: true })).
+   Only the menu button stays, floating top right; the page shows the
+   footer's text and source link itself. */
+@media (max-width: 719px) {
+  .app-page, .app-page body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  .app-page .site-header { position: fixed; top: 0; right: 0; left: auto; border: 0; background: transparent; }
+  .app-page .header-inner { display: block; min-height: 0; padding: 0 env(safe-area-inset-right, 0px) 0 0; }
+  .app-page .logo, .app-page .header-slot, .app-page .site-footer { display: none; }
+  .app-page .menu { margin: 0; }
+  .app-page .tool-main { padding: 0; }
+  .app-page .tool-title {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+}
+
+/* Options sheet (shared/sheet.js): slides up from the bottom on app pages. */
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.sheet-head .dialog-title { margin: 0; }
+.sheet-foot { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.sheet-foot p { margin: 0 0 8px; }
+.sheet-foot a { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; color: var(--text); text-underline-offset: 3px; }
+.sheet-foot .icon { width: 16px; height: 16px; }
+@media (max-width: 719px) {
+  .sheet {
+    width: 100%; max-width: none;
+    max-height: 88dvh;
+    margin: auto 0 0;
+    border-width: 1px 0 0;
+    padding: 16px calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 16px);
+    animation: sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+}
+@keyframes sheet-up { from { transform: translateY(40%); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
