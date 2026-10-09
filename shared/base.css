@@ -238,6 +238,9 @@ button { cursor: pointer; }
   font-size: 14px;
 }
 .toast:empty { display: none; }
+.toast:has(.toast-action) { display: flex; align-items: center; gap: 16px; padding-block: 6px; }
+.toast-action { min-height: 36px; padding: 0 12px; border: 1px solid var(--surface); background: transparent; color: var(--surface); font-size: 14px; }
+.toast-action:focus-visible { outline-color: var(--surface); }
 
 /* Tool pages --------------------------------------------------------- */
 .tool-main { padding-top: 24px; padding-bottom: 16px; }

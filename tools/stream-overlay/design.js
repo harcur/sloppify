@@ -12,8 +12,8 @@ export const EFFECTS = ['lift', 'sink', 'orbit', 'splash', 'pile', 'none', 'tape
 export const EFFECT_ORDER = ['lift', 'sink', 'orbit', 'splash', 'pile', 'tape', 'brush', 'sketch', 'watercolor', 'vines', 'glitch', 'none'];
 // over: the content sits on top of the art. under: the art's edges cover the content.
 export const PLACES = ['over', 'under'];
-export const STYLES = ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch'];
-export const STYLE_ORDER = ['sheet', 'flow', 'contour', 'dots', 'hatch', 'none'];
+export const STYLES = ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch', 'mesh', 'stipple', 'mosaic', 'dashes'];
+export const STYLE_ORDER = ['sheet', 'flow', 'contour', 'mesh', 'dots', 'stipple', 'mosaic', 'dashes', 'hatch', 'none'];
 export const MAX_ZONES = 12;
 export const MIN_SIDE = 40;
 
@@ -28,6 +28,45 @@ export const PALETTES = {
   kraft: { bg: '#D9C4A0', frame: '#F4EDE1', colors: ['#2B2B2B', '#B5452B', '#3C6E71', '#F4EDE1'] },
   pastel: { bg: '#2E2A3A', frame: '#FBF6EE', colors: ['#F2A7A0', '#9CC5E8', '#B8D8A8', '#E6D3F7'] },
 };
+
+// A custom palette is six colours in this order, stored in the design and its link.
+export const CUSTOM_KEYS = ['bg', 'frame', 'c1', 'c2', 'c3', 'c4'];
+export const MAX_PROFILES = 12;
+export const PROFILE_NAME_MAX = 30;
+const HEX = /^#[0-9A-F]{6}$/;
+const hex = (v) => (typeof v === 'string' && HEX.test(v.toUpperCase()) ? v.toUpperCase() : null);
+const flatten = (p) => [p.bg, p.frame, ...p.colors];
+const named = (k) => Object.hasOwn(PALETTES, k);
+
+/** Six valid colours from anything, filling gaps from `fallback` (a palette name). */
+export function customColors(raw, fallback = 'ember') {
+  const base = flatten(PALETTES[named(fallback) ? fallback : 'ember']);
+  const list = Array.isArray(raw) ? raw : [];
+  return base.map((c, i) => hex(list[i]) ?? c);
+}
+
+/** The colours a design draws with: a named palette, or its custom one. */
+export function paletteOf(design) {
+  if (design.palette !== 'custom') return PALETTES[named(design.palette) ? design.palette : 'ember'];
+  const [bg, frame, ...colors] = customColors(design.custom);
+  return { bg, frame, colors };
+}
+
+/** The six colours of any palette, flat, for starting a custom one from it. */
+export const colorsOf = (design) => flatten(paletteOf(design));
+
+/** Saved colour profiles: a list of { name, colors } from anything. */
+export function normalizeProfiles(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const p of raw) {
+    if (!p || typeof p !== 'object' || typeof p.name !== 'string') continue;
+    const name = p.name.trim().slice(0, PROFILE_NAME_MAX);
+    if (name) out.push({ name, colors: customColors(p.colors) });
+    if (out.length >= MAX_PROFILES) break;
+  }
+  return out;
+}
 
 // Numeric settings: [min, max, default].
 export const RANGES = {
@@ -84,7 +123,8 @@ export function normalize(raw) {
     size, w, h,
     seed: Number.isInteger(d.seed) ? d.seed >>> 0 : 1,
     style: pick(d.style, STYLES),
-    palette: PALETTES[d.palette] ? d.palette : 'ember',
+    palette: named(d.palette) || d.palette === 'custom' ? d.palette : 'ember',
+    custom: customColors(d.custom),
     density: ranged(d.density, 'density'),
     reach: ranged(d.reach, 'reach'),
     fill: d.fill === true,
@@ -173,7 +213,10 @@ export const usesFront = (design) => design.zones.some((z) => z.place === 'under
 export function encode(d) {
   const zones = d.zones.map((z) => [KINDS.indexOf(z.kind), z.x, z.y, z.w, z.h, z.r,
     EFFECTS.indexOf(z.effect), PLACES.indexOf(z.place), z.frame, z.fuzz, z.power]);
-  const json = JSON.stringify([1, d.size, d.seed, STYLES.indexOf(d.style), d.palette, d.density, d.reach, d.fill ? 1 : 0, zones]);
+  const a = [1, d.size, d.seed, STYLES.indexOf(d.style), d.palette, d.density, d.reach, d.fill ? 1 : 0, zones];
+  // Custom colours go last, and only when they're used, so other links stay short.
+  if (d.palette === 'custom') a.push(customColors(d.custom).map((c) => c.slice(1)));
+  const json = JSON.stringify(a);
   let bin = '';
   for (const b of new TextEncoder().encode(json)) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -184,9 +227,10 @@ export function decode(s) {
     const bin = atob(String(s).replace(/-/g, '+').replace(/_/g, '/'));
     const a = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
     if (!Array.isArray(a) || a[0] !== 1 || !Array.isArray(a[8])) return null;
-    const [, size, seed, style, palette, density, reach, fill, zones] = a;
+    const [, size, seed, style, palette, density, reach, fill, zones, custom] = a;
     return normalize({
       size, seed, style: STYLES[style], palette, density, reach, fill: fill === 1,
+      custom: Array.isArray(custom) ? custom.map((c) => `#${c}`) : undefined,
       zones: zones.filter(Array.isArray).map(([kind, x, y, w, h, r, effect, place, frame, fuzz, power]) => ({
         kind: KINDS[kind], x, y, w, h, r, effect: EFFECTS[effect], place: PLACES[place], frame, fuzz, power,
       })),

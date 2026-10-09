@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { orderTools } from '../../hub-order.js';
+import { orderTools, withinOneEdit } from '../../hub-order.js';
 
 const tool = (id, name, category = 'tool', tags = []) => ({ id, name: { en: name }, description: { en: `${name} description` }, category, tags });
 const tools = [
@@ -39,4 +39,37 @@ test('search returns one flat list matching every word', () => {
   assert.deepEqual(ids(orderTools(tools, { query: 'game ECHO' })[0]), ['e']);
   assert.equal(orderTools(tools, { query: 'game ECHO' })[0].key, 'results');
   assert.deepEqual(orderTools(tools, { query: 'nothing here' }), []);
+});
+
+test('search ignores case and accents', () => {
+  assert.deepEqual(ids(orderTools(tools, { query: 'ALPHA' })[0]), ['a']);
+  const cafe = [tool('k', 'Café')];
+  assert.deepEqual(ids(orderTools(cafe, { query: 'cafe' })[0]), ['k']);
+  assert.deepEqual(ids(orderTools(cafe, { query: 'CAFÉ' })[0]), ['k']);
+});
+
+test('search allows one typo in words of four or more letters', () => {
+  assert.deepEqual(ids(orderTools(tools, { query: 'foxtrut' })[0]), ['f']);
+  assert.deepEqual(ids(orderTools(tools, { query: 'fxotrot' })[0]), ['f']);
+  assert.deepEqual(ids(orderTools(tools, { query: 'puzle' })[0]), ['e']);
+  assert.deepEqual(ids(orderTools(tools, { query: 'puzzzle' })[0]), ['e']);
+  assert.deepEqual(ids(orderTools(tools, { query: 'chra' })[0]), ['c']);
+  assert.deepEqual(orderTools(tools, { query: 'fuxtuot' }), []); // two typos
+  assert.deepEqual(ids(orderTools(tools, { query: 'ecjo' })[0]), ['e']);
+  assert.deepEqual(orderTools(tools, { query: 'ecj' }), []); // under four letters: exact only
+});
+
+test('exact matches come before fuzzy ones', () => {
+  const list = [tool('x', 'mines'), tool('y', 'miner')];
+  assert.deepEqual(ids(orderTools(list, { query: 'miner' })[0]), ['y', 'x']);
+});
+
+test('withinOneEdit', () => {
+  assert.ok(withinOneEdit('abcd', 'abcd'));
+  assert.ok(withinOneEdit('abcd', 'abxd'));
+  assert.ok(withinOneEdit('abcd', 'abd'));
+  assert.ok(withinOneEdit('abd', 'abcd'));
+  assert.ok(withinOneEdit('abcd', 'bacd'));
+  assert.ok(!withinOneEdit('abcd', 'badc'));
+  assert.ok(!withinOneEdit('abcd', 'ab'));
 });

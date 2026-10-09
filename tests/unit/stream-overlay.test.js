@@ -5,6 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SIZES, KINDS, EFFECTS, EFFECT_ORDER, STYLES, STYLE_ORDER, PALETTES, PRESET_NAMES, MAX_ZONES, MIN_SIDE, normalize, newZone, fitZone, resize, preset, usesFront, encode, decode,
+  MAX_PROFILES, customColors, paletteOf, colorsOf, normalizeProfiles,
 } from '../../tools/stream-overlay/design.js';
 import { rng, noise, sdBox, falloff, field } from '../../tools/stream-overlay/field.js';
 import { compose, STYLES as DRAW_STYLES, EFFECTS as DRAW_EFFECTS } from '../../tools/stream-overlay/art.js';
@@ -137,7 +138,7 @@ test('links made before new options were added still mean the same thing', () =>
   // Links store list indexes, so the original entries must keep their places.
   assert.deepEqual(KINDS.slice(0, 7), ['camera', 'chat', 'game', 'alerts', 'info', 'buttons', 'other']);
   assert.deepEqual(EFFECTS.slice(0, 6), ['lift', 'sink', 'orbit', 'splash', 'pile', 'none']);
-  assert.deepEqual(STYLES.slice(0, 5), ['sheet', 'flow', 'contour', 'dots', 'none']);
+  assert.deepEqual(STYLES.slice(0, 6), ['sheet', 'flow', 'contour', 'dots', 'none', 'hatch']);
   assert.deepEqual([...EFFECT_ORDER].sort(), [...EFFECTS].sort());
   assert.deepEqual([...STYLE_ORDER].sort(), [...STYLES].sort());
   // [version, size, seed, style, palette, density, reach, fill, zones]: a camera with "sink" in contours.
@@ -145,6 +146,35 @@ test('links made before new options were added still mean the same thing', () =>
   const d = decode(old);
   assert.equal(d.style, 'contour');
   assert.deepEqual([d.zones[0].kind, d.zones[0].effect, d.zones[0].place], ['camera', 'sink', 'under']);
+});
+
+test('custom colours are six valid colours, and the art draws with them', () => {
+  const ember = [PALETTES.ember.bg, PALETTES.ember.frame, ...PALETTES.ember.colors];
+  assert.deepEqual(customColors(undefined), ember);
+  assert.deepEqual(customColors(['#abcdef', 'red', 5, '#12345', '#00FF00']), ['#ABCDEF', ember[1], ember[2], ember[3], '#00FF00', ember[5]]);
+  const d = normalize({ palette: 'custom', custom: ['#102030', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'] });
+  assert.deepEqual(paletteOf(d), { bg: '#102030', frame: '#FFFFFF', colors: ['#FF0000', '#00FF00', '#0000FF', '#FFFF00'] });
+  assert.equal(paletteOf(normalize({ palette: 'neon' })), PALETTES.neon);
+  assert.deepEqual(colorsOf(normalize({ palette: 'moss' })), [PALETTES.moss.bg, PALETTES.moss.frame, ...PALETTES.moss.colors]);
+  for (const bad of ['constructor', '__proto__', 'nope']) assert.equal(normalize({ palette: bad }).palette, 'ember');
+});
+
+test('links carry custom colours only when they are used', () => {
+  const d = normalize({ ...preset('gameplay'), palette: 'custom', custom: ['#102030', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'] });
+  assert.deepEqual(decode(encode(d)), d);
+  const named = normalize({ ...d, palette: 'ocean' });
+  assert.ok(encode(named).length < encode(d).length);
+  assert.equal(decode(encode(named)).palette, 'ocean');
+});
+
+test('colour profiles keep a name and six colours, up to the limit', () => {
+  assert.deepEqual(normalizeProfiles('x'), []);
+  const list = normalizeProfiles([null, { name: '  ' }, { name: ' studio ', colors: ['#000000'] }, { name: 5 }]);
+  assert.equal(list.length, 1);
+  assert.equal(list[0].name, 'studio');
+  assert.equal(list[0].colors[0], '#000000');
+  assert.equal(list[0].colors.length, 6);
+  assert.equal(normalizeProfiles(Array.from({ length: 30 }, (_, i) => ({ name: `p${i}` }))).length, MAX_PROFILES);
 });
 
 // A stand-in 2D context: records which methods were called and whether any

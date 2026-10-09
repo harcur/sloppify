@@ -6,7 +6,7 @@
 // canvas API, so it runs in a worker on OffscreenCanvas or on the page.
 
 import { field, noise, rng, sdBox, smooth } from './field.js';
-import { PALETTES } from './design.js';
+import { paletteOf } from './design.js';
 
 const rgb = (c) => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16) / 255);
 const gapOf = (d) => 34 - d.density * 2.6;
@@ -17,7 +17,7 @@ export function render(design, scale, makeCanvas) {
   const W = Math.max(1, Math.round(design.w * scale));
   const H = Math.max(1, Math.round(design.h * scale));
   const s = W / design.w;
-  const pal = PALETTES[design.palette];
+  const pal = paletteOf(design);
   const F = field(design);
   const art = makeCanvas(W, H);
   const fx = makeCanvas(W, H);
@@ -51,6 +51,13 @@ function polyline(c, pts, color, width) {
   c.moveTo(pts[0], pts[1]);
   for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]);
   c.stroke();
+}
+
+// How dark the field is at a point (height h) under a light at the top
+// left: steeper away from the light is darker, with a little noise.
+function shadeOf(F, x, y, h) {
+  const slope = F.probe(x + 4, y).h - h + F.probe(x, y + 4).h - h;
+  return 0.5 - slope * 16 - h * 0.1 + F.noise(x * 0.01, y * 0.01) * 0.2;
 }
 
 const STYLES = {
@@ -212,9 +219,7 @@ const STYLES = {
       for (let i = 0; i < gw; i++) {
         const x = i * gs;
         const y = j * gs;
-        const h = F.probe(x, y).h;
-        const slope = F.probe(x + 4, y).h - h + F.probe(x, y + 4).h - h;
-        dark[j * gw + i] = 0.5 - slope * 16 - h * 0.1 + F.noise(x * 0.01, y * 0.01) * 0.2;
+        dark[j * gw + i] = shadeOf(F, x, y, F.probe(x, y).h);
       }
     }
     const R = Math.hypot(d.w, d.h) / 2;
@@ -238,6 +243,120 @@ const STYLES = {
         }
         if (on) c.lineTo(lx, ly);
       }
+      c.stroke();
+    });
+  },
+
+  // A wireframe mesh lifted by the field, like terrain seen from above:
+  // the grid bulges over raised zones and dips into sunken ones.
+  mesh(c, d, F, colors, s) {
+    const g = gapOf(d) * 1.6;
+    const sub = 4;
+    const q = g / sub;
+    const amp = 48;
+    const m = g * 2;
+    const nx = Math.ceil((d.w + m * 2) / q) + 1;
+    const ny = Math.ceil((d.h + m * 2 + amp * 2) / q) + 1;
+    const X = new Float32Array(nx * ny);
+    const Y = new Float32Array(nx * ny);
+    const B = new Uint8Array(nx * ny);
+    for (let j = 0; j < ny; j++) {
+      for (let i = 0; i < nx; i++) {
+        const p = F.probe(i * q - m, j * q - m);
+        const k = j * nx + i;
+        X[k] = p.wx;
+        Y[k] = p.wy - p.h * amp;
+        B[k] = bandOf(p.h);
+      }
+    }
+    const segs = [[], [], [], []];
+    const seg = (a, b) => segs[B[a]].push(X[a], Y[a], X[b], Y[b]);
+    for (let j = 0; j < ny; j += sub) for (let i = 0; i + 1 < nx; i++) seg(j * nx + i, j * nx + i + 1);
+    for (let i = 0; i < nx; i += sub) for (let j = 0; j + 1 < ny; j++) seg(j * nx + i, (j + 1) * nx + i);
+    c.lineWidth = Math.max(1 / s, g * 0.05);
+    segs.forEach((list, k) => {
+      c.beginPath();
+      c.strokeStyle = colors[k];
+      for (let i = 0; i < list.length; i += 4) { c.moveTo(list[i], list[i + 1]); c.lineTo(list[i + 2], list[i + 3]); }
+      c.stroke();
+    });
+  },
+
+  // Stippling: fine dots scattered at random, packed tighter where the
+  // field turns away from a light at the top left.
+  stipple(c, d, F, colors, s) {
+    const r = rng(d.seed + 3);
+    const sp = Math.max(1.5 / s, gapOf(d) * 0.32);
+    const rad = Math.max(0.6 / s, sp * 0.22);
+    const dots = [[], [], [], []];
+    for (let y = 0; y < d.h; y += sp) {
+      for (let x = 0; x < d.w; x += sp) {
+        const px = x + r() * sp;
+        const py = y + r() * sp;
+        const p = F.probe(px, py);
+        const { h, wx, wy } = p;
+        if (r() > shadeOf(F, px, py, h) * 1.2) continue;
+        dots[bandOf(h)].push(wx, wy);
+      }
+    }
+    dots.forEach((list, k) => {
+      c.beginPath();
+      c.fillStyle = colors[k];
+      for (let i = 0; i < list.length; i += 2) { c.moveTo(list[i] + rad, list[i + 1]); c.arc(list[i], list[i + 1], rad, 0, Math.PI * 2); }
+      c.fill();
+    });
+  },
+
+  // A mosaic of square tiles that twist with the field's height and shrink
+  // on steep slopes, so the grout lines trace the zones.
+  mosaic(c, d, F, colors) {
+    const t = gapOf(d) * 1.4;
+    const tiles = [[], [], [], []];
+    for (let y = t / 2 - t * 2; y < d.h + t * 2; y += t) {
+      for (let x = t / 2 - t * 2; x < d.w + t * 2; x += t) {
+        const p = F.probe(x, y);
+        const { h, wx, wy } = p;
+        const sl = F.probe(x + 4, y).h - h + F.probe(x, y + 4).h - h;
+        const half = t * 0.5 * Math.min(0.9, Math.max(0.25, 0.9 - Math.abs(sl) * 12));
+        const a = h * 1.2 + sl * 20 + Math.PI / 4;
+        const list = tiles[bandOf(h)];
+        for (let k = 0; k < 4; k++) list.push(wx + Math.cos(a + k * Math.PI / 2) * half * Math.SQRT2, wy + Math.sin(a + k * Math.PI / 2) * half * Math.SQRT2);
+      }
+    }
+    tiles.forEach((list, k) => {
+      c.beginPath();
+      c.fillStyle = colors[k];
+      for (let i = 0; i < list.length; i += 8) {
+        c.moveTo(list[i], list[i + 1]);
+        c.lineTo(list[i + 2], list[i + 3]);
+        c.lineTo(list[i + 4], list[i + 5]);
+        c.lineTo(list[i + 6], list[i + 7]);
+        c.closePath();
+      }
+      c.fill();
+    });
+  },
+
+  // Short, thick brush dashes laid along the flow, like impasto: they
+  // stream around raised zones and swirl into sunken ones.
+  dashes(c, d, F, colors, s) {
+    const r = rng(d.seed + 5);
+    const sp = gapOf(d) * 0.8;
+    const segs = [[], [], [], []];
+    for (let y = 0; y < d.h + sp; y += sp) {
+      for (let x = 0; x < d.w + sp; x += sp) {
+        const px = x + (r() - 0.5) * sp;
+        const py = y + (r() - 0.5) * sp;
+        const { h, fx, fy } = F.probe(px, py, true);
+        const len = sp * (0.6 + r() * 0.9) / 2;
+        segs[bandOf(h)].push(px - fx * len, py - fy * len, px + fx * len, py + fy * len);
+      }
+    }
+    c.lineWidth = Math.max(1 / s, sp * 0.3);
+    segs.forEach((list, k) => {
+      c.beginPath();
+      c.strokeStyle = colors[k];
+      for (let i = 0; i < list.length; i += 4) { c.moveTo(list[i], list[i + 1]); c.lineTo(list[i + 2], list[i + 3]); }
       c.stroke();
     });
   },
@@ -647,7 +766,7 @@ export { STYLES, EFFECTS };
  * under the art also go to the front layer.
  */
 export function compose(design, s, art, fx, W, H) {
-  const pal = PALETTES[design.palette];
+  const pal = paletteOf(design);
   const bg = rgb(pal.bg);
   const fr = rgb(pal.frame);
   const grain = noise(design.seed ^ 0x5BD1E995);
