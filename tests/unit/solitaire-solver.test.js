@@ -3,8 +3,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { newGame, move, drawStock, canPlace, encode, FOUNDATIONS, TABLEAU } from '../../tools/solitaire/logic.js';
-import { solve, winnableDeal } from '../../tools/solitaire/solver.js';
+import { newGame, move, drawStock, canPlace, canMove, encode, FOUNDATIONS, TABLEAU } from '../../tools/solitaire/logic.js';
+import { solve, winnableDeal, hint } from '../../tools/solitaire/solver.js';
 
 function seeded(seed) {
   return () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
@@ -60,4 +60,35 @@ test('the search stops at its limit', () => {
   assert.equal(r.solved, false);
   assert.deepEqual(r.moves, []);
   assert.ok(r.nodes <= 2);
+});
+
+for (const draw of [1, 3]) {
+  test(`following hint after hint wins a winnable deal (draw ${draw})`, () => {
+    const { game: g } = winnableDeal(draw, { rand: seeded(20) });
+    for (let step = 0; g.state !== 'won'; step++) {
+      assert.ok(step < 1000, 'too many hints');
+      const before = encode(g);
+      const next = hint(g);
+      assert.ok(next, `no hint at step ${step}`);
+      assert.equal(encode(g), before, 'asking for a hint must not change the game');
+      if (next.kind === 'draw') assert.ok(drawStock(g));
+      else {
+        assert.ok(canMove(g, next.from, next.index, next.to), JSON.stringify(next));
+        move(g, next.from, next.index, next.to);
+      }
+    }
+    assert.equal(hint(g), null); // nothing to hint once won
+  });
+}
+
+test('no hint from a position with no way to win', () => {
+  // All 52 cards in one column with the 2 of spades on top: it can't go to a
+  // foundation (no ace yet) or to an empty column (only kings can), and the
+  // stock is empty.
+  const g = newGame(1, seeded(1));
+  for (const p of ['stock', 'waste', ...FOUNDATIONS, ...TABLEAU]) g[p] = [];
+  g.t0 = [...Array.from({ length: 52 }, (_, c) => c).filter((c) => c !== 1), 1];
+  g.down = [51, 0, 0, 0, 0, 0, 0];
+  g.state = 'playing';
+  assert.equal(hint(g), null);
 });

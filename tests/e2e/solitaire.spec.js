@@ -139,6 +139,25 @@ test('the last cards finish on their own, and the win is recorded', async ({ pag
   await expect(page.getByRole('status')).toContainText('Solved in');
 });
 
+test('Hint shows the next move of a winning line', async ({ page }) => {
+  await load(page, NEAR);
+  const status = page.getByRole('status');
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await expect(status).toHaveText('Hint: king of spades to foundation 1.');
+  await expect(cardBtn(page, 'king of spades')).toHaveClass(/is-hint/);
+  await cardBtn(page, 'king of spades').click();
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await expect(status).toHaveText('Hint: turn over cards from the stock.');
+  await expect(page.locator('.sol-slot[data-pile="stock"]')).toHaveClass(/is-hint/);
+  await page.getByRole('button', { name: 'Turn over cards, 1 left' }).click();
+  await expect(page.locator('.sol-status')).toBeEmpty(); // cleared by the move (hidden when empty on phones)
+  await cardBtn(page, 'king of clubs').focus();
+  await page.keyboard.press('h');
+  await expect(status).toHaveText('Hint: queen of clubs to foundation 4.');
+  await expect(cardBtn(page, 'queen of clubs')).toHaveClass(/is-hint/);
+  await expectAccessible(page, 'hint shown');
+});
+
 test('a game in progress is kept on reload, and a new game asks first', async ({ page }) => {
   await load(page, MID);
   await cardBtn(page, 'ace of hearts').click();

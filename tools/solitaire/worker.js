@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: 2026 sloppify contributors
 // SPDX-License-Identifier: MIT
 
-// Finds winnable deals off the main thread, so the page never freezes on slow phones.
-import { winnableDeal } from './solver.js';
+// Runs the solver off the main thread, so the page never freezes on slow
+// phones: finds winnable deals, and the next move for a hint.
+import { winnableDeal, hint } from './solver.js';
 
 self.addEventListener('message', (e) => {
-  const { id, draw } = e.data;
-  self.postMessage({ id, game: winnableDeal(draw).game });
+  const { id, type, draw, game } = e.data;
+  const result = type === 'hint' ? hint(game) : winnableDeal(draw).game;
+  self.postMessage({ id, result });
 });

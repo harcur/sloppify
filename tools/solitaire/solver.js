@@ -10,7 +10,7 @@
 // proven impossible; it's just not dealt.
 // No DOM access: runs in the Worker (worker.js) and under Node for tests.
 
-import { suit, rank, isRed, newGame, FOUNDATIONS, TABLEAU } from './logic.js';
+import { suit, rank, isRed, newGame, canPlace, FOUNDATIONS, TABLEAU } from './logic.js';
 
 // From a game (see logic.js) to the solver's own compact position.
 function fromGame(g) {
@@ -166,4 +166,21 @@ export function winnableDeal(draw, { rand = Math.random, tries = 60, limit = 800
     if (solve(g, { limit }).solved) return { game: g, proven: true };
   }
   return { game: g, proven: false };
+}
+
+// The first move of a winning line from the game's position, in the game's
+// own terms: { kind: 'draw' } or { kind: 'move', from, index, to } with pile
+// names as in logic.js. Null when no win is found within the limit (the
+// position may be lost, or just hard), or the game is already won.
+export function hint(g, { limit = 30000 } = {}) {
+  if (g.state === 'won') return null;
+  const r = solve(g, { limit });
+  if (!r.solved || !r.moves.length) return null;
+  const m = r.moves[0];
+  if (m.kind === 'draw') return { kind: 'draw' };
+  if (m.kind === 'waste') return { kind: 'move', from: 'waste', index: g.waste.length - 1, to: TABLEAU[m.to] };
+  if (m.kind === 'run') return { kind: 'move', from: TABLEAU[m.from], index: m.index, to: TABLEAU[m.to] };
+  const from = m.from === 'waste' ? 'waste' : TABLEAU[m.from];
+  const card = g[from].at(-1);
+  return { kind: 'move', from, index: g[from].length - 1, to: FOUNDATIONS.find((f) => canPlace(g, card, 1, f)) };
 }
