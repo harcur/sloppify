@@ -1,13 +1,16 @@
 // SPDX-FileCopyrightText: 2026 sloppify contributors
 // SPDX-License-Identifier: MIT
 
-// Finds a way to win a deal, so the game only deals games that can be won.
-// A depth-first search over positions, with a few rules that cut it down:
-// cards that can't be needed any more go straight to the foundations, runs
-// only move to turn up a card, empty a column or free a card for a
-// foundation, and positions already seen are skipped. It's not complete (it
-// gives up after a set number of positions), so a deal it can't solve isn't
-// proven impossible; it's just not dealt.
+// Solving solitaire, for dealing and for hints.
+// fairPlay() plays a deal the way a person can: it never looks at face-down
+// cards. Only deals it wins are dealt, so every game can be won without
+// guessing. solve() is a full search that does see face-down cards: hints
+// fall back to it when the fair player can't win from where you are.
+// solve() is a depth-first search with a few rules that cut it down: cards
+// that can't be needed any more go straight to the foundations, runs only
+// move to turn up a card, empty a column or free a card for a foundation,
+// and positions already seen are skipped. It gives up after a set number of
+// positions.
 // No DOM access: runs in the Worker (worker.js) and under Node for tests.
 
 import { suit, rank, isRed, newGame, canPlace, FOUNDATIONS, TABLEAU } from './logic.js';
@@ -157,30 +160,112 @@ export function solve(g, { limit = 100000 } = {}) {
   return { solved, moves: solved ? path : [], nodes };
 }
 
-// Deals until the solver finds a win, trying at most `tries` deals (each solved about half the time). If none
-// is found (very unlikely), the last deal is used anyway.
-export function winnableDeal(draw, { rand = Math.random, tries = 60, limit = 8000 } = {}) {
+// Playing fair --------------------------------------------------------
+// solve() sees the face-down cards, so a deal it wins may only be winnable
+// by luck for someone who can't. fairPlay() plays like a person: it plans
+// with only what's face up, and each plan stops at the first move that
+// turns a card over, since what comes next depends on that card. The stock
+// counts as known: it can be gone through as often as you like.
+
+const faceDown = (s) => s.down.reduce((a, b) => a + b, 0);
+const home = (s) => s.f[0] + s.f[1] + s.f[2] + s.f[3];
+
+// How good a position looks from what's visible: cards turned up count most,
+// above all in the deepest columns, then empty columns, cards home and cards
+// out of the stock. (Tuned on 100 deals: about 21% of one-card and 14% of
+// three-card deals are won this way.)
+function worth(s) {
+  let empty = 0;
+  for (const p of s.t) if (!p.length) empty++;
+  let deep = 0;
+  for (const d of s.down) deep += d * d;
+  return -10 * faceDown(s) - deep + 3 * home(s) - (s.stock.length + s.waste.length) + 4 * empty;
+}
+
+// The shortest line to the best-looking position within `limit` positions,
+// or null when nothing looks better than now.
+function plan(s, limit) {
+  let best = null;
+  let bestWorth = worth(s);
+  const seen = new Set([key(s)]);
+  let level = [{ s, path: [] }];
+  let nodes = 0;
+  while (level.length && nodes < limit) {
+    const next = [];
+    for (const { s: cur, path } of level) {
+      for (const m of moves(cur)) {
+        const n = clone(cur);
+        apply(n, m);
+        nodes++;
+        const p = [...path, m];
+        const w = worth(n);
+        if (w > bestWorth) { bestWorth = w; best = p; }
+        if (faceDown(n) < faceDown(cur)) continue; // a card turned up: plan again from there
+        const k = key(n);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        next.push({ s: n, path: p });
+      }
+      if (nodes >= limit) break;
+    }
+    level = next;
+  }
+  return best;
+}
+
+// Plays the game out without peeking. Returns { solved, moves }.
+export function fairPlay(g, { limit = 3000 } = {}) {
+  const s = fromGame(g);
+  const path = settle(s);
+  for (let turn = 0; turn < 400 && !won(s); turn++) {
+    const p = plan(s, limit);
+    if (!p) break;
+    for (const m of p) apply(s, m);
+    path.push(...p, ...settle(s));
+  }
+  return { solved: won(s), moves: path };
+}
+
+// Deals until fairPlay wins, so every deal can be won without guessing what's
+// face down. Each try takes a few milliseconds and wins about one deal in
+// five (one card) or seven (three cards); 150 tries all failing is out of
+// reach in practice, but then the last deal is used anyway.
+export function winnableDeal(draw, { rand = Math.random, tries = 150 } = {}) {
   let g;
   for (let k = 0; k < tries; k++) {
     g = newGame(draw, rand);
-    if (solve(g, { limit }).solved) return { game: g, proven: true };
+    if (fairPlay(g).solved) return { game: g, proven: true };
   }
   return { game: g, proven: false };
 }
 
-// The first move of a winning line from the game's position, in the game's
-// own terms: { kind: 'draw' } or { kind: 'move', from, index, to } with pile
-// names as in logic.js. Null when no win is found within the limit (the
-// position may be lost, or just hard), or the game is already won.
-export function hint(g, { limit = 30000 } = {}) {
-  if (g.state === 'won') return null;
-  const r = solve(g, { limit });
-  if (!r.solved || !r.moves.length) return null;
-  const m = r.moves[0];
-  if (m.kind === 'draw') return { kind: 'draw' };
+// A solver move in the game's own terms (pile names as in logic.js).
+function toGame(g, m) {
   if (m.kind === 'waste') return { kind: 'move', from: 'waste', index: g.waste.length - 1, to: TABLEAU[m.to] };
   if (m.kind === 'run') return { kind: 'move', from: TABLEAU[m.from], index: m.index, to: TABLEAU[m.to] };
   const from = m.from === 'waste' ? 'waste' : TABLEAU[m.from];
   const card = g[from].at(-1);
   return { kind: 'move', from, index: g[from].length - 1, to: FOUNDATIONS.find((f) => canPlace(g, card, 1, f)) };
+}
+
+// The next move of a winning line from the game's position: the fair
+// player's if it wins from here, otherwise the full solver's (which may lean
+// on what's face down). A move is { kind: 'move', from, index, to }; turning
+// over the stock is { kind: 'draw', card }, where card is the stock card
+// the line is going for (null if none), so the hint can name it even when
+// it was passed and the stock has to be gone through again.
+// Null when no win is found, or the game is already won.
+export function hint(g, { limit = 30000 } = {}) {
+  if (g.state === 'won') return null;
+  let r = fairPlay(g);
+  if (!r.solved) r = solve(g, { limit });
+  if (!r.solved || !r.moves.length) return null;
+  const [m] = r.moves;
+  if (m.kind !== 'draw') return toGame(g, m);
+  const s = fromGame(g);
+  let k = 0;
+  while (r.moves[k]?.kind === 'draw') apply(s, r.moves[k++]);
+  const next = r.moves[k];
+  const usesWaste = next && (next.kind === 'waste' || (next.kind === 'home' && next.from === 'waste'));
+  return { kind: 'draw', card: usesWaste ? s.waste.at(-1) : null };
 }

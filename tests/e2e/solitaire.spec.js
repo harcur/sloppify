@@ -147,7 +147,7 @@ test('Hint shows the next move of a winning line', async ({ page }) => {
   await expect(cardBtn(page, 'king of spades')).toHaveClass(/is-hint/);
   await cardBtn(page, 'king of spades').click();
   await page.getByRole('button', { name: 'Hint' }).click();
-  await expect(status).toHaveText('Hint: turn over cards from the stock.');
+  await expect(status).toHaveText('Hint: turn over cards from the stock until the queen of clubs comes up.');
   await expect(page.locator('.sol-slot[data-pile="stock"]')).toHaveClass(/is-hint/);
   await page.getByRole('button', { name: 'Turn over cards, 1 left' }).click();
   await expect(page.locator('.sol-status')).toBeEmpty(); // cleared by the move (hidden when empty on phones)
@@ -156,6 +156,21 @@ test('Hint shows the next move of a winning line', async ({ page }) => {
   await expect(status).toHaveText('Hint: queen of clubs to foundation 4.');
   await expect(cardBtn(page, 'queen of clubs')).toHaveClass(/is-hint/);
   await expectAccessible(page, 'hint shown');
+});
+
+test('a stock hint names the card, even one already passed', async ({ page }) => {
+  // A real position from a dealt game: the line goes for the king of clubs,
+  // which is at the bottom of the waste, behind the one card left in the stock.
+  const saved = JSON.stringify({ draw: 1, position: "n|t`coFg|N|hijk|[\\]|ABC|0ZLe|0|1_MfKWpbGSEQ|0Yr|4OUqaHTmRDP|1Xs|4l^VJdI", state: 'playing', moves: 0, elapsed: 0, history: [] });
+  await page.addInitScript((game) => {
+    if (localStorage.getItem('sloppify:solitaire:game')) return;
+    localStorage.setItem('sloppify:solitaire:__schema', '1');
+    localStorage.setItem('sloppify:solitaire:game', game);
+  }, saved);
+  await page.goto('./tools/solitaire/');
+  await page.getByRole('button', { name: 'Hint' }).click();
+  await expect(page.getByRole('status')).toHaveText('Hint: the king of clubs is behind you in the waste. Go through the stock and turn the waste back over to reach it again.');
+  await expect(page.locator('.sol-slot[data-pile="stock"]')).toHaveClass(/is-hint/);
 });
 
 test('a game in progress is kept on reload, and a new game asks first', async ({ page }) => {

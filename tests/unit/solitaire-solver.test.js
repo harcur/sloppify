@@ -4,27 +4,29 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { newGame, move, drawStock, canPlace, canMove, encode, FOUNDATIONS, TABLEAU } from '../../tools/solitaire/logic.js';
-import { solve, winnableDeal, hint } from '../../tools/solitaire/solver.js';
+import { solve, winnableDeal, hint, fairPlay } from '../../tools/solitaire/solver.js';
 
 function seeded(seed) {
   return () => ((seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296);
 }
 
-// Plays the solver's moves with the game's own rules. Every move must be
-// allowed, and the game must end won.
-function replay(g, moves) {
-  for (const m of moves) {
-    let ok;
-    if (m.kind === 'draw') ok = drawStock(g);
-    else if (m.kind === 'waste') ok = move(g, 'waste', g.waste.length - 1, TABLEAU[m.to]);
-    else if (m.kind === 'run') ok = move(g, TABLEAU[m.from], m.index, TABLEAU[m.to]);
-    else {
-      const from = m.from === 'waste' ? 'waste' : TABLEAU[m.from];
-      const card = g[from].at(-1);
-      ok = move(g, from, g[from].length - 1, FOUNDATIONS.find((f) => canPlace(g, card, 1, f)));
-    }
-    assert.ok(ok, `move not allowed: ${JSON.stringify(m)}`);
+// Plays one solver move with the game's own rules; it must be allowed.
+function step(g, m) {
+  let ok;
+  if (m.kind === 'draw') ok = drawStock(g);
+  else if (m.kind === 'waste') ok = move(g, 'waste', g.waste.length - 1, TABLEAU[m.to]);
+  else if (m.kind === 'run') ok = move(g, TABLEAU[m.from], m.index, TABLEAU[m.to]);
+  else {
+    const from = m.from === 'waste' ? 'waste' : TABLEAU[m.from];
+    const card = g[from].at(-1);
+    ok = move(g, from, g[from].length - 1, FOUNDATIONS.find((f) => canPlace(g, card, 1, f)));
   }
+  assert.ok(ok, `move not allowed: ${JSON.stringify(m)}`);
+}
+
+// Plays a whole line of solver moves; the game must end won.
+function replay(g, moves) {
+  for (const m of moves) step(g, m);
   assert.equal(g.state, 'won');
 }
 
@@ -43,14 +45,15 @@ for (const draw of [1, 3]) {
     assert.ok(solved >= 4, `solved ${solved} of 12`);
   });
 
-  test(`winnable deals are proven by a solution (draw ${draw})`, () => {
+  test(`deals are won by the fair player, and its moves play through (draw ${draw})`, () => {
     for (let k = 1; k <= 5; k++) {
       const { game, proven } = winnableDeal(draw, { rand: seeded(100 + k) });
       assert.ok(proven);
       assert.equal(game.draw, draw);
       assert.equal(game.state, 'ready');
-      const copy = structuredClone(game);
-      replay(copy, solve(game, { limit: 8000 }).moves);
+      const r = fairPlay(game);
+      assert.ok(r.solved);
+      replay(structuredClone(game), r.moves);
     }
   });
 }
@@ -71,7 +74,11 @@ for (const draw of [1, 3]) {
       const next = hint(g);
       assert.ok(next, `no hint at step ${step}`);
       assert.equal(encode(g), before, 'asking for a hint must not change the game');
-      if (next.kind === 'draw') assert.ok(drawStock(g));
+      if (next.kind === 'draw') {
+        // A named card is one the stock or waste really holds.
+        if (next.card != null) assert.ok(g.stock.includes(next.card) || g.waste.includes(next.card));
+        assert.ok(drawStock(g));
+      }
       else {
         assert.ok(canMove(g, next.from, next.index, next.to), JSON.stringify(next));
         move(g, next.from, next.index, next.to);
@@ -91,4 +98,29 @@ test('no hint from a position with no way to win', () => {
   g.down = [51, 0, 0, 0, 0, 0, 0];
   g.state = 'playing';
   assert.equal(hint(g), null);
+});
+
+// The fair player must not look at face-down cards: shuffling them must not
+// change anything it does before the first one is turned up.
+test('the fair player plans the same whatever is face down', () => {
+  const downTotal = (g) => g.down.reduce((a, b) => a + b, 0);
+  const firstPlan = (g) => {
+    const { moves } = fairPlay(g);
+    const copy = structuredClone(g);
+    const start = downTotal(copy);
+    let n = 0;
+    while (n < moves.length && downTotal(copy) === start) {
+      step(copy, moves[n++]);
+    }
+    return moves.slice(0, n);
+  };
+  for (let k = 1; k <= 20; k++) {
+    const g = newGame(k % 2 ? 1 : 3, seeded(500 + k));
+    const hidden = TABLEAU.flatMap((p, i) => g[p].slice(0, g.down[i]));
+    const shuffled = structuredClone(g);
+    const rand = seeded(900 + k);
+    const order = hidden.map((c) => [rand(), c]).sort((a, b) => a[0] - b[0]).map(([, c]) => c);
+    TABLEAU.forEach((p, i) => { shuffled[p].splice(0, g.down[i], ...order.splice(0, g.down[i])); });
+    assert.deepEqual(firstPlan(shuffled), firstPlan(g));
+  }
 });
