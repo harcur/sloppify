@@ -1,0 +1,211 @@
+/* SPDX-FileCopyrightText: 2026 sloppify contributors
+   SPDX-License-Identifier: MIT */
+
+/* Sand colour carries the phase (warm for work, cool for rest), always paired
+   with the written phase name. Frame and sand ≥ 3:1 against the page in both themes. */
+:root {
+  --wrt-work: #A86B1F; --wrt-rest: #2A7A6A;
+  --wrt-frame: #5B4636; --wrt-glass: rgba(120, 150, 170, 0.08); --wrt-outline: #8A8F94;
+  --wrt-shine: rgba(255, 255, 255, 0.9); --wrt-grain: rgba(0, 0, 0, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wrt-work: #E2B566; --wrt-rest: #74C6B2;
+    --wrt-frame: #C9B49A; --wrt-glass: rgba(170, 200, 220, 0.06); --wrt-outline: #7D848A;
+    --wrt-shine: rgba(255, 255, 255, 0.35); --wrt-grain: rgba(0, 0, 0, 0.22);
+  }
+}
+:root[data-theme="dark"] {
+  --wrt-work: #E2B566; --wrt-rest: #74C6B2;
+  --wrt-frame: #C9B49A; --wrt-glass: rgba(170, 200, 220, 0.06); --wrt-outline: #7D848A;
+  --wrt-shine: rgba(255, 255, 255, 0.35); --wrt-grain: rgba(0, 0, 0, 0.22);
+}
+.wrt { --sand: var(--wrt-work); }
+.wrt[data-phase="rest"] { --sand: var(--wrt-rest); }
+
+/* Layout --------------------------------------------------------------- */
+.wrt { display: grid; gap: 32px; }
+@media (min-width: 900px) {
+  .wrt { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 48px; }
+}
+
+.wrt-stage {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 20px 16px 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.wrt-head { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.wrt-phase {
+  margin: 0;
+  font-family: var(--mono); font-size: 20px;
+  display: inline-flex; align-items: center; gap: 10px;
+}
+.wrt-phase::before { content: ""; width: 10px; height: 10px; background: var(--sand); }
+.wrt-round { margin: 0; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); }
+.wrt-marks { display: inline-flex; gap: 4px; }
+.wrt-mark { width: 10px; height: 10px; border: 1px solid var(--muted); }
+.wrt-mark.done { background: var(--muted); }
+.wrt-mark.now { border: 3px solid var(--sand); }
+
+.wrt-glass-wrap { width: min(220px, 52vw); margin: 20px 0 8px; }
+@media (min-width: 900px) { .wrt-glass-wrap { width: 260px; } }
+.wrt-svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.wrt-time {
+  margin: 0;
+  font-family: var(--mono); font-size: clamp(48px, 14vw, 76px); line-height: 1.1;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.wrt-controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+.wrt-start { min-width: 9.5em; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.wrt-status { min-height: 1.5em; margin: 12px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
+.wrt-today { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.wrt-exit { display: none; }
+
+.wrt-options { display: none; }
+
+/* Narrow screens: the timer fills the screen like an app -----------------
+   Phase on top, the glass and time in the middle, buttons at the bottom
+   within thumb reach. Settings are in the options sheet (shared/sheet.js). */
+@media (max-width: 719px) {
+  .wrt { display: block; }
+  .wrt-stage {
+    height: 100vh; height: 100dvh;
+    justify-content: space-between;
+    background: transparent; border: 0;
+    padding:
+      calc(env(safe-area-inset-top, 0px) + 6px)
+      calc(env(safe-area-inset-right, 0px) + 12px)
+      calc(env(safe-area-inset-bottom, 0px) + 12px)
+      calc(env(safe-area-inset-left, 0px) + 12px);
+  }
+  .wrt-head {
+    align-self: stretch; align-items: flex-start;
+    min-height: 44px; padding: 4px 52px 0 4px; /* room for the menu button */
+  }
+  .wrt-phase { font-size: 18px; }
+  .wrt-glass-wrap {
+    flex: 1 1 0; min-height: 0; width: 100%;
+    display: flex; justify-content: center;
+    margin: 8px 0 0;
+  }
+  .wrt-svg { width: auto; height: 100%; max-width: 72vw; }
+  .wrt-time { font-size: clamp(48px, 16vw, 72px); margin-top: 4px; }
+  .wrt-status { margin-top: 4px; min-height: 1.5em; font-size: 13px; }
+  /* The count sits under the round line, out of the way of the controls. */
+  .wrt-stage > * { order: 2; }
+  .wrt-stage > .wrt-head { order: 0; }
+  .wrt-stage > .wrt-today { order: 1; align-self: flex-start; margin: 0; padding-left: 4px; font-size: 13px; }
+  .wrt-controls {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%; margin-top: 8px;
+  }
+  .wrt-start { grid-column: 1 / -1; min-height: 56px; font-size: 17px; }
+  .wrt-controls .btn { padding-inline: 2px; font-size: clamp(13px, 3.8vw, 15px); white-space: nowrap; }
+  .wrt-options { display: block; }
+  .sheet .wrt-settings { gap: 24px; }
+}
+
+/* Hourglass ------------------------------------------------------------- */
+.wrt-glass { fill: var(--wrt-glass); }
+.wrt-outline { fill: none; stroke: var(--wrt-outline); stroke-width: 1.5; }
+.wrt-shine { fill: none; stroke: var(--wrt-shine); stroke-width: 2; stroke-linecap: round; }
+.wrt-cap { fill: var(--wrt-frame); }
+.wrt-post { fill: none; stroke: var(--wrt-frame); stroke-width: 3; }
+.wrt-sand-fill { fill: var(--sand); transition: fill 0.6s; }
+.wrt-grain { fill: var(--wrt-grain); }
+.wrt-sand { transition-property: transform; transition-timing-function: linear; }
+
+/* Falling grains: a dashed line that runs while the timer does. */
+.wrt-stream {
+  stroke: var(--sand); stroke-width: 1.6; stroke-linecap: round;
+  stroke-dasharray: 2 5;
+  opacity: 0; transition: opacity 0.4s;
+}
+.wrt[data-running="true"] .wrt-stream { opacity: 1; animation: wrt-fall 0.6s linear infinite; }
+@keyframes wrt-fall { to { stroke-dashoffset: -14; } }
+
+/* The glass turns over when a phase ends. */
+.wrt-glass-wrap.flip .wrt-svg { animation: wrt-flip 0.9s cubic-bezier(0.6, 0, 0.3, 1); }
+@keyframes wrt-flip { from { transform: rotate(-180deg); } to { transform: rotate(0deg); } }
+
+/* Glow alert: a soft colour fade from the screen edges. 2.4 s per pulse,
+   three pulses. Never a flash. */
+.wrt-glow {
+  position: fixed; inset: 0; z-index: 40;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, var(--wrt-work) 130%);
+}
+.wrt-glow[data-phase="rest"] { background: radial-gradient(ellipse at center, transparent 45%, var(--wrt-rest) 130%); }
+.wrt-glow.on { animation: wrt-glow 2.4s ease-in-out 3; }
+@keyframes wrt-glow { 50% { opacity: 0.55; } }
+
+/* Settings ------------------------------------------------------------- */
+.wrt-settings { display: flex; flex-direction: column; gap: 28px; }
+.wrt-section { display: flex; flex-direction: column; gap: 14px; }
+.wrt-h2 {
+  margin: 0; padding-bottom: 6px;
+  font-family: var(--mono); font-size: 14px; font-weight: 400; color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.wrt-presets { margin: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.wrt-presets .seg-btn { font-family: var(--mono); font-size: 13px; }
+.wrt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+.wrt-field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.wrt-number-wrap { display: flex; align-items: center; gap: 8px; }
+.wrt-number, .wrt-select {
+  min-height: 44px; padding: 0 10px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--muted); border-radius: 0;
+  font: inherit; font-size: 16px;
+}
+.wrt-number { width: 5.5em; font-family: var(--mono); }
+.wrt-unit { color: var(--muted); font-size: 13px; }
+.wrt-volume-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; margin-top: 4px; }
+.wrt-volume-label { font-size: 13px; color: var(--muted); }
+.wrt-select { width: 100%; min-width: 0; }
+.wrt-range { width: 100%; min-height: 32px; accent-color: var(--text); }
+.wrt-check-row {
+  display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: start;
+  font-size: 15px;
+}
+.wrt-check { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--text); }
+.wrt-check-row .wrt-hint { grid-column: 2; }
+.wrt-hint { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+.wrt-hint[hidden] { display: none; }
+.wrt-try { align-self: start; }
+
+/* Minimal view: only the glass and one button. No ticking numbers and no
+   falling grains: the sand levels alone show the time passing. --------------- */
+.wrt-minimal .site-header, .wrt-minimal .site-footer, .wrt-minimal .skip,
+.wrt-minimal .tool-title, .wrt-minimal .wrt-settings,
+.wrt-minimal .wrt-round, .wrt-minimal .wrt-today, .wrt-minimal .wrt-time, .wrt-minimal .wrt-stream,
+.wrt-minimal .wrt-controls .btn:not(.wrt-start) { display: none; }
+.wrt-minimal .tool-main { display: flex; padding: 0; }
+.wrt-minimal .wrt { flex: 1; display: flex; }
+.wrt-minimal .wrt-stage {
+  flex: 1; justify-content: center;
+  min-height: 100vh; min-height: 100dvh;
+  background: transparent; border: 0;
+}
+.wrt-minimal .wrt-glass-wrap { width: min(300px, 60vw, 32vh); }
+.wrt-minimal .wrt-phase { font-size: 16px; color: var(--muted); }
+.wrt-minimal .wrt-controls { display: flex; width: auto; }
+.wrt-minimal .wrt-start { border-color: var(--line); background: transparent; color: var(--muted); min-height: 44px; }
+.wrt-minimal .wrt-status { visibility: hidden; height: 0; margin: 0; }
+.wrt-minimal .wrt-exit {
+  display: block;
+  position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px));
+  border-color: var(--line); color: var(--muted); font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrt-sand, .wrt-sand-fill, .wrt-stream { transition: none !important; }
+  .wrt[data-running="true"] .wrt-stream { animation: none; opacity: 0.8; stroke-dasharray: none; }
+  .wrt-glass-wrap.flip .wrt-svg { animation: none; }
+  .wrt-glow.on { animation: wrt-glow-still 5s step-end 1; }
+  @keyframes wrt-glow-still { from { opacity: 0.4; } to { opacity: 0; } }
+}

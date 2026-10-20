@@ -1,0 +1,17 @@
+{
+  "name": {
+    "en": "stream overlay"
+  },
+  "description": {
+    "en": "Generative art overlays shaped around your camera, chat and other zones"
+  },
+  "category": "tool",
+  "tags": [
+    "streaming",
+    "overlay",
+    "generative art",
+    "design",
+    "image"
+  ],
+  "license": "MIT"
+}

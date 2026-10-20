@@ -1,0 +1,35 @@
+// SPDX-FileCopyrightText: 2026 sloppify contributors
+// SPDX-License-Identifier: MIT
+
+export const strings = {
+  en: {
+    'random-numbers.name': 'random numbers',
+    'random-numbers.range': 'range',
+    'random-numbers.from': 'From',
+    'random-numbers.to': 'To',
+    'random-numbers.howMany': 'how many',
+    'random-numbers.count': 'How many numbers',
+    'random-numbers.fewer': 'Fewer numbers',
+    'random-numbers.more': 'More numbers',
+    'random-numbers.unique': 'No repeats',
+    'random-numbers.sort': 'Sort smallest first',
+    'random-numbers.pick': 'Pick',
+    'random-numbers.copy': 'Copy',
+    'random-numbers.copied': 'Copied',
+    'random-numbers.copyFailed': 'Couldn’t copy. Select the numbers and copy them instead.',
+    'random-numbers.caption': '{min} to {max}',
+    'random-numbers.captionMany': '{min} to {max} · {n} numbers',
+    'random-numbers.waiting': 'Press Pick for a number.',
+    'random-numbers.results': 'Result',
+    'random-numbers.list': '{n} numbers picked',
+    'random-numbers.sum': 'Sum {sum}',
+    'random-numbers.announceMany': '{n} numbers: {values}. Sum {sum}',
+    'random-numbers.error.range': 'Enter whole numbers between −1,000,000,000 and 1,000,000,000 in From and To.',
+    'random-numbers.error.count': 'Pick between 1 and 100 numbers.',
+    'random-numbers.error.unique': 'There aren’t {n} different numbers between {min} and {max}.',
+    'random-numbers.history': 'history',
+    'random-numbers.history.empty': 'Your picks show up here.',
+    'random-numbers.history.clear': 'Clear history',
+    'random-numbers.fair': 'Numbers come from your browser’s cryptographic random number generator, so every number in the range is equally likely.',
+  },
+};

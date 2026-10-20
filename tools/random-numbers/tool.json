@@ -1,0 +1,17 @@
+{
+  "name": {
+    "en": "random numbers"
+  },
+  "description": {
+    "en": "Pick random whole numbers in a range, with or without repeats"
+  },
+  "category": "tool",
+  "tags": [
+    "random",
+    "number generator",
+    "rng",
+    "lottery",
+    "raffle"
+  ],
+  "license": "MIT"
+}
