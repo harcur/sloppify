@@ -1,11 +1,11 @@
 # solitaire
 
-The traditional patience card game also known as Klondike: build the four suits from ace to king on the foundations, using seven tableau piles and a stock. Only winnable deals. Turn over one or three cards at a time, unlimited passes through the stock, unlimited undo. Games and records saved locally.
+The traditional patience card game also known as Klondike: build the four suits from ace to king on the foundations, using seven tableau piles and a stock. Only fair, winnable deals. Turn over one or three cards at a time, unlimited passes through the stock, unlimited undo. Games and records saved locally.
 
-Every deal is one a solver has played through to a win first, so no game is hopeless. Hint asks the same solver for the next move from where you are.
+Every deal has first been won by a computer player that never looks at face-down cards, so every game can be won without guessing. Hint shows the next move of a winning line from where you are, and names the card when the line needs one from the stock.
 
 - `logic.js`: the rules, with no DOM access (unit tested in `tests/unit/solitaire.test.js`)
-- `solver.js`: finds a winning line for a deal; deals are tried until it finds one (unit tested in `tests/unit/solitaire-solver.test.js`, which plays every solution through `logic.js`)
+- `solver.js`: the fair player (`fairPlay`, used for dealing) and a full solver (`solve`, a fallback for hints); unit tested in `tests/unit/solitaire-solver.test.js`, which plays every line through `logic.js` and checks the fair player doesn't peek
 - `worker.js`: runs the solver off the main thread, for deals and hints
 - `app.js`: the page
 

@@ -491,7 +491,12 @@ async function doHint() {
   if (!next) return note(t('solitaire.say.noHint'));
   shown = next;
   markSelection();
-  if (next.kind === 'draw') return note(t(g.stock.length ? 'solitaire.say.hintDraw' : 'solitaire.say.hintRecycle'));
+  if (next.kind === 'draw') {
+    // Name the card the line is going for; if it's already been passed, say
+    // to go round again.
+    if (next.card == null) return note(t(g.stock.length ? 'solitaire.say.hintDraw' : 'solitaire.say.hintRecycle'));
+    return note(t(g.waste.includes(next.card) ? 'solitaire.say.hintPassed' : 'solitaire.say.hintDig', { card: cardName(next.card) }));
+  }
   const n = g[next.from].length - next.index - 1;
   note(t(n ? 'solitaire.say.hintRun' : 'solitaire.say.hintMove', { card: cardName(g[next.from][next.index]), n, pile: pileName(next.to) }));
 }

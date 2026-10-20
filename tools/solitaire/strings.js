@@ -62,6 +62,8 @@ export const strings = {
     'solitaire.say.noHint': 'No winning line found from here. Try undoing a few moves.',
     'solitaire.say.hintDraw': 'Hint: turn over cards from the stock.',
     'solitaire.say.hintRecycle': 'Hint: turn the waste back over.',
+    'solitaire.say.hintDig': 'Hint: turn over cards from the stock until the {card} comes up.',
+    'solitaire.say.hintPassed': 'Hint: the {card} is behind you in the waste. Go through the stock and turn the waste back over to reach it again.',
     'solitaire.say.hintMove': 'Hint: {card} to {pile}.',
     'solitaire.say.hintRun': 'Hint: {card} and {n} more to {pile}.',
     'solitaire.say.finishing': 'Every card is face up. Finishing.',
@@ -80,7 +82,7 @@ export const strings = {
     'solitaire.stats.none': 'no games yet',
 
     'solitaire.help.title': 'how to play',
-    'solitaire.help.goal': 'Move every card to the four foundations at the top, one suit on each, from ace to king. Every deal has been played through to a win by a solver first, so every game can be won.',
+    'solitaire.help.goal': 'Move every card to the four foundations at the top, one suit on each, from ace to king. Every deal has been won first by a computer player that never looks at face-down cards, so every game can be won without guessing.',
     'solitaire.help.columns': 'In the seven columns, build down in alternating colours: a red 6 on a black 7. A run that follows this can move together. Only a king, or a run starting with a king, can fill an empty column.',
     'solitaire.help.stock': 'When you’re stuck, turn over cards from the stock. When it runs out, turn the waste back over and go through it again.',
     'solitaire.help.hint': 'Stuck? Hint shows the next move of a winning line from where you are.',
