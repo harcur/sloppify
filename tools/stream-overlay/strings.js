@@ -91,7 +91,7 @@ export const strings = {
     'stream-overlay.place.short.over': 'on top',
     'stream-overlay.place.short.under': 'under edges',
     'stream-overlay.place.toggle': 'Under edges',
-    'stream-overlay.place.toggleLabel': 'Content under the art’s edges',
+    'stream-overlay.place.toggleLabel': 'Under edges: content under the art’s edges',
 
     'stream-overlay.x': 'Left',
     'stream-overlay.y': 'Top',

@@ -52,7 +52,8 @@ async function load(page, piles, path = './tools/solitaire/') {
 }
 
 const isNarrow = (page) => (page.viewportSize()?.width ?? 1000) < 720;
-const cardBtn = (page, name) => page.getByRole('button', { name, exact: true });
+// Cards by name; court cards and aces start with their letter ("K, king of spades").
+const cardBtn = (page, name) => page.getByRole('button', { name: new RegExp(`^([AJQK], )?${name}$`) });
 const pile = (page, name) => page.getByRole('group', { name });
 const moves = (page) => page.locator('.sol-stat').filter({ hasText: 'moves' }).locator('.sol-stat-value');
 
