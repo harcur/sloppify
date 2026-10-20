@@ -144,6 +144,9 @@
   color: var(--suit);
 }
 .sol-court-letter { font-weight: 800; font-size: calc(var(--cw) * 0.4); }
+/* Drawn from CSS so the card's text is just its corner letter, which its
+   button name starts with ("K, king of spades"). */
+.sol-court-letter::before { content: attr(data-letter); }
 .sol-court .sol-suit { width: calc(var(--cw) * 0.22); height: calc(var(--cw) * 0.22); }
 
 /* Focus, picking up, and where a card can go. */

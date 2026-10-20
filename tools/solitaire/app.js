@@ -99,14 +99,17 @@ function svg(markup, cls) {
 const rankShort = (r) => (r === 1 || r > 10 ? t(`solitaire.rank.short.${r}`) : String(r));
 const rankName = (r) => (r === 1 || r > 10 ? t(`solitaire.rank.${r}`) : String(r));
 const cardName = (c) => t('solitaire.card', { rank: rankName(rank(c)), suit: t(`solitaire.suit.${SUITS[suit(c)]}`) });
+// A card's button name starts with the letter it shows (A, J, Q, K), so
+// speech input users can say what they see.
+const cardLabel = (c) => (rank(c) === 1 || rank(c) > 10 ? t('solitaire.cardLabel', { short: rankShort(rank(c)), name: cardName(c) }) : cardName(c));
 
 const cardEls = Array.from({ length: 52 }, (_, c) => {
   const s = SUITS[suit(c)];
   const r = rank(c);
   const mid = r > 10
-    ? h('span', { class: 'sol-mid sol-court' }, h('span', { class: 'sol-court-letter' }, rankShort(r)), svg(SUIT_SVG[s], 'sol-suit'))
+    ? h('span', { class: 'sol-mid sol-court' }, h('span', { class: 'sol-court-letter', 'data-letter': rankShort(r) }), svg(SUIT_SVG[s], 'sol-suit'))
     : h('span', { class: 'sol-mid' }, svg(SUIT_SVG[s], 'sol-suit'));
-  return h('button', { type: 'button', class: `sol-card sol-${s}`, 'data-c': c, 'aria-label': cardName(c) },
+  return h('button', { type: 'button', class: `sol-card sol-${s}`, 'data-c': c, 'aria-label': cardLabel(c) },
     h('span', { class: 'sol-inner', 'aria-hidden': 'true' },
       h('span', { class: 'sol-idx' }, h('span', { class: 'sol-rank' }, rankShort(r)), svg(SUIT_SVG[s], 'sol-suit')),
       mid,

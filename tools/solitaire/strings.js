@@ -31,6 +31,7 @@ export const strings = {
     'solitaire.suit.diamonds': 'diamonds',
     'solitaire.suit.clubs': 'clubs',
     'solitaire.card': '{rank} of {suit}',
+    'solitaire.cardLabel': '{short}, {name}',
 
     'solitaire.cards.0': 'empty',
     'solitaire.cards.1': '1 card',
