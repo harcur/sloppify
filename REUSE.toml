@@ -1,0 +1,7 @@
+version = 1
+
+# Files that can't carry an SPDX comment header.
+[[annotations]]
+path = ["CLAUDE.md", "**/*.json", "manifest.webmanifest", "icon.svg", "**/*.md", ".nojekyll", ".gitignore", "LICENSE", "REUSE.toml"]
+SPDX-FileCopyrightText = "2026 sloppify contributors"
+SPDX-License-Identifier = "MIT"

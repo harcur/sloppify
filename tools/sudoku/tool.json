@@ -1,0 +1,15 @@
+{
+  "name": {
+    "en": "sudoku"
+  },
+  "description": {
+    "en": "Fill a 9 × 9 grid with the digits 1 to 9"
+  },
+  "category": "game",
+  "tags": [
+    "puzzle",
+    "numbers",
+    "logic"
+  ],
+  "license": "MIT"
+}

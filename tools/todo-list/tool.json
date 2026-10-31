@@ -1,0 +1,17 @@
+{
+  "name": {
+    "en": "todo list"
+  },
+  "description": {
+    "en": "Lists of tasks with due dates, steps and notes"
+  },
+  "category": "tool",
+  "tags": [
+    "tasks",
+    "checklist",
+    "to-do",
+    "planner",
+    "productivity"
+  ],
+  "license": "MIT"
+}

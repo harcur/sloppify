@@ -1,0 +1,17 @@
+{
+  "tool": {
+    "label": {
+      "en": "tool"
+    }
+  },
+  "game": {
+    "label": {
+      "en": "game"
+    }
+  },
+  "party": {
+    "label": {
+      "en": "party"
+    }
+  }
+}

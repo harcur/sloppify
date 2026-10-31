@@ -1,0 +1,21 @@
+{
+  "name": {
+    "en": "interest calculator"
+  },
+  "description": {
+    "en": "Loans, savings, paying off debt and the real rate of an offer"
+  },
+  "category": "tool",
+  "tags": [
+    "finance",
+    "money",
+    "loan",
+    "mortgage",
+    "savings",
+    "investment",
+    "debt",
+    "compound",
+    "rate"
+  ],
+  "license": "MIT"
+}
