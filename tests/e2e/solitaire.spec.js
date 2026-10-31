@@ -4,6 +4,7 @@
 import { test, expect } from '@playwright/test';
 import { trackExternalRequests, markNoticeSeen, expectAccessible } from './helpers.js';
 import { newGame, serialize, FOUNDATIONS, TABLEAU } from '../../tools/solitaire/logic.js';
+import * as freecell from '../../tools/solitaire/freecell.js';
 
 let external;
 test.beforeEach(async ({ page, baseURL }) => {
@@ -247,5 +248,98 @@ for (const scheme of ['light', 'dark']) {
     await cardBtn(page, 'queen of clubs').click();
     await expect(page.getByRole('status')).toContainText('Solved in');
     await expectAccessible(page, 'solved');
+  });
+}
+
+// Free cell ---------------------------------------------------------------
+
+// A free cell game saved before the page loads. Cards not placed go in the last column.
+async function loadFree(page, piles) {
+  const g = freecell.newGame();
+  for (const p of freecell.PILES) g[p] = [];
+  Object.assign(g, structuredClone(piles));
+  if (!piles.t7) {
+    const used = new Set(Object.values(piles).flat());
+    g.t7 = Array.from({ length: 52 }, (_, i) => i).filter((c) => !used.has(c));
+  }
+  const saved = JSON.stringify(freecell.serialize(g));
+  await page.addInitScript((game) => {
+    if (localStorage.getItem('sloppify:solitaire:game')) return;
+    localStorage.setItem('sloppify:solitaire:__schema', '1');
+    localStorage.setItem('sloppify:solitaire:mode', '"freecell"');
+    localStorage.setItem('sloppify:solitaire:game', game);
+  }, saved);
+  await page.goto('./tools/solitaire/');
+}
+
+// FC_NEAR: once the king of spades is home, every column is in order and the rest finishes itself.
+const FC_NEAR = {
+  f0: run('spades', 1, 12), f1: run('hearts', 1, 13), f2: run('diamonds', 1, 13), f3: run('clubs', 1, 11),
+  t0: [card('Q', 'clubs'), card('K', 'spades')], c0: [card('K', 'clubs')], t7: [],
+};
+// FC_MID: a 7 of hearts that fits on the 8 of spades, and a 9 of clubs.
+const FC_MID = { t0: [card(8, 'spades')], t1: [card(9, 'clubs'), card(7, 'hearts')] };
+
+async function openOptions(page) {
+  const more = page.getByRole('button', { name: 'Options' });
+  if (await more.isVisible()) await more.click();
+}
+
+test('free cell deals eight face-up columns and is remembered', async ({ page }) => {
+  await page.goto('./tools/solitaire/');
+  await expect(page.getByRole('group', { name: 'Card table' })).toBeVisible();
+  await openOptions(page);
+  await page.getByRole('button', { name: /^free cell/ }).click();
+  await expect(page.locator('.sol-draw[data-mode="freecell"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(pile(page, 'Column 8, 6 cards')).toHaveCount(1);
+  await expect(pile(page, 'Column 1, 7 cards')).toHaveCount(1);
+  await expect(pile(page, 'Free cell 4, empty')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: /^Turn over cards/ })).toHaveCount(0);
+  await page.reload();
+  await expect(pile(page, 'Column 8, 6 cards')).toHaveCount(1);
+  // Back to the classic game, with its stock.
+  await openOptions(page);
+  await expect(page.getByRole('group', { name: 'Turn over' })).toBeHidden();
+  await page.getByRole('button', { name: /^classic/ }).click();
+  await expect(page.getByRole('button', { name: 'Turn over cards, 24 left' })).toBeVisible();
+  await expect(pile(page, 'Free cell 1, empty')).toHaveCount(0);
+});
+
+test('free cell: a tap moves a card, the keyboard puts one in a free cell, and undo takes it back', async ({ page }) => {
+  await loadFree(page, FC_MID);
+  await cardBtn(page, '7 of hearts').click();
+  await expect(pile(page, 'Column 1, 2 cards')).toHaveCount(1);
+  await expect(page.locator('[aria-live="polite"]')).toHaveText('7 of hearts to column 1');
+  await cardBtn(page, '9 of clubs').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('ArrowUp'); // the free cell above column 2
+  await expect(pile(page, 'Free cell 2, empty').getByRole('button', { name: 'empty' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(pile(page, 'Free cell 2, 1 card')).toHaveCount(1);
+  await expect(page.locator('[aria-live="polite"]')).toHaveText('9 of clubs to free cell 2');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(pile(page, 'Free cell 2, empty')).toHaveCount(1);
+  await expect(pile(page, 'Column 2, 1 card')).toHaveCount(1);
+});
+
+test('free cell: once the columns are in order the game finishes itself', async ({ page }) => {
+  await loadFree(page, FC_NEAR);
+  await cardBtn(page, 'king of spades').click();
+  await expect(page.getByRole('status')).toContainText('Solved in');
+  await openOptions(page);
+  await expect(page.locator('.sol-record')).toContainText('free cell1 won of 1');
+});
+
+for (const scheme of ['light', 'dark']) {
+  test(`free cell accessibility (${scheme})`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: scheme, reducedMotion: 'reduce' });
+    await loadFree(page, FC_MID);
+    await cardBtn(page, '7 of hearts').focus();
+    await page.keyboard.press('Enter');
+    await expectAccessible(page, 'free cell, card picked up');
+    await page.keyboard.press('Escape');
+    await openOptions(page);
+    await expectAccessible(page, 'free cell, options');
   });
 }

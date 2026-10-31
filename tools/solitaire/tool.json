@@ -3,13 +3,14 @@
     "en": "solitaire"
   },
   "description": {
-    "en": "The patience card game: build four suits from ace to king"
+    "en": "The patience card game, classic or free cell: build four suits from ace to king"
   },
   "category": "game",
   "tags": [
     "cards",
     "patience",
-    "klondike"
+    "klondike",
+    "free cell"
   ],
   "license": "MIT"
 }

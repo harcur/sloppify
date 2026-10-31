@@ -8,10 +8,8 @@ import { optionsSheet } from '../../shared/sheet.js';
 import { openStore } from '../../shared/storage.js';
 import { confirmDialog } from '../../shared/dialog.js';
 import { strings } from './strings.js';
-import {
-  SUITS, FOUNDATIONS, TABLEAU, suit, rank, tableauIndex, canTake, canMove, move, drawStock, undo,
-  bestTarget, canFinish, nextFinishMove, serialize, deserialize,
-} from './logic.js';
+import * as klondike from './logic.js';
+import * as freecell from './freecell.js';
 
 extendStrings(strings);
 
@@ -27,6 +25,34 @@ const { main } = initPage({ toolId: TOOL_ID, toolName: name, license: 'MIT', sou
 const store = openStore(TOOL_ID, { version: 1 });
 const saving = await guardStore(store, name);
 
+// Two games on one table: the classic one (logic.js), turning over one or
+// three cards, and free cell (freecell.js). Both have the same interface;
+// `R` is the rules of the game being played. A variant is 1 or 3 (cards
+// turned over in the classic game) or 'freecell'.
+const { SUITS, FOUNDATIONS, suit, rank, tableauIndex } = klondike;
+const GAMES = {
+  klondike: {
+    rules: klondike,
+    piles: ['stock', 'waste', ...FOUNDATIONS, ...klondike.TABLEAU],
+    top: ['stock', 'waste', null, ...FOUNDATIONS],
+    targets: [...FOUNDATIONS, ...klondike.TABLEAU],
+  },
+  freecell: { rules: freecell, piles: freecell.PILES, top: [...freecell.CELLS, ...FOUNDATIONS], targets: freecell.TARGETS },
+};
+const ALL_PILES = ['stock', 'waste', ...freecell.CELLS, ...FOUNDATIONS, ...freecell.TABLEAU];
+const isFree = (game) => game.mode === 'freecell';
+const variantOf = (game) => (isFree(game) ? 'freecell' : game.draw);
+const VARIANTS = [1, 3, 'freecell'];
+let G; // GAMES entry for the game being played
+let R; // its rules
+let TABLEAU;
+function use(game) {
+  G = GAMES[isFree(game) ? 'freecell' : 'klondike'];
+  R = G.rules;
+  TABLEAU = R.TABLEAU;
+}
+const deserialize = (data) => (data?.mode === 'freecell' ? freecell : klondike).deserialize(data);
+
 // Solver -------------------------------------------------------------
 // Every deal is one the solver (solver.js) has won, so no game is hopeless,
 // and Hint asks it for the next move of a winning line. It runs in a Worker,
@@ -36,7 +62,9 @@ const saving = await guardStore(store, name);
 let worker = null;
 let nextId = 0;
 const waiting = new Map();
-const here = (job) => import('./solver.js').then((solver) => (job.type === 'hint' ? solver.hint(job.game) : solver.winnableDeal(job.draw).game));
+const here = (job) => (job.variant === 'freecell'
+  ? import('./freecell-solver.js').then((solver) => (job.type === 'hint' ? solver.hint(job.game) : solver.winnableDeal().game))
+  : import('./solver.js').then((solver) => (job.type === 'hint' ? solver.hint(job.game) : solver.winnableDeal(job.variant).game)));
 try {
   worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
   worker.addEventListener('message', (e) => {
@@ -56,23 +84,26 @@ function ask(job) {
   return new Promise((resolve) => {
     const id = ++nextId;
     waiting.set(id, { resolve, job });
-    worker.postMessage({ id, ...job });
+    worker.postMessage({ id, job });
   });
 }
-const findDeal = (draw) => ask({ type: 'deal', draw });
+const findDeal = (variant) => ask({ type: 'deal', variant });
 
-const ahead = new Map(); // draw setting → the next deal, being found or found
-function takeDeal(draw) {
-  const next = ahead.get(draw) ?? findDeal(draw);
-  ahead.delete(draw);
+const ahead = new Map(); // variant → the next deal, being found or found
+function takeDeal(variant) {
+  const next = ahead.get(variant) ?? findDeal(variant);
+  ahead.delete(variant);
   return next;
 }
-function dealAhead(draw) {
-  if (!ahead.has(draw)) ahead.set(draw, findDeal(draw));
+function dealAhead(variant) {
+  if (!ahead.has(variant)) ahead.set(variant, findDeal(variant));
 }
 
-const savedDraw = saving && store.get('draw') === 3 ? 3 : 1;
-let g = (saving && deserialize(store.get('game'))) || await takeDeal(savedDraw);
+// The classic game remembers its draw setting while free cell is played.
+let lastDraw = saving && store.get('draw') === 3 ? 3 : 1;
+const savedVariant = saving && store.get('mode') === 'freecell' ? 'freecell' : lastDraw;
+let g = (saving && deserialize(store.get('game'))) || await takeDeal(savedVariant);
+use(g);
 let stats = saving ? store.get('stats', {}) : {};
 if (!stats || typeof stats !== 'object') stats = {};
 let selection = null; // { pile, index } picked up with the keyboard
@@ -116,11 +147,10 @@ const cardEls = Array.from({ length: 52 }, (_, c) => {
     ));
 });
 
-const PILES = ['stock', 'waste', ...FOUNDATIONS, ...TABLEAU];
 const pileEls = {};
 const slotEls = {};
 const board = h('div', { class: 'sol-board', role: 'group', 'aria-label': t('solitaire.table') });
-for (const p of PILES) {
+for (const p of ALL_PILES) {
   slotEls[p] = h('button', { type: 'button', class: `sol-slot sol-slot-${p[0]}`, 'data-pile': p, tabindex: '-1' });
   if (p === 'stock') slotEls[p].append(svg(RECYCLE_SVG, 'sol-recycle'));
   if (p[0] === 'f') slotEls[p].append(svg(SUIT_SVG[SUITS[+p[1]]], 'sol-slot-suit'));
@@ -134,29 +164,46 @@ const movesValue = h('span', { class: 'sol-stat-value' });
 const timeValue = h('span', { class: 'sol-stat-value' });
 const undoBtn = h('button', { type: 'button', class: 'btn', onclick: () => doUndo() }, t('solitaire.undo'));
 const hintBtn = h('button', { type: 'button', class: 'btn', onclick: () => doHint() }, t('solitaire.hint'));
-const newBtn = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => startNew(g.draw) }, t('solitaire.new'));
+const newBtn = h('button', { type: 'button', class: 'btn btn-primary', onclick: () => startNew(variantOf(g)) }, t('solitaire.new'));
 const moreBtn = h('button', { type: 'button', class: 'btn sol-more', 'aria-haspopup': 'dialog', onclick: () => openSheet() }, t('solitaire.options'));
 const status = h('p', { class: 'sol-status', role: 'status' });
 const announcer = h('p', { class: 'sr-only', 'aria-live': 'polite' });
 const scroller = h('div', { class: 'sol-scroll' }, board);
-const drawBtns = [1, 3].map((n) => h('button', {
-  type: 'button', class: 'seg-btn sol-draw', 'data-draw': n,
-  onclick: async () => { if (await startNew(n)) options.close(); },
-}, h('span', {}, t(`solitaire.draw.${n}`)), h('span', { class: 'sol-draw-detail' }, t(`solitaire.draw.detail.${n}`))));
+// A choice that starts a new game; the button stays as it was if the game
+// in progress is kept.
+const choice = (variant, label, detail, data) => h('button', {
+  type: 'button', class: 'seg-btn sol-draw', ...data,
+  onclick: async () => { if (await startNew(variant)) options.close(); },
+}, h('span', {}, label), h('span', { class: 'sol-draw-detail' }, detail));
+const modeBtns = [
+  choice(null, t('solitaire.mode.klondike'), t('solitaire.mode.detail.klondike'), { 'data-mode': 'klondike' }),
+  choice('freecell', t('solitaire.mode.freecell'), t('solitaire.mode.detail.freecell'), { 'data-mode': 'freecell' }),
+];
+const drawBtns = [1, 3].map((n) => choice(n, t(`solitaire.draw.${n}`), t(`solitaire.draw.detail.${n}`), { 'data-draw': n }));
+const drawSection = h('div', { class: 'sol-section', role: 'group', 'aria-labelledby': 'sol-draw-label' },
+  h('h2', { class: 'sol-h2', id: 'sol-draw-label' }, t('solitaire.draw')),
+  h('div', { class: 'seg sol-seg' }, drawBtns),
+);
 const statsList = h('dl', { class: 'sol-record' });
+const helpText = h('div', {});
+const HELP = {
+  klondike: ['goal', 'columns', 'stock', 'hint', 'touch', 'keys'],
+  freecell: ['fc.goal', 'fc.columns', 'fc.cells', 'hint', 'touch', 'keys'],
+};
 
 const side = h('div', { class: 'sol-side' },
-  h('div', { class: 'sol-section', role: 'group', 'aria-labelledby': 'sol-draw-label' },
-    h('h2', { class: 'sol-h2', id: 'sol-draw-label' }, t('solitaire.draw')),
-    h('div', { class: 'seg sol-seg' }, drawBtns),
+  h('div', { class: 'sol-section', role: 'group', 'aria-labelledby': 'sol-mode-label' },
+    h('h2', { class: 'sol-h2', id: 'sol-mode-label' }, t('solitaire.mode')),
+    h('div', { class: 'seg sol-seg' }, modeBtns),
   ),
+  drawSection,
   h('section', { class: 'sol-section', 'aria-labelledby': 'sol-stats-label' },
     h('h2', { class: 'sol-h2', id: 'sol-stats-label' }, t('solitaire.stats')),
     statsList,
   ),
   h('section', { class: 'sol-section sol-help', 'aria-labelledby': 'sol-help-label' },
     h('h2', { class: 'sol-h2', id: 'sol-help-label' }, t('solitaire.help.title')),
-    ['goal', 'columns', 'stock', 'hint', 'touch', 'keys'].map((k) => h('p', {}, t(`solitaire.help.${k}`))),
+    helpText,
   ),
 );
 const play = h('div', { class: 'sol-play' },
@@ -202,12 +249,13 @@ function metrics() {
   const margin = parseFloat(getComputedStyle(board).marginLeft) || 0;
   const width = scroller.clientWidth - margin * 2;
   const gap = Math.max(4, Math.min(14, Math.round(width * 0.014)));
-  const cw = Math.max(30, Math.min(104, Math.floor((width - gap * 6) / 7)));
+  const n = TABLEAU.length;
+  const cw = Math.max(30, Math.min(104, Math.floor((width - gap * (n - 1)) / n)));
   const ch = Math.round(cw * 1.4);
   const ty = ch + Math.max(10, Math.round(gap * 1.6));
   const top = scroller.getBoundingClientRect().top + scrollY;
   const height = narrow.matches ? scroller.clientHeight - margin * 2 : Math.max(ty + ch * 3, innerHeight - top - 24);
-  return { gap, cw, ch, ty, height, left: Math.max(0, Math.floor((width - cw * 7 - gap * 6) / 2)) };
+  return { gap, cw, ch, ty, height, left: Math.max(0, Math.floor((width - cw * n - gap * (n - 1)) / 2)) };
 }
 
 const colX = (col) => m.left + col * (m.cw + m.gap);
@@ -215,12 +263,11 @@ const colX = (col) => m.left + col * (m.cw + m.gap);
 // Where each card in a pile goes: [x, y] by index.
 function placements(p) {
   const cards = g[p];
-  if (p === 'stock') return cards.map(() => [colX(0), 0]);
   if (p === 'waste') {
     const fanned = g.draw === 3 ? Math.min(3, cards.length) : 1;
     return cards.map((_, k) => [colX(1) + Math.max(0, k - (cards.length - fanned)) * Math.round(m.cw * 0.26), 0]);
   }
-  if (p[0] === 'f') return cards.map(() => [colX(3 + +p[1]), 0]);
+  if (p[0] !== 't') return cards.map(() => [colX(G.top.indexOf(p)), 0]);
   const col = tableauIndex(p);
   const down = g.down[col];
   const up = cards.length - down;
@@ -242,9 +289,7 @@ function placements(p) {
 }
 
 function slotPlace(p) {
-  if (p === 'stock') return [colX(0), 0];
-  if (p === 'waste') return [colX(1), 0];
-  if (p[0] === 'f') return [colX(3 + +p[1]), 0];
+  if (p[0] !== 't') return [colX(G.top.indexOf(p)), 0];
   return [colX(tableauIndex(p)), m.ty];
 }
 
@@ -274,8 +319,10 @@ function render(animate = false) {
   let bottom = m.ty + m.ch;
   board.style.setProperty('--cw', `${m.cw}px`);
   board.style.setProperty('--ch', `${m.ch}px`);
-  const live = [];
-  for (const p of PILES) {
+  board.classList.toggle('is-freecell', isFree(g));
+  for (const p of ALL_PILES) {
+    pileEls[p].hidden = !G.piles.includes(p);
+    if (pileEls[p].hidden) continue;
     const cards = g[p];
     const places = placements(p);
     const slot = slotEls[p];
@@ -291,9 +338,9 @@ function render(animate = false) {
       el.classList.toggle('is-up', up);
       el.dataset.pile = p;
       el.dataset.k = k;
-      const reachable = up && canTake(g, p, k);
+      const reachable = up && R.canTake(g, p, k);
       el.classList.toggle('is-live', reachable);
-      if (reachable) { el.removeAttribute('aria-hidden'); live.push(el); } else el.setAttribute('aria-hidden', 'true');
+      if (reachable) el.removeAttribute('aria-hidden'); else el.setAttribute('aria-hidden', 'true');
       el.tabIndex = -1;
       if (pileEls[p].children[k + 1] !== el) pileEls[p].insertBefore(el, pileEls[p].children[k + 1] ?? null);
       const before = pos.get(el);
@@ -308,7 +355,7 @@ function render(animate = false) {
     pileEls[p].setAttribute('aria-label', pileLabel(p));
     slotLabel(p);
   }
-  board.style.width = `${colX(6) + m.cw}px`;
+  board.style.width = `${colX(TABLEAU.length - 1) + m.cw}px`;
   board.style.height = `${bottom + 4}px`;
   markSelection();
   setActive(active.pile, active.index, hadFocus);
@@ -320,6 +367,8 @@ function pileLabel(p) {
   if (p === 'stock') return t('solitaire.pile.stock', { cards });
   if (p === 'waste') return t('solitaire.pile.waste', { cards });
   if (p[0] === 'f') return t('solitaire.pile.foundation', { k: +p[1] + 1, cards });
+  if (p[0] === 'c') return t('solitaire.pile.cell', { k: +p[1] + 1, cards });
+  if (isFree(g)) return t('solitaire.pile.columnUp', { k: tableauIndex(p) + 1, cards });
   const down = g.down[tableauIndex(p)];
   return t('solitaire.pile.column', { k: tableauIndex(p) + 1, down, up: n - down });
 }
@@ -342,7 +391,6 @@ function slotLabel(p) {
 // One card or slot on the table is in the tab order at a time; arrow keys
 // move it. Index: a card's place in its pile, -1 for the pile's slot.
 
-const TOP_ROW = ['stock', 'waste', null, 'f0', 'f1', 'f2', 'f3'];
 let active = { pile: 't0', index: Infinity };
 
 function stop(p, index) {
@@ -370,13 +418,14 @@ function moveFocus(key) {
   if (col >= 0) {
     const first = g.down[col];
     if (key === 'ArrowLeft' || key === 'ArrowRight') {
-      const next = Math.max(0, Math.min(6, col + (key === 'ArrowLeft' ? -1 : 1)));
+      const next = Math.max(0, Math.min(TABLEAU.length - 1, col + (key === 'ArrowLeft' ? -1 : 1)));
       return setActive(TABLEAU[next], Infinity, true);
     }
     if (key === 'ArrowDown') return setActive(pile, index + 1, true);
     if (index > first) return setActive(pile, index - 1, true);
-    return setActive(TOP_ROW[col] ?? 'waste', Infinity, true);
+    return setActive(G.top[col] ?? 'waste', Infinity, true);
   }
+  const TOP_ROW = G.top;
   const at = TOP_ROW.indexOf(pile);
   if (key === 'ArrowDown') return setActive(TABLEAU[at], -Infinity, true);
   if (key === 'ArrowUp') return;
@@ -400,8 +449,8 @@ function markSelection() {
 }
 
 function markTargets(pile, index) {
-  for (const p of [...FOUNDATIONS, ...TABLEAU]) {
-    if (!canMove(g, pile, index, p)) continue;
+  for (const p of G.targets) {
+    if (!R.canMove(g, pile, index, p)) continue;
     (g[p].length ? cardEls[g[p].at(-1)] : slotEls[p]).classList.add('is-target');
   }
 }
@@ -429,7 +478,7 @@ function activate(pile, index, byKey) {
   }
   if (index < 0 || !g[pile].length) return;
   if (tableauIndex(pile) < 0) index = g[pile].length - 1;
-  if (!canTake(g, pile, index)) return;
+  if (!R.canTake(g, pile, index)) return;
   if (!byKey) return autoMove(pile, index);
   selection = { pile, index };
   const n = g[pile].length - index - 1;
@@ -440,11 +489,12 @@ function activate(pile, index, byKey) {
 function pileName(p) {
   if (p === 'waste') return t('solitaire.pileName.waste');
   if (p[0] === 'f') return t('solitaire.pileName.foundation', { k: +p[1] + 1 });
+  if (p[0] === 'c') return t('solitaire.pileName.cell', { k: +p[1] + 1 });
   return t('solitaire.pileName.column', { k: tableauIndex(p) + 1 });
 }
 
 function autoMove(pile, index) {
-  const to = bestTarget(g, pile, index);
+  const to = R.bestTarget(g, pile, index);
   if (to && doMove(pile, index, to)) return;
   const card = g[pile][index];
   say(t('solitaire.say.noMove', { card: cardName(card) }));
@@ -456,7 +506,7 @@ function autoMove(pile, index) {
 
 function doMove(from, index, to) {
   const card = g[from][index];
-  const r = move(g, from, index, to);
+  const r = R.move(g, from, index, to);
   if (!r) return false;
   const n = r.cards.length - 1;
   let text = t(n ? 'solitaire.say.movedRun' : 'solitaire.say.moved', { card: cardName(card), n, pile: pileName(to) });
@@ -469,7 +519,7 @@ function doMove(from, index, to) {
 }
 
 function doDraw() {
-  const r = drawStock(g);
+  const r = klondike.drawStock(g);
   if (!r) return;
   say(r === 'drawn' ? t('solitaire.say.drawn', { card: cardName(g.waste.at(-1)) }) : t('solitaire.say.recycled'));
   changed();
@@ -486,7 +536,7 @@ async function doHint() {
   const game = g;
   const asked = g.moves;
   const slow = setTimeout(() => note(t('solitaire.say.thinking')), 300);
-  const next = await ask({ type: 'hint', game: position() });
+  const next = await ask({ type: 'hint', variant: variantOf(g), game: position() });
   clearTimeout(slow);
   hinting = false;
   renderBar();
@@ -505,7 +555,7 @@ async function doHint() {
 }
 
 // The position alone, for the solver.
-const position = () => ({ draw: g.draw, state: g.state, ...Object.fromEntries(PILES.map((p) => [p, g[p].slice()])), down: g.down.slice() });
+const position = () => ({ mode: g.mode, draw: g.draw, state: g.state, ...Object.fromEntries(G.piles.map((p) => [p, g[p].slice()])), down: g.down.slice() });
 
 function note(text) {
   status.textContent = text;
@@ -513,7 +563,7 @@ function note(text) {
 }
 
 function doUndo() {
-  if (busy || !undo(g)) return;
+  if (busy || !R.undo(g)) return;
   selection = null;
   say(t('solitaire.say.undone'));
   changed();
@@ -525,9 +575,9 @@ function changed() {
   if (g.state !== 'won') note('');
   if (wasReady && g.state !== 'ready') {
     wasReady = false;
-    const rec = record(g.draw);
+    const rec = record(variantOf(g));
     rec.played += 1;
-    stats[g.draw] = rec;
+    stats[variantOf(g)] = rec;
     if (saving) store.set('stats', stats);
   }
   render(true);
@@ -535,7 +585,7 @@ function changed() {
   renderBar();
   save();
   if (g.state === 'won') finish();
-  else if (canFinish(g)) autoFinish();
+  else if (R.canFinish(g)) autoFinish();
 }
 
 // Once every card is face up the rest is mechanical, so it plays itself.
@@ -543,9 +593,9 @@ function autoFinish() {
   busy = true;
   say(t('solitaire.say.finishing'));
   const step = () => {
-    const s = nextFinishMove(g);
+    const s = R.nextFinishMove(g);
     if (!s) { busy = false; return; }
-    move(g, s.from, s.index, s.to);
+    R.move(g, s.from, s.index, s.to);
     render(true);
     renderBar();
     if (g.state === 'won') {
@@ -560,14 +610,14 @@ function autoFinish() {
 
 function finish() {
   syncTimer();
-  const rec = record(g.draw);
+  const rec = record(variantOf(g));
   rec.won += 1;
   rec.played = Math.max(rec.played, rec.won);
   const ms = Math.round(g.elapsed);
   const isBest = rec.bestTime == null || ms < rec.bestTime;
   if (isBest) rec.bestTime = ms;
   if (rec.bestMoves == null || g.moves < rec.bestMoves) rec.bestMoves = g.moves;
-  stats[g.draw] = rec;
+  stats[variantOf(g)] = rec;
   if (saving) store.set('stats', stats);
   status.textContent = t(isBest ? 'solitaire.status.best' : 'solitaire.status.won', { time: formatTime(ms), moves: g.moves });
   status.dataset.state = 'won';
@@ -599,10 +649,12 @@ function celebrate() {
   setTimeout(() => box.remove(), 2800);
 }
 
-// Returns true when a new game started.
+// Starts a new game of a variant (null: the classic game with its last draw
+// setting). Returns true when a new game started.
 let dealing = false;
-async function startNew(draw) {
+async function startNew(variant) {
   if (dealing) return false;
+  variant ??= lastDraw;
   if (g.state === 'playing') {
     const ok = await confirmDialog({ title: t('solitaire.confirm.title'), body: t('solitaire.confirm.body'), confirmLabel: t('solitaire.confirm.ok') });
     if (!ok) return false;
@@ -612,7 +664,7 @@ async function startNew(draw) {
   newBtn.setAttribute('aria-disabled', 'true');
   // Usually ready at once; say so only if finding one takes a moment.
   const slow = setTimeout(() => { status.textContent = t('solitaire.status.dealing'); delete status.dataset.state; }, 200);
-  const next = await takeDeal(draw);
+  const next = await takeDeal(variant);
   clearTimeout(slow);
   dealing = false;
   newBtn.removeAttribute('aria-disabled');
@@ -621,9 +673,14 @@ async function startNew(draw) {
   busy = false;
   selection = null;
   g = next;
+  use(g);
   shown = null;
   wasReady = true;
-  if (saving) store.set('draw', draw);
+  if (variant !== 'freecell') lastDraw = variant;
+  if (saving) {
+    store.set('mode', isFree(g) ? 'freecell' : 'klondike');
+    store.set('draw', lastDraw);
+  }
   status.textContent = '';
   delete status.dataset.state;
   board.classList.remove('is-won');
@@ -635,32 +692,37 @@ async function startNew(draw) {
   render(true);
   renderBar();
   save();
-  dealAhead(draw);
+  renderHelp();
+  dealAhead(variant);
   return true;
 }
 
 function save() {
   if (!saving) return;
-  const s = serialize(g);
+  const s = R.serialize(g);
   s.elapsed = Math.round(elapsed());
   store.set('game', s);
 }
 
-function record(draw) {
-  const r = stats[draw];
+function record(variant) {
+  const r = stats[variant];
   const num = (v) => (Number.isInteger(v) && v >= 0 ? v : 0);
   const opt = (v) => (Number.isFinite(v) && v >= 0 ? v : null);
   return { played: num(r?.played), won: num(r?.won), bestTime: opt(r?.bestTime), bestMoves: opt(r?.bestMoves) };
 }
 
 function renderStats() {
-  statsList.replaceChildren(...[1, 3].flatMap((n) => {
+  statsList.replaceChildren(...VARIANTS.flatMap((n) => {
     const r = record(n);
     const parts = [];
     if (r.played) parts.push(t('solitaire.stats.won', r));
     if (r.bestTime != null) parts.push(t('solitaire.stats.best', { time: formatTime(r.bestTime), moves: r.bestMoves }));
-    return [h('dt', {}, t(`solitaire.draw.${n}`)), h('dd', {}, parts.join(', ') || t('solitaire.stats.none'))];
+    return [h('dt', {}, t(`solitaire.record.${n}`)), h('dd', {}, parts.join(', ') || t('solitaire.stats.none'))];
   }));
+}
+
+function renderHelp() {
+  helpText.replaceChildren(...HELP[isFree(g) ? 'freecell' : 'klondike'].map((k) => h('p', {}, t(`solitaire.help.${k}`))));
 }
 
 function renderBar() {
@@ -668,7 +730,9 @@ function renderBar() {
   renderTime();
   undoBtn.setAttribute('aria-disabled', String(busy || g.state === 'won' || !g.history.length));
   hintBtn.setAttribute('aria-disabled', String(busy || hinting || g.state === 'won'));
-  for (const b of drawBtns) b.setAttribute('aria-pressed', String(+b.dataset.draw === g.draw));
+  for (const b of modeBtns) b.setAttribute('aria-pressed', String((b.dataset.mode === 'freecell') === isFree(g)));
+  for (const b of drawBtns) b.setAttribute('aria-pressed', String(!isFree(g) && +b.dataset.draw === g.draw));
+  drawSection.hidden = isFree(g);
 }
 
 // Timer --------------------------------------------------------------
@@ -816,8 +880,8 @@ function dropPile(clientX, clientY) {
   const x = clientX - r.left - m.left;
   const y = clientY - r.top;
   const col = Math.floor((x + m.gap / 2) / (m.cw + m.gap));
-  if (col < 0 || col > 6) return null;
-  if (y < m.ty - m.gap / 2) return col >= 3 ? FOUNDATIONS[col - 3] : null;
+  if (col < 0 || col >= TABLEAU.length) return null;
+  if (y < m.ty - m.gap / 2) return G.top[col] === 'stock' || G.top[col] === 'waste' ? null : G.top[col] ?? null;
   return TABLEAU[col];
 }
 
@@ -837,6 +901,7 @@ if (g.state === 'won') {
 }
 renderBar();
 renderStats();
+renderHelp();
 syncTimer();
-if (canFinish(g)) autoFinish();
-dealAhead(g.draw);
+if (R.canFinish(g)) autoFinish();
+dealAhead(variantOf(g));
